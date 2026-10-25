@@ -18,12 +18,14 @@ export interface PropsPlateau {
   onCase?: (pos: number) => boolean
   /** Début d'un appui sur un jeton en cours de pose (pour le glisser). */
   onAppuiPose?: (pos: number, e: PE) => void
+  /** Plateau d'un bord à l'autre de l'écran (écrans de jeu). */
+  pleine?: boolean
 }
 
 const ZOOM_MAX = 3
 const ZOOM_DOUBLE = 2.2
 
-export function Plateau({ plateau, poses, apercu, derniers, curseur, cible, onCase, onAppuiPose }: PropsPlateau) {
+export function Plateau({ plateau, poses, apercu, derniers, curseur, cible, onCase, onAppuiPose, pleine }: PropsPlateau) {
   const zone = useRef<HTMLDivElement>(null)
   const [vue, setVue] = useState({ s: 1, x: 0, y: 0 })
   const vueRef = useRef(vue)
@@ -166,7 +168,7 @@ export function Plateau({ plateau, poses, apercu, derniers, curseur, cible, onCa
 
   return (
     <div
-      className="zone-plateau"
+      className={'zone-plateau' + (pleine ? ' pleine' : '')}
       ref={zone}
       onPointerDown={appui}
       onPointerMove={deplacement}

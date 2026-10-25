@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
 import { Calculateur } from './pages/Calculateur'
@@ -21,6 +22,9 @@ export function App() {
     window.addEventListener(EVENEMENT_TOUR, maj)
     return () => window.removeEventListener(EVENEMENT_TOUR, maj)
   }, [])
+  // Pas d'onglets pendant une partie : les écrans de jeu les masquent.
+  const [ongletsMasques, setOngletsMasques] = useState(false)
+  useEffect(() => surMasquageOnglets(setOngletsMasques), [])
   const page = chemin[0] ?? 'solo'
   let contenu: ReactNode
   if (page === 'correction') contenu = <Correction id={decodeURIComponent(chemin[1] ?? 'courante')} />
@@ -38,7 +42,7 @@ export function App() {
   return (
     <div className="appli">
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{contenu}</main>
-      <nav className="onglets">
+      <nav className="onglets" hidden={ongletsMasques}>
         <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
         <Onglet href="#/calculateur" actif={onglet === 'calculateur'} icone={<IconeLoupe />} texte="Calculateur" />

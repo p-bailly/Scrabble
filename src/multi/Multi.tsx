@@ -5,7 +5,8 @@ import type { User } from 'firebase/auth'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
+import { BarreJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { MIN_SAC_POUR_CHANGER } from '../jeu/classique'
 import { JOKER, valeur } from '../jeu/lettres'
@@ -379,6 +380,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   }, [coups, p])
 
   const plateau = useMemo(() => plateauDepuisTexte(p?.plateau ?? '.'.repeat(225)), [p?.plateau])
+  // Pas d'onglets pendant une partie commencée (ils restent pour l'invitation).
+  useMasquerOnglets(!!p && p.etat !== 'attente')
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
 
@@ -402,35 +405,49 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
     if (!err) edition.rappeler()
   }
 
+  const moi = p.scores[uid] ?? 0
+  const lui = adv ? (p.scores[adv] ?? 0) : 0
+  const boutonHistorique = (
+    <button type="button" className="bouton-icone" onClick={() => setHistorique(true)} aria-label="Historique des coups">
+      <IconeHistorique />
+    </button>
+  )
+
   return (
-    <div className="contenu">
-      <Retour droite={<button type="button" className="puce" onClick={() => setHistorique(true)}>Historique</button>} />
+    <>
       {p.etat === 'attente' ? (
-        <Invitation p={p} />
+        <div className="contenu">
+          <Retour droite={boutonHistorique} />
+          <Invitation p={p} />
+        </div>
       ) : (
-        <>
-          <div className="stats">
-            <div className={'stat' + (p.tour === uid ? ' accent' : '')} style={{ alignItems: 'flex-start' }}>
-              <div className="etiquette">Moi</div>
-              <div className="valeur">{p.scores[uid] ?? 0}</div>
-            </div>
-            <div className={'stat' + (p.tour === adv ? ' accent' : '')} style={{ alignItems: 'flex-start' }}>
-              <div className="etiquette">{nomAdv}</div>
-              <div className="valeur">{adv ? (p.scores[adv] ?? 0) : 0}</div>
-            </div>
-            <div className="stat">
-              <div className="etiquette">Sac</div>
-              <div className="valeur">{p.sac.length}</div>
-            </div>
-          </div>
-          {p.etat === 'finie' && <Fin p={p} uid={uid} nomAdv={nomAdv} />}
-          {p.etat === 'encours' && (
-            <div className="note" style={{ fontWeight: 700, color: aMoi ? 'var(--accent)' : undefined }}>
-              {aMoi ? 'À toi de jouer !' : `En attente de ${nomAdv}…`}
-              {p.enAttente && ' · coup en attente d’envoi (hors ligne)'}
-            </div>
-          )}
+        <div className="ecran-jeu">
+          <BarreJeu
+            onRetour={() => naviguer('parties')}
+            libelleRetour="Mes parties"
+            titre={
+              <>
+                {p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}{' '}
+                <span className="sous">· sac {p.sac.length}</span>
+              </>
+            }
+            progression={{
+              gauche: (
+                <>
+                  Moi <b>{moi}</b>
+                </>
+              ),
+              part: moi + lui ? moi / (moi + lui) : 0.5,
+              droite: (
+                <>
+                  <b>{lui}</b> {nomAdv}
+                </>
+              ),
+            }}
+            droite={boutonHistorique}
+          />
           <Plateau
+            pleine
             plateau={plateau}
             poses={edition.posesCarte}
             derniers={derniers}
@@ -439,47 +456,62 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             onCase={aMoi ? edition.toucherCase : () => false}
             onAppuiPose={edition.appuiPose}
           />
+          {p.etat === 'finie' && (
+            <div style={{ padding: '12px 16px 0' }}>
+              <Fin p={p} uid={uid} nomAdv={nomAdv} />
+            </div>
+          )}
           {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
-          {message && <div className="apercu erreur">{message}</div>}
-          <Chevalet edition={edition} />
-          {aMoi && (
-            <div className="actions">
-              <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-                <IconeMelanger />
-              </button>
-              <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
-                <IconeRappeler />
-              </button>
-              <button type="button" className="bouton large" onClick={() => setChangement(true)}>
-                Changer
-              </button>
-              <button
-                type="button"
-                className="bouton large"
-                onClick={() => {
-                  if (confirm('Passer ton tour ?')) jouer({ type: 'passe' })
-                }}
-              >
-                Passer
-              </button>
-              <button
-                type="button"
-                className="bouton principal large"
-                disabled={!analyse?.valide}
-                onClick={() => analyse && jouer({ type: 'mot', analyse })}
-              >
-                Jouer
-              </button>
-            </div>
-          )}
           {p.etat === 'encours' && !aMoi && (
-            <div className="actions">
-              <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-                <IconeMelanger />
-              </button>
+            <div className="apercu">
+              <span className="indice">{nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.</span>
             </div>
           )}
-        </>
+          {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
+          {message && <div className="apercu erreur">{message}</div>}
+          <PanneauBas>
+            <Chevalet edition={edition} />
+            {aMoi ? (
+              <div className="actions">
+                <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                  <IconeMelanger />
+                </button>
+                <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+                  <IconeRappeler />
+                </button>
+                <button type="button" className="bouton large" onClick={() => setChangement(true)}>
+                  Changer
+                </button>
+                <button
+                  type="button"
+                  className="bouton large"
+                  onClick={() => {
+                    if (confirm('Passer ton tour ?')) jouer({ type: 'passe' })
+                  }}
+                >
+                  Passer
+                </button>
+                <button
+                  type="button"
+                  className="bouton principal large"
+                  disabled={!analyse?.valide}
+                  onClick={() => analyse && jouer({ type: 'mot', analyse })}
+                >
+                  Jouer
+                </button>
+              </div>
+            ) : (
+              <div className="actions">
+                <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                  <IconeMelanger />
+                </button>
+                <button type="button" className="bouton large" onClick={() => naviguer('parties')}>
+                  Mes parties
+                </button>
+              </div>
+            )}
+          </PanneauBas>
+        </div>
       )}
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
@@ -535,7 +567,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           </button>
         )}
       </Feuille>
-    </div>
+    </>
   )
 }
 

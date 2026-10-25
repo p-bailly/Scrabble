@@ -749,3 +749,185 @@ a.bouton {
 .carte .bouton:not(.principal):not(.discret):not(.danger) {
   background: var(--surface-2);
 }
+
+/* Écrans de jeu (agencement « plateau plein écran ») */
+.ecran-jeu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - env(safe-area-inset-top));
+}
+.barre-jeu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px 10px;
+}
+.barre-jeu .milieu {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.barre-jeu .titre {
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.barre-jeu .titre .sous {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 14px;
+}
+.progression {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.progression b {
+  color: var(--text);
+}
+.progression .fort {
+  color: var(--chip-text);
+  font-weight: 700;
+}
+.jauge {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+  min-width: 40px;
+}
+.jauge > div {
+  height: 6px;
+  background: var(--accent);
+  transition: width 0.4s;
+}
+.anneau {
+  width: 52px;
+  height: 52px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.anneau svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.anneau .fond {
+  stroke: var(--line);
+}
+.anneau .avant {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 1s linear;
+}
+.anneau.urgent .avant {
+  stroke: var(--mt);
+}
+.anneau.urgent {
+  color: var(--mt);
+}
+.zone-plateau.pleine {
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--surface);
+}
+.zone-plateau.pleine .plateau {
+  padding: 0.8cqw;
+  gap: 0.4cqw;
+}
+.ecran-jeu .apercu {
+  background: transparent;
+  justify-content: center;
+  padding: 10px 16px;
+  font-size: 15px;
+}
+.ecran-jeu .apercu .mots {
+  flex: 0 1 auto;
+}
+.ecran-jeu .note-centree {
+  text-align: center;
+  margin-top: -8px;
+  padding: 0 16px;
+}
+.panneau-bas {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  background: var(--surface);
+  border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 24px rgba(20, 22, 40, 0.08);
+  padding: 16px 14px calc(18px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panneau-bas .chevalet {
+  background: transparent;
+  padding: 0;
+}
+.panneau-bas .emplacement {
+  width: 46px;
+  height: 46px;
+}
+.panneau-bas .tuile {
+  border-radius: 10px;
+  font-size: 24px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+}
+.panneau-bas .bouton-icone {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.panneau-bas .bouton {
+  min-height: 52px;
+  border-radius: 16px;
+  padding: 0 10px;
+}
+.panneau-bas .bouton:not(.principal) {
+  background: var(--surface-2);
+}
+.panneau-bas .bouton.contour {
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--chip-text);
+}
+.panneau-bas .bouton.principal {
+  font-size: 16px;
+}
+.onglets[hidden] {
+  display: none;
+}
+.carte-accent {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.carte-accent .note {
+  color: inherit;
+  opacity: 0.85;
+}
+.carte .carte-accent .bouton,
+.carte-accent .bouton {
+  background: var(--surface);
+  color: var(--chip-text);
+}

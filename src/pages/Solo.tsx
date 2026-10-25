@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { IconeChrono, IconeMelanger, IconeRappeler } from '../composants/Icones'
+import { AnneauChrono, BarreJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { IconeMelanger, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { reference, type Coup } from '../jeu/coup'
 import { nouvellePartie, terminerCoup, totaux, type CoupDuplicate, type PartieDuplicate } from '../jeu/duplicate'
@@ -17,7 +18,6 @@ import {
   ecrireCoup,
   ecrirePartie,
   ecrireReglages,
-  formatChrono,
   formatPct,
   formatTemps,
   lireCoup,
@@ -39,8 +39,22 @@ export function Solo() {
     ecrirePartie(p)
   }, [])
 
+  // Partie mise en pause : on revient à l'accueil du duplicate, qui propose de la reprendre.
+  const [pause, setPause] = useState(false)
+
   const enJeu = partie && (!partie.finie || resultat)
-  if (!enJeu) return <AccueilSolo onLancer={(p) => changer(p)} derniere={partie} />
+  if (!enJeu || pause)
+    return (
+      <AccueilSolo
+        onLancer={(p) => {
+          if (partie && !partie.finie && partie.coups.length) archiver({ ...partie, finie: true, courant: null })
+          changer(p)
+          setPause(false)
+        }}
+        derniere={partie}
+        onReprendre={enJeu ? () => setPause(false) : undefined}
+      />
+    )
   return (
     <PartieSolo
       partie={partie}
@@ -56,11 +70,19 @@ export function Solo() {
         changer(null)
         setResultat(null)
       }}
+      onPause={() => setPause(true)}
     />
   )
 }
 
-function AccueilSolo({ onLancer, derniere }: { onLancer: (p: PartieDuplicate) => void; derniere: PartieDuplicate | null }) {
+interface PropsAccueil {
+  onLancer: (p: PartieDuplicate) => void
+  derniere: PartieDuplicate | null
+  /** Présent quand une partie est en pause. */
+  onReprendre?: () => void
+}
+
+function AccueilSolo({ onLancer, derniere, onReprendre }: PropsAccueil) {
   const [temps, setTemps] = useState(() => lireReglages().temps)
   const [graine, setGraine] = useState('')
   const [dico, setDico] = useState<string>('')
@@ -73,6 +95,7 @@ function AccueilSolo({ onLancer, derniere }: { onLancer: (p: PartieDuplicate) =>
   }, [])
 
   const lancer = () => {
+    if (onReprendre && !confirm('Abandonner la partie en pause pour en commencer une autre ?')) return
     ecrireReglages({ temps })
     ecrireCoup(null)
     const g = graine.trim().toUpperCase() || nouvelleGraine()
@@ -82,6 +105,7 @@ function AccueilSolo({ onLancer, derniere }: { onLancer: (p: PartieDuplicate) =>
   return (
     <div className="contenu">
       <Entete droite={<span className="puce">Duplicate</span>} />
+      {onReprendre && derniere && <EnPause partie={derniere} onReprendre={onReprendre} />}
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           À chaque coup, un tirage de 7 lettres : trouve le meilleur mot avant la fin du temps. Ensuite, c’est le
@@ -115,6 +139,22 @@ function AccueilSolo({ onLancer, derniere }: { onLancer: (p: PartieDuplicate) =>
         <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
       </div>
       {precedente && precedente.coups.length > 0 && <Bilan partie={precedente} />}
+    </div>
+  )
+}
+
+function EnPause({ partie, onReprendre }: { partie: PartieDuplicate; onReprendre: () => void }) {
+  const t = totaux(partie)
+  return (
+    <div className="carte carte-accent">
+      <div className="note">Partie en pause · coup {partie.courant?.numero ?? partie.coups.length}</div>
+      <div style={{ fontSize: 30, fontWeight: 800 }}>{t.top ? formatPct(t.pourcentage) : '—'}</div>
+      <div className="note">
+        {t.joueur} / {t.top} points · graine {partie.graine}
+      </div>
+      <button type="button" className="bouton" onClick={onReprendre}>
+        Reprendre
+      </button>
     </div>
   )
 }
@@ -153,9 +193,11 @@ interface PropsPartie {
   onFinCoup: (p: PartieDuplicate, r: CoupDuplicate | null) => void
   onSuivant: () => void
   onAbandon: () => void
+  onPause: () => void
 }
 
-function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon }: PropsPartie) {
+function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon, onPause }: PropsPartie) {
+  useMasquerOnglets()
   const plateau = useMemo(() => plateauDepuisTexte(partie.plateau), [partie.plateau])
   const courant = partie.courant
   const numero = courant?.numero ?? partie.coups.length
@@ -204,15 +246,15 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon }: Props
     }
   }, [analyse, coup, courant, onFinCoup, partie])
 
-  // Chrono : une seconde de plus tant que l'appli est visible et qu'aucun résultat n'est affiché.
+  // Chrono : une seconde de plus tant que l'appli est visible et qu'aucune fenêtre (résultat, menu) n'est ouverte.
   useEffect(() => {
-    if (!courant || resultat) return
+    if (!courant || resultat || menu) return
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return
       setCoup((c) => ({ ...c, ecoule: c.ecoule + 1 }))
     }, 1000)
     return () => clearInterval(id)
-  }, [courant, resultat])
+  }, [courant, resultat, menu])
 
   const reste = partie.temps ? Math.max(0, partie.temps - coup.ecoule) : null
   useEffect(() => {
@@ -225,33 +267,28 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon }: Props
   }
 
   return (
-    <div className="contenu">
-      <Entete
-        droite={
-          <button type="button" className="puce" onClick={() => setMenu(true)}>
-            Duplicate
-          </button>
+    <div className="ecran-jeu">
+      <BarreJeu
+        onRetour={() => setMenu(true)}
+        libelleRetour="Menu de la partie"
+        titre={
+          <>
+            Coup {numero} <span className="sous">· sac {partie.sac.length} lettre{partie.sac.length > 1 ? 's' : ''}</span>
+          </>
         }
+        progression={{
+          gauche: (
+            <>
+              <b>{t.joueur}</b> / {t.top}
+            </>
+          ),
+          part: t.top ? t.joueur / t.top : 0,
+          droite: <span className="fort">{t.top ? `${Math.round(t.pourcentage)} %` : '—'}</span>,
+        }}
+        droite={<AnneauChrono ecoule={coup.ecoule} total={partie.temps} />}
       />
-      <div className="stats">
-        <div className="stat">
-          <div className="etiquette">Coup</div>
-          <div className="valeur">{numero}</div>
-        </div>
-        <div className="stat">
-          <div className="etiquette">Moi</div>
-          <div className="valeur">{t.joueur}</div>
-        </div>
-        <div className="stat">
-          <div className="etiquette">Tops · {t.top ? Math.round(t.pourcentage) : 100} %</div>
-          <div className="valeur">{t.top}</div>
-        </div>
-        <div className={'stat accent' + (reste !== null && reste <= 15 ? ' urgent' : '')}>
-          <IconeChrono />
-          <div className="valeur">{reste === null ? formatChrono(coup.ecoule) : formatChrono(reste)}</div>
-        </div>
-      </div>
       <Plateau
+        pleine
         plateau={plateau}
         poses={edition.posesCarte}
         derniers={derniers}
@@ -262,25 +299,27 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon }: Props
       />
       <Apercu analyse={analyse} indice="Touche une case puis tes lettres, ou glisse-les." />
       {coup.bulletin && (
-        <div className="note" style={{ marginTop: -6, paddingLeft: 4 }}>
+        <div className="note note-centree">
           Noté : <Mot mot={coup.bulletin.mot} /> {reference(coup.bulletin.debut, coup.bulletin.dir)} · {coup.bulletin.points} pts
         </div>
       )}
-      <Chevalet edition={edition} />
-      <div className="actions">
-        <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-          <IconeMelanger />
-        </button>
-        <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
-          <IconeRappeler />
-        </button>
-        <button type="button" className="bouton large" onClick={noter} disabled={!analyse?.valide}>
-          Noter
-        </button>
-        <button type="button" className="bouton principal large" onClick={() => void terminer()} disabled={calcul}>
-          {calcul ? 'Calcul…' : 'Valider'}
-        </button>
-      </div>
+      <PanneauBas>
+        <Chevalet edition={edition} />
+        <div className="actions">
+          <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+            <IconeMelanger />
+          </button>
+          <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+            <IconeRappeler />
+          </button>
+          <button type="button" className="bouton contour large" onClick={noter} disabled={!analyse?.valide}>
+            Noter
+          </button>
+          <button type="button" className="bouton principal large" onClick={() => void terminer()} disabled={calcul}>
+            {calcul ? 'Calcul…' : 'Valider'}
+          </button>
+        </div>
+      </PanneauBas>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
 
@@ -321,6 +360,12 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon }: Props
         <p style={{ margin: 0 }} className="note">
           Graine <b>{partie.graine}</b> · {formatTemps(partie.temps)} par coup · sac : {partie.sac.length} lettres
         </p>
+        <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
+          Reprendre
+        </button>
+        <button type="button" className="bouton" onClick={onPause}>
+          Mettre en pause
+        </button>
         <button
           type="button"
           className="bouton"

@@ -82,5 +82,3 @@ export function statistiques() {
 export const formatPct = (x: number) => x.toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' %'
 
 export const formatTemps = (s: number) => (s === 0 ? 'Sans limite' : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)} min ${s % 60}`)
-
-export const formatChrono = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`

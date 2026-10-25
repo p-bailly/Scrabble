@@ -34,12 +34,6 @@ export const IconeStats = ({ taille = 22 }: P) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
 )
-export const IconeChrono = ({ taille = 16 }: P) => (
-  <svg width={taille} height={taille} viewBox="0 0 24 24" {...base} strokeWidth={2.2}>
-    <circle cx="12" cy="13" r="8" />
-    <path d="M12 9v4l2 2M9 2h6" />
-  </svg>
-)
 export const IconeMelanger = ({ taille = 18 }: P) => (
   <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
     <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
@@ -87,5 +81,11 @@ export const IconeEffacer = ({ taille = 18 }: P) => (
 export const IconeCrayon = ({ taille = 18 }: P) => (
   <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
     <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+)
+export const IconeHistorique = ({ taille = 22 }: P) => (
+  <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 3" />
   </svg>
 )
