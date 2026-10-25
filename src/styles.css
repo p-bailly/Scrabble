@@ -742,3 +742,10 @@ h2 {
 a.bouton {
   text-decoration: none;
 }
+.stat.accent .etiquette {
+  color: inherit;
+  opacity: 0.85;
+}
+.carte .bouton:not(.principal):not(.discret):not(.danger) {
+  background: var(--surface-2);
+}
