@@ -1,0 +1,89 @@
+rules_version = '2';
+
+// Règles de sécurité des parties à deux. À coller dans la console Firebase :
+// Firestore Database → Règles → Publier.
+service cloud.firestore {
+  match /databases/{base}/documents {
+
+    function connecte() {
+      return request.auth != null;
+    }
+
+    // Pseudo de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
+    match /joueurs/{uid} {
+      allow read: if connecte();
+      allow write: if connecte() && request.auth.uid == uid
+        && request.resource.data.pseudo is string
+        && request.resource.data.pseudo.size() > 0 && request.resource.data.pseudo.size() <= 20;
+    }
+
+    match /parties/{code} {
+      function partie() {
+        return get(/databases/$(base)/documents/parties/$(code)).data;
+      }
+      function partieApres() {
+        return getAfter(/databases/$(base)/documents/parties/$(code)).data;
+      }
+      function joueur(d) {
+        return request.auth.uid in d.joueurs;
+      }
+      function inchange(champs) {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(champs);
+      }
+
+      // Lecture : les deux joueurs ; une partie en attente d'adversaire est lisible par qui a le code.
+      allow read: if connecte() && (joueur(resource.data) || resource.data.etat == 'attente');
+
+      // Création : par son créateur, seul joueur inscrit, en attente d'un adversaire.
+      allow create: if connecte()
+        && request.resource.data.createur == request.auth.uid
+        && request.resource.data.joueurs == [request.auth.uid]
+        && request.resource.data.etat == 'attente'
+        && request.resource.data.nbCoups == 0;
+
+      allow update: if connecte() && (
+        // Rejoindre une partie en attente : on s'ajoute comme second joueur, la partie commence.
+        (resource.data.etat == 'attente'
+          && request.auth.uid != resource.data.createur
+          && request.resource.data.joueurs == [resource.data.createur, request.auth.uid]
+          && request.resource.data.etat == 'encours'
+          && request.resource.data.nbCoups == 0
+          && inchange(['createur', 'code', 'creeLe', 'plateau']))
+        ||
+        // Jouer : seulement le joueur dont c'est le tour, un coup à la fois.
+        (resource.data.etat == 'encours'
+          && resource.data.tour == request.auth.uid
+          && request.resource.data.nbCoups == resource.data.nbCoups + 1
+          && request.resource.data.tour != request.auth.uid
+          && inchange(['createur', 'code', 'creeLe', 'joueurs']))
+        ||
+        // Abandonner une partie en cours (l'adversaire gagne).
+        (resource.data.etat == 'encours' && joueur(resource.data)
+          && request.resource.data.etat == 'finie'
+          && request.resource.data.nbCoups == resource.data.nbCoups
+          && inchange(['createur', 'code', 'creeLe', 'joueurs', 'plateau', 'sac', 'scores']))
+      );
+
+      // Supprimer : le créateur, tant que personne n'a rejoint.
+      allow delete: if connecte() && resource.data.etat == 'attente' && resource.data.createur == request.auth.uid;
+
+      // Chevalet de chaque joueur : lui seul le lit et l'écrit.
+      match /chevalets/{uid} {
+        allow read: if connecte() && request.auth.uid == uid;
+        allow write: if connecte() && request.auth.uid == uid && joueur(partieApres());
+      }
+
+      // Historique des coups : lisible par les deux joueurs ; chaque coup est écrit par celui dont c'était le
+      // tour, en même temps que la partie (même lot d'écritures), avec le bon numéro.
+      match /coups/{n} {
+        allow read: if connecte() && joueur(partie());
+        allow create: if connecte()
+          && request.resource.data.uid == request.auth.uid
+          && partie().tour == request.auth.uid
+          && partieApres().nbCoups == int(n)
+          && request.resource.data.n == int(n);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

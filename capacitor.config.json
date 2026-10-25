@@ -1,0 +1,14 @@
+{
+  "appId": "fr.perso.scrabble",
+  "appName": "Scrabble",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#fafaf7"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#4C5FD5"
+    }
+  }
+}

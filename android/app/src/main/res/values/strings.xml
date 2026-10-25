@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Scrabble</string>
+    <string name="title_activity_main">Scrabble</string>
+    <string name="package_name">fr.perso.scrabble</string>
+    <string name="custom_url_scheme">fr.perso.scrabble</string>
+</resources>
