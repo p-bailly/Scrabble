@@ -1,0 +1,9 @@
+// Moteur de jeu : règles et calculs purs, sans React ni réseau.
+export * from './lettres'
+export * from './plateau'
+export * from './coup'
+export * from './dawg'
+export * from './generateur'
+export * from './hasard'
+export * from './duplicate'
+export * from './classique'
