@@ -281,7 +281,7 @@ src/
 scripts/dico.ts   liste de mots → public/dico/mots.dawg
 public/           manifest PWA, service worker, icônes, dictionnaire
 android/          projet Android (Capacitor) qui embarque l'app web
-design/logo/      logo : generer.mjs (SVG, icône adaptative), puis png.cjs (PNG, écrans de démarrage)
+design/logo/      logo « La tuile » au crayon, comme les logos Nimbus : generer.mjs (SVG, icône adaptative), puis png.cjs (PNG, écrans de démarrage ; Chrome ou Edge requis)
 firestore.rules   règles de sécurité Firestore
 ```
 
