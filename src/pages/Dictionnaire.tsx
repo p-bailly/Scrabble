@@ -120,7 +120,9 @@ function DefinitionMot({ mot }: { mot: string }) {
     setErreur('')
     chercherDefinition(mot).then(
       (r) => actuel && setDef(r),
-      () => actuel && setErreur('Définition indisponible hors connexion.'),
+      () =>
+        actuel &&
+        setErreur(navigator.onLine === false ? 'Définition indisponible hors connexion.' : 'Le Wiktionnaire ne répond pas pour le moment. Réessaie dans un instant.'),
     )
     return () => {
       actuel = false
