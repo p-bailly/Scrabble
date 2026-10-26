@@ -1,6 +1,7 @@
 // Accès au Web Worker du moteur depuis l'interface : chaque appel renvoie une promesse.
 
 import type { Analyse, Coup, Pose } from '../jeu/coup'
+import type { ContexteIA, Decision } from '../jeu/ia'
 import type { Plateau } from '../jeu/plateau'
 import type { Reponse, Requete } from './worker'
 
@@ -66,4 +67,12 @@ export async function motsConnus(mots: string[]): Promise<boolean[]> {
   const r = await envoyer({ type: 'contient', mots })
   if (r.type !== 'contient') throw new Error('Réponse inattendue')
   return r.resultats
+}
+
+/** Coup de l'IA : le Web Worker génère tous les coups légaux et choisit selon le niveau. */
+export async function decisionIA(contexte: ContexteIA): Promise<Decision> {
+  await chargerDico()
+  const r = await envoyer({ type: 'ia', contexte })
+  if (r.type !== 'decision') throw new Error('Réponse inattendue')
+  return r.decision
 }

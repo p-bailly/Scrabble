@@ -1,11 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { changer, finDePartie, jouerMot, lettresAdversaire } from './classique'
-import { analyserCoup } from './coup'
-import { compter, nouvellePartie, terminerCoup, tirageValide, tirer, totaux } from './duplicate'
+import { analyserCoup, type Coup } from './coup'
+import {
+  INDICES,
+  compter,
+  modeDe,
+  nouvellePartie,
+  plateauAvantCoup,
+  terminerCoup,
+  texteIndice,
+  tirageValide,
+  tirer,
+  topTrouve,
+  totaux,
+} from './duplicate'
 import { genererCoups } from './generateur'
 import { graineEnNombre } from './hasard'
 import { tousLesJetons } from './lettres'
-import { plateauDepuisTexte } from './plateau'
+import { plateauDepuisTexte, plateauEnTexte } from './plateau'
 import { dicoAppli, dicoDe, ecrire, posesDe, vide } from './outils-test'
 
 describe('tirages du duplicate (règlement FISF)', () => {
@@ -114,5 +126,70 @@ describe('partie classique', () => {
     const sac = tousLesJetons()
     for (const j of [...'MAISN?', ...moi, ...adversaire]) sac.splice(sac.indexOf(j), 1)
     expect(lettresAdversaire(plateau, sac, moi).sort()).toEqual(adversaire.sort())
+  })
+})
+
+describe('topping du duplicate', () => {
+  const coup = (mot: string, points: number, debut: number, dir: 'H' | 'V' = 'H'): Coup => ({
+    poses: [...mot].map((lettre, i) => ({ pos: debut + i * (dir === 'H' ? 1 : 15), lettre })),
+    mot,
+    dir,
+    debut,
+    points,
+  })
+
+  it('une partie ancienne, sans mode, est un entraînement', () => {
+    const p = nouvellePartie('mode', 180)
+    expect(modeDe(p)).toBe('entrainement')
+    const { mode: _mode, ...ancienne } = p
+    expect(modeDe(ancienne as typeof p)).toBe('entrainement')
+    expect(modeDe(nouvellePartie('mode', 60, 'x', 'topping'))).toBe('topping')
+  })
+
+  it('les indices révèlent le top sans le donner', () => {
+    const top = coup('MAISON', 24, 7 * 15 + 3, 'V')
+    expect(texteIndice('valeur', top)).toBe('24 points')
+    expect(texteIndice('longueur', top)).toBe('6 lettres')
+    expect(texteIndice('direction', top)).toBe('vertical')
+    expect(texteIndice('position', top)).toBe('départ ligne H, colonne 4')
+    expect(INDICES).toHaveLength(4)
+  })
+
+  it('le top est trouvé quand le coup du joueur vaut autant', () => {
+    const base = { numero: 1, tirage: [], reliquat: [], rejets: 0, autres: [], duree: 42 }
+    const top = coup('MAISON', 24, 112)
+    expect(topTrouve({ ...base, top, joueur: coup('SON', 24, 112) })).toBe(true)
+    expect(topTrouve({ ...base, top, joueur: coup('SON', 20, 112) })).toBe(false)
+    expect(topTrouve({ ...base, top, joueur: null })).toBe(false)
+  })
+
+  it('terminerCoup garde les indices demandés ; les totaux comptent tops trouvés et temps moyen', () => {
+    const ods = dicoAppli()
+    let partie = nouvellePartie('totaux', 120, 'p', 'topping')
+    for (let i = 0; i < 3; i++) {
+      const tous = genererCoups(ods, plateauDepuisTexte(partie.plateau), partie.courant!.tirage, { limite: 5 })
+      // Premier et troisième coups : top trouvé ; deuxième : un coup moins bon, avec deux indices.
+      const joueur = i === 1 ? tous[1] : tous[0]
+      partie = terminerCoup(partie, tous[0], joueur, tous, 30 + i * 10, i === 1 ? ['valeur', 'longueur'] : [])
+    }
+    expect(partie.coups[1].indices).toEqual(['valeur', 'longueur'])
+    expect(partie.coups[0].indices).toBeUndefined()
+    const t = totaux(partie)
+    expect(t.indices).toBe(2)
+    expect(t.trouves).toBe(partie.coups.filter((c) => c.joueur!.points >= c.top.points).length)
+    expect(t.trouves).toBeGreaterThanOrEqual(2)
+    expect(t.tempsMoyen).toBeGreaterThan(0)
+  })
+
+  it('le plateau avant un coup se reconstruit à partir des tops précédents', () => {
+    const ods = dicoAppli()
+    let partie = nouvellePartie('avant', 180)
+    const plateaux: string[] = [partie.plateau]
+    for (let i = 0; i < 3; i++) {
+      const tous = genererCoups(ods, plateauDepuisTexte(partie.plateau), partie.courant!.tirage, { limite: 3 })
+      partie = terminerCoup(partie, tous[0], null, tous, 10)
+      plateaux.push(partie.plateau)
+    }
+    for (let n = 1; n <= 4; n++) expect(plateauEnTexte(plateauAvantCoup(partie, n))).toBe(plateaux[n - 1])
   })
 })

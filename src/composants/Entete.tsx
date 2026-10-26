@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { naviguer } from '../lib/routeur'
+import { IconeRetour } from './Icones'
 
 export function Logo() {
   return (
@@ -12,6 +14,19 @@ export function Entete({ titre = 'Scrabble', droite }: { titre?: string; droite?
   return (
     <header className="entete">
       <Logo />
+      <h1>{titre}</h1>
+      {droite}
+    </header>
+  )
+}
+
+/** En-tête d'une sous-page : flèche de retour vers `vers` (chemin de l'appli, ex. « solo »), puis le titre. */
+export function EnteteRetour({ titre, vers, droite }: { titre: string; vers: string; droite?: ReactNode }) {
+  return (
+    <header className="entete">
+      <button type="button" className="bouton-icone" onClick={() => naviguer(vers)} aria-label="Retour">
+        <IconeRetour />
+      </button>
       <h1>{titre}</h1>
       {droite}
     </header>

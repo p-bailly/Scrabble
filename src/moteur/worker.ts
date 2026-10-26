@@ -4,6 +4,7 @@
 import { analyserCoup, type Analyse, type Coup, type Pose } from '../jeu/coup'
 import { Dawg } from '../jeu/dawg'
 import { genererCoups } from '../jeu/generateur'
+import { decider, type ContexteIA, type Decision } from '../jeu/ia'
 import type { Plateau } from '../jeu/plateau'
 
 export type Requete =
@@ -11,12 +12,14 @@ export type Requete =
   | { type: 'analyser'; plateau: Plateau; poses: Pose[] }
   | { type: 'generer'; plateau: Plateau; tirage: string[]; limite?: number }
   | { type: 'contient'; mots: string[] }
+  | { type: 'ia'; contexte: ContexteIA }
 
 export type Reponse =
   | { type: 'charge'; nbMots: number; nom: string }
   | { type: 'analyse'; analyse: Analyse }
   | { type: 'coups'; coups: Coup[]; total: number; duree: number }
   | { type: 'contient'; resultats: boolean[] }
+  | { type: 'decision'; decision: Decision }
 
 let dawg: Dawg | null = null
 let chargement: Promise<Dawg> | null = null
@@ -50,6 +53,7 @@ portee.onmessage = async (e: MessageEvent<{ id: number; requete: Requete }>) => 
       if (!d) throw new Error('Dictionnaire non chargé')
       if (requete.type === 'analyser') reponse = { type: 'analyse', analyse: analyserCoup(requete.plateau, requete.poses, d) }
       else if (requete.type === 'contient') reponse = { type: 'contient', resultats: requete.mots.map((m) => d.contient(m)) }
+      else if (requete.type === 'ia') reponse = { type: 'decision', decision: decider(d, requete.contexte) }
       else {
         const debut = performance.now()
         const tous = genererCoups(d, requete.plateau, requete.tirage)

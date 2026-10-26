@@ -1,9 +1,10 @@
 # Scrabble
 
-Appli perso de **Scrabble en français**, en trois parties :
+Appli perso de **Scrabble en français**, en quatre parties :
 
 - **Duplicate en solo** : à chaque coup le même tirage pour tout le monde, on cherche le meilleur mot, puis c'est
-  le top qui est posé ;
+  le top qui est posé ; en « entraînement » (partie entière) ou en « topping » (il faut trouver le top, avec indices) ;
+- **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
 - **Calculateur de meilleur coup** : on recopie un plateau et un tirage (par exemple d'une vraie partie), l'appli
   donne le top et la liste des meilleurs coups.
@@ -40,14 +41,22 @@ ses 7 lettres d'un coup (« scrabble ») rapporte 50 points de plus. Les mots cr
 
 ### Duplicate (solo)
 
-Selon le principe du duplicate de la FISF :
+L'onglet **Solo** ouvre un menu : « Duplicate » ou « Contre l'IA ». Le duplicate suit le principe de la FISF et les
+deux modes de l'appli DupliJeu de la FFSc qui sont décrits publiquement (« Entraînement » et « Topping » ; les types
+de partie « Joker », « 7 sur 8 », « 7 et 8 » ne sont pas repris, faute de règle publiée) :
 
-- à chaque coup, un tirage de 7 lettres. On cherche son meilleur mot dans le temps imparti (3 minutes par défaut,
-  réglable à 1, 2 ou 3 minutes, ou sans limite) ;
-- **Noter** retient un coup (on peut en noter plusieurs, on garde le dernier) ; à la fin du temps ou avec
-  **Valider**, c'est le meilleur entre le coup noté et celui posé sur le plateau qui compte ;
+- à chaque coup, un tirage de 7 lettres. On cherche son meilleur mot dans le temps imparti : **Normal** (3 min),
+  **Semi-rapide** (2 min), **Rapide** (1 min), **Blitz** (30 s) ou sans limite. (Les noms sont ceux de DupliJeu, les
+  durées sont des choix de l'appli.) ;
+- **Entraînement** : **Noter** retient un coup (on peut en noter plusieurs, on garde le dernier) ; à la fin du temps
+  ou avec **Valider**, c'est le meilleur entre le coup noté et celui posé sur le plateau qui compte ;
+- **Topping** : **Valider** n'arrête le coup que si le mot vaut le top (sinon l'appli le dit et on continue de
+  chercher) ; le coup s'arrête aussi à la fin du temps ou en **renonçant**. Les **indices** donnent la valeur du top,
+  la longueur de son mot, sa direction et sa case de départ, un par un ; ils sont comptés dans la correction. À la
+  fin, l'appli donne le nombre de tops trouvés et le temps moyen pour les trouver ;
 - puis l'appli pose le **top** (meilleur score possible). Les lettres qu'il n'utilise pas, complétées dans le sac,
-  forment le tirage suivant ;
+  forment le tirage suivant. Après chaque coup, le plateau montre le top et on peut toucher chacune des meilleures
+  solutions (jusqu'à 15) pour la voir sur la grille ;
 - le score cumulé est comparé au total des tops (en points et en %). La **correction** montre à chaque coup mon mot,
   le top et les autres bons coups, sur le plateau ;
 - validation du tirage selon le règlement FISF : au moins 2 voyelles et 2 consonnes jusqu'au 15e coup, puis au
@@ -65,6 +74,31 @@ Selon le principe du duplicate de la FISF :
 Partie en cours sauvegardée sur l'appareil et reprise à l'ouverture ; historique des parties et statistiques
 (moyenne en %, meilleure partie, tops trouvés). Une **graine** (facultative) redonne exactement les mêmes tirages :
 pratique pour rejouer une partie ou défier quelqu'un sur la même. Le mode solo marche entièrement hors ligne.
+
+### Contre l'IA (solo)
+
+Une partie classique à deux joueurs contre l'ordinateur, avec les mêmes règles que les parties à deux ci-dessous
+(chevalet de 7 lettres ; on pose un mot, on change des lettres s'il reste au moins 7 jetons dans le sac, ou on
+passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; la
+partie en cours est sauvegardée, les résultats contre chaque niveau sont gardés (menu Solo et onglet Stats).
+
+L'IA calcule tous les coups légaux (le générateur du calculateur) ; c'est le **niveau** qui règle ce qu'elle en
+fait :
+
+| Niveau    | Comportement                                                                                       | Score moyen* |
+| --------- | -------------------------------------------------------------------------------------------------- | -----------: |
+| Débutant  | mots de 2 à 4 lettres, vise 15 à 50 % du meilleur score, ne voit jamais un scrabble                |          160 |
+| Amateur   | mots jusqu'à 5 lettres, vise 40 à 75 % du meilleur score, voit très rarement un scrabble           |          260 |
+| Confirmé  | mots jusqu'à 7 lettres, vise 55 à 90 % du meilleur score, repère un scrabble sur trois             |          360 |
+| Expert    | joue presque le meilleur coup (à quelques points près), garde un peu les bonnes lettres, repère 8 scrabbles sur 10 |  440 |
+| Champion  | meilleur coup en tenant compte des lettres gardées, échange quand rien ne vaut la peine, et en fin de partie compare chaque coup à la meilleure réponse de l'adversaire |  550 |
+
+\* Moyenne des scores d'une partie IA contre IA (réglage des niveaux, 20 parties par couple et par couleur sur le
+dictionnaire complet). La valeur des lettres gardées (le joker et le S valent cher ; les doublons et un chevalet
+déséquilibré en voyelles ou en consonnes se paient) apporte à elle seule environ 35 points par partie au Champion
+face au meilleur coup « brut ». Le code est dans [`src/jeu/ia.ts`](src/jeu/ia.ts) et
+[`src/jeu/contreIA.ts`](src/jeu/contreIA.ts) ; les tests vérifient l'ordre des niveaux et rejouent une partie
+complète (jetons conservés, points, fin de partie).
 
 ### Parties à deux (en différé)
 
@@ -269,13 +303,15 @@ src/
     coup.ts         analyse d'un coup : pose, mots formés, score, références (H4 / 4H)
     dawg.ts         lecture du dictionnaire compact ; construireDawg.ts : construction
     generateur.ts   tous les coups légaux (Appel-Jacobson)
-    duplicate.ts    tirages FISF, déroulement d'une partie de duplicate
+    duplicate.ts    tirages FISF, déroulement d'une partie de duplicate (entraînement, topping, indices)
     classique.ts    partie à deux : pioche, échange, fin de partie
+    ia.ts           l'adversaire artificiel : cinq niveaux, valeur des lettres gardées, choix du coup
+    contreIA.ts     partie contre l'IA : état sauvegardable et transitions (mot, échange, passe, fin)
     hasard.ts       générateur pseudo-aléatoire reproductible (graine)
-  moteur/         Web Worker du moteur et son accès depuis l'interface
-  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, icônes
-  pages/          Solo (duplicate), Correction, Stats, Calculateur
-  solo/           sauvegarde du duplicate et historique
+  moteur/         Web Worker du moteur (analyse, coups, coup de l'IA) et son accès depuis l'interface
+  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, changement de lettres, icônes
+  pages/          Solo (menu), Duplicate, ContreIA, Correction, Stats, Calculateur
+  solo/           sauvegarde du duplicate et de la partie contre l'IA, historiques
   multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore, écrans, veille des coups
   lib/            routage par hash, stockage local, notifications
 scripts/dico.ts   liste de mots → public/dico/mots.dawg

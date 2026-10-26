@@ -8,14 +8,24 @@
 // 1 consonne. Sinon toutes les lettres retournent dans le sac et on retire. Convention de l'appli : le Y est une
 // voyelle, et un joker compte à la fois comme voyelle et comme consonne.
 // La partie s'arrête quand on ne peut plus former de tirage valable, ou quand le tirage ne permet aucun coup.
+//
+// Deux façons de jouer la même partie (comme dans l'appli DupliJeu de la FFSc) :
+//  - « entraînement » : on valide un coup quand on veut ou à la fin du temps, puis le top est posé ;
+//  - « topping » : le coup ne se termine que lorsqu'on a trouvé le top ou que le temps est écoulé ; des indices
+//    (valeur, longueur, direction, position du top) peuvent aider.
 
-import { jetonsUtilises, retirerDuChevalet, type Coup } from './coup'
+import { jetonsUtilises, jouer as poserCoup, retirerDuChevalet, type Coup } from './coup'
 import { Hasard, graineEnNombre } from './hasard'
 import { JOKER, VOYELLES, tousLesJetons } from './lettres'
-import { jouer as poserCoup } from './coup'
-import { plateauDepuisTexte, plateauEnTexte, plateauVide } from './plateau'
+import { colonneDe, ligneDe, plateauDepuisTexte, plateauEnTexte, plateauVide, type Plateau } from './plateau'
 
 export const DERNIER_COUP_EXIGEANT = 15
+
+export type ModeDuplicate = 'entrainement' | 'topping'
+
+/** Indices disponibles en topping : ce qu'on apprend du top. */
+export type Indice = 'valeur' | 'longueur' | 'direction' | 'position'
+export const INDICES: readonly Indice[] = ['valeur', 'longueur', 'direction', 'position']
 
 export interface CoupDuplicate {
   numero: number
@@ -31,6 +41,8 @@ export interface CoupDuplicate {
   autres: Coup[]
   /** Durée de réflexion en secondes. */
   duree: number
+  /** Indices demandés (topping). */
+  indices?: Indice[]
 }
 
 export interface TirageCourant {
@@ -43,6 +55,8 @@ export interface TirageCourant {
 export interface PartieDuplicate {
   version: 1
   id: string
+  /** Absent dans les parties enregistrées avant l'arrivée du topping : c'est alors un entraînement. */
+  mode?: ModeDuplicate
   graine: string
   /** Temps par coup en secondes (0 : sans limite). */
   temps: number
@@ -109,11 +123,19 @@ export function tirer(sac: readonly string[], reliquat: readonly string[], numer
   return { tirage: null, sac: s, hasard: h.etat }
 }
 
-export function nouvellePartie(graine: string, temps: number, id = graine + '-' + Date.now()): PartieDuplicate {
+export const modeDe = (partie: PartieDuplicate): ModeDuplicate => partie.mode ?? 'entrainement'
+
+export function nouvellePartie(
+  graine: string,
+  temps: number,
+  id = graine + '-' + Date.now(),
+  mode: ModeDuplicate = 'entrainement',
+): PartieDuplicate {
   const t = tirer(tousLesJetons(), [], 1, graineEnNombre(graine))
   return {
     version: 1,
     id,
+    mode,
     graine,
     temps,
     creeLe: Date.now(),
@@ -136,13 +158,14 @@ export function terminerCoup(
   joueur: Coup | null,
   autres: Coup[],
   duree: number,
+  indices: Indice[] = [],
 ): PartieDuplicate {
   const c = partie.courant
   if (!c || partie.finie) return partie
   if (!top) return { ...partie, courant: null, finie: true }
   const reste = retirerDuChevalet(c.tirage, jetonsUtilises(top.poses))
   if (!reste) throw new Error('Le top utilise des lettres absentes du tirage')
-  const coup: CoupDuplicate = { ...c, top, joueur, autres, duree }
+  const coup: CoupDuplicate = { ...c, top, joueur, autres, duree, ...(indices.length ? { indices } : {}) }
   const plateau = poserCoup(plateauDepuisTexte(partie.plateau), top.poses)
   const t = tirer(partie.sac, reste, c.numero + 1, partie.hasard)
   return {
@@ -159,8 +182,33 @@ export function terminerCoup(
 /** Points du joueur sur un coup : son coup s'il est valable, sinon 0. */
 export const pointsJoueur = (c: CoupDuplicate): number => c.joueur?.points ?? 0
 
+/** Le joueur a-t-il trouvé le top (ou un coup de même valeur) ? */
+export const topTrouve = (c: CoupDuplicate): boolean => !!c.joueur && c.joueur.points >= c.top.points
+
 export function totaux(partie: PartieDuplicate) {
   const joueur = partie.coups.reduce((s, c) => s + pointsJoueur(c), 0)
   const top = partie.coups.reduce((s, c) => s + c.top.points, 0)
-  return { joueur, top, pourcentage: top ? (100 * joueur) / top : 0 }
+  const trouves = partie.coups.filter(topTrouve)
+  return {
+    joueur,
+    top,
+    pourcentage: top ? (100 * joueur) / top : 0,
+    /** Nombre de tops trouvés et temps moyen pour les trouver (en secondes). */
+    trouves: trouves.length,
+    tempsMoyen: trouves.length ? trouves.reduce((s, c) => s + c.duree, 0) / trouves.length : 0,
+    indices: partie.coups.reduce((s, c) => s + (c.indices?.length ?? 0), 0),
+  }
+}
+
+/** Plateau tel qu'il était avant le coup numéro `numero` (les tops précédents sont posés). */
+export function plateauAvantCoup(partie: PartieDuplicate, numero: number): Plateau {
+  return partie.coups.slice(0, numero - 1).reduce((p, c) => poserCoup(p, c.top.poses), plateauVide())
+}
+
+/** Ce que révèle un indice sur le top. */
+export function texteIndice(indice: Indice, top: Coup): string {
+  if (indice === 'valeur') return `${top.points} points`
+  if (indice === 'longueur') return `${top.mot.length} lettres`
+  if (indice === 'direction') return top.dir === 'H' ? 'horizontal' : 'vertical'
+  return `départ ligne ${String.fromCharCode(65 + ligneDe(top.debut))}, colonne ${colonneDe(top.debut) + 1}`
 }

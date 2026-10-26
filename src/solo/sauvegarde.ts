@@ -1,7 +1,7 @@
 // Sauvegarde du duplicate sur l'appareil : partie en cours (reprise à l'ouverture) et historique.
 
 import type { Coup } from '../jeu/coup'
-import { totaux, type PartieDuplicate } from '../jeu/duplicate'
+import { modeDe, totaux, type Indice, type ModeDuplicate, type PartieDuplicate } from '../jeu/duplicate'
 import { ecrire, lire } from '../lib/stockage'
 
 const PARTIE = 'solo.partie'
@@ -10,15 +10,17 @@ const HISTORIQUE = 'solo.historique'
 const REGLAGES = 'solo.reglages'
 const MAX_HISTORIQUE = 60
 
-/** Ce qui concerne le coup en cours : temps écoulé et coup noté. */
+/** Ce qui concerne le coup en cours : temps écoulé, coup noté et indices demandés (topping). */
 export interface EtatCoup {
   numero: number
   ecoule: number
   bulletin: Coup | null
+  indices: Indice[]
 }
 
 export interface ResumePartie {
   id: string
+  mode: ModeDuplicate
   graine: string
   temps: number
   date: number
@@ -26,19 +28,28 @@ export interface ResumePartie {
   top: number
   pourcentage: number
   nbCoups: number
+  /** Nombre de tops trouvés. */
+  trouves: number
+}
+
+export interface Reglages {
+  temps: number
+  mode: ModeDuplicate
 }
 
 export const lirePartie = (): PartieDuplicate | null => lire<PartieDuplicate | null>(PARTIE, null)
 export const ecrirePartie = (p: PartieDuplicate | null) => ecrire(PARTIE, p)
 
 export const lireCoup = (numero: number): EtatCoup => {
-  const c = lire<EtatCoup | null>(COUP, null)
-  return c && c.numero === numero ? c : { numero, ecoule: 0, bulletin: null }
+  const c = lire<Partial<EtatCoup> | null>(COUP, null)
+  return c && c.numero === numero
+    ? { numero, ecoule: c.ecoule ?? 0, bulletin: c.bulletin ?? null, indices: c.indices ?? [] }
+    : { numero, ecoule: 0, bulletin: null, indices: [] }
 }
 export const ecrireCoup = (c: EtatCoup | null) => ecrire(COUP, c)
 
-export const lireReglages = () => lire(REGLAGES, { temps: 180 })
-export const ecrireReglages = (r: { temps: number }) => ecrire(REGLAGES, r)
+export const lireReglages = (): Reglages => ({ temps: 180, mode: 'entrainement', ...lire<Partial<Reglages>>(REGLAGES, {}) })
+export const ecrireReglages = (r: Reglages) => ecrire(REGLAGES, r)
 
 /** Parties terminées, la plus récente en premier (avec leurs coups, pour la correction). */
 export const lireHistorique = (): PartieDuplicate[] => lire<PartieDuplicate[]>(HISTORIQUE, [])
@@ -58,6 +69,7 @@ export const resume = (p: PartieDuplicate): ResumePartie => {
   const t = totaux(p)
   return {
     id: p.id,
+    mode: modeDe(p),
     graine: p.graine,
     temps: p.temps,
     date: p.creeLe,
@@ -65,6 +77,7 @@ export const resume = (p: PartieDuplicate): ResumePartie => {
     top: t.top,
     pourcentage: t.pourcentage,
     nbCoups: p.coups.length,
+    trouves: t.trouves,
   }
 }
 
@@ -81,4 +94,11 @@ export function statistiques() {
 
 export const formatPct = (x: number) => x.toLocaleString('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' %'
 
-export const formatTemps = (s: number) => (s === 0 ? 'Sans limite' : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)} min ${s % 60}`)
+export const formatTemps = (s: number) =>
+  s === 0 ? 'Sans limite' : s < 60 ? `${s} s` : s % 60 === 0 ? `${s / 60} min` : `${Math.floor(s / 60)} min ${s % 60}`
+
+/** Durée courte pour un chrono : « 1:05 ». */
+export const formatChrono = (s: number) => {
+  const t = Math.round(s)
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
+}

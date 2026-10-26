@@ -3,7 +3,9 @@ import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
 import { Calculateur } from './pages/Calculateur'
+import { ContreIA } from './pages/ContreIA'
 import { Correction } from './pages/Correction'
+import { Duplicate } from './pages/Duplicate'
 import { Solo } from './pages/Solo'
 import { Stats } from './pages/Stats'
 
@@ -37,6 +39,8 @@ export function App() {
         <Multi chemin={chemin} />
       </Suspense>
     )
+  else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate />
+  else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA />
   else contenu = <Solo />
 
   const onglet = page === 'correction' ? 'solo' : page === 'partie' || page === 'rejoindre' ? 'parties' : page
