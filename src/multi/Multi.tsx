@@ -650,7 +650,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
-    const err = jouerCoup(p, uid, chevalet, action)
+    const err = jouerCoup(p, uid, chevalet, action, setMessage)
     setMessage(err ?? '')
     if (!err) edition.rappeler()
   }
@@ -821,7 +821,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           className="bouton danger"
           onClick={() => {
             setMenu(false)
-            if (confirm(`Abandonner la partie ? ${nomAdv} gagne.`)) abandonner(p, uid)
+            if (confirm(`Abandonner la partie ? ${nomAdv} gagne.`)) abandonner(p, uid, setMessage)
           }}
         >
           Abandonner la partie

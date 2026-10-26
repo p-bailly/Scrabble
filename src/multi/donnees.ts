@@ -343,9 +343,10 @@ type Action = { type: 'mot'; analyse: Analyse } | { type: 'change'; lettres: str
 
 /**
  * Joue un coup. Le lot d'écritures est envoyé sans attendre la réponse du serveur : hors ligne, il part au retour
- * du réseau. Renvoie un message d'erreur si le coup n'est pas permis.
+ * du réseau. Renvoie un message d'erreur si le coup n'est pas permis ; si le serveur le refuse ensuite (règles de
+ * sécurité, par exemple), `surRefus` en reçoit la raison, car l'écran revient alors à l'état d'avant le coup.
  */
-export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Action): string | null {
+export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Action, surRefus?: (message: string) => void): string | null {
   if (p.etat !== 'encours' || p.tour !== uid) return 'Ce n’est pas ton tour'
   const adversaire = autre(p, uid)!
   const plateau = plateauDepuisTexte(p.plateau)
@@ -414,12 +415,15 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   })
   b.set(doc(base(), 'parties', p.code, 'chevalets', uid), { lettres: nouveauChevalet.join('') })
   b.set(doc(base(), 'parties', p.code, 'coups', String(n)), { ...coup, le: serverTimestamp() })
-  b.commit().catch((e) => console.error('Coup refusé par le serveur', e))
+  b.commit().catch((e) => {
+    console.error('Coup refusé par le serveur', e)
+    surRefus?.('Coup non enregistré : ' + messageErreur(e))
+  })
   return null
 }
 
-/** Abandon : la partie s'arrête, l'adversaire gagne. */
-export function abandonner(p: Partie, uid: string) {
+/** Abandon : la partie s'arrête, l'adversaire gagne. `surRefus` : voir `jouerCoup`. */
+export function abandonner(p: Partie, uid: string, surRefus?: (message: string) => void) {
   const adversaire = autre(p, uid)
   const b = writeBatch(base())
   b.update(doc(base(), 'parties', p.code), {
@@ -429,7 +433,10 @@ export function abandonner(p: Partie, uid: string) {
     dernier: { uid, type: 'abandon', points: 0 },
     majLe: serverTimestamp(),
   })
-  b.commit().catch((e) => console.error('Abandon refusé', e))
+  b.commit().catch((e) => {
+    console.error('Abandon refusé', e)
+    surRefus?.('Abandon non enregistré : ' + messageErreur(e))
+  })
 }
 
 /**
