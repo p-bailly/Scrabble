@@ -27,6 +27,13 @@ export type ModeDuplicate = 'entrainement' | 'topping'
 export type Indice = 'valeur' | 'longueur' | 'direction' | 'position'
 export const INDICES: readonly Indice[] = ['valeur', 'longueur', 'direction', 'position']
 
+export const NOM_INDICE: Record<Indice, string> = {
+  valeur: 'Valeur du top',
+  longueur: 'Longueur du mot',
+  direction: 'Direction',
+  position: 'Case de départ',
+}
+
 export interface CoupDuplicate {
   numero: number
   tirage: string[]

@@ -13,6 +13,7 @@ import { BoutonSac, Sac } from '../composants/Sac'
 import { reference, type Coup } from '../jeu/coup'
 import {
   INDICES,
+  NOM_INDICE,
   graineDuJour,
   modeDe,
   nouvellePartie,
@@ -75,13 +76,6 @@ const MODES: { mode: ModeDuplicate; nom: string; texte: string }[] = [
 
 /** Combien d'autres bons coups on garde pour la correction. */
 const NB_SOLUTIONS = 15
-
-const NOM_INDICE: Record<Indice, string> = {
-  valeur: 'Valeur du top',
-  longueur: 'Longueur du mot',
-  direction: 'Direction',
-  position: 'Case de départ',
-}
 
 /** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
 export function Duplicate({ id }: { id?: string }) {

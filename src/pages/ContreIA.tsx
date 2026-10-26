@@ -13,22 +13,29 @@ import { BoutonSac, Sac } from '../composants/Sac'
 import { lettresNonVues } from '../jeu/classique'
 import {
   abandonnerIA,
+  aides,
+  annulerCoup,
   appliquerDecision,
   changerIA,
   chevaletAdverseConnu,
+  demanderIndiceIA,
+  indicesDuTour,
   jouerMotIA,
+  memoriserAvant,
   nouvellePartieIA,
   passerIA,
+  peutAnnuler,
   type Camp,
   type CoupIA,
   type PartieIA,
 } from '../jeu/contreIA'
-import { reference } from '../jeu/coup'
+import { reference, type Coup } from '../jeu/coup'
+import { INDICES, NOM_INDICE, texteIndice } from '../jeu/duplicate'
 import { NIVEAUX, PROFILS } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
-import { chargerDico, decisionIA } from '../moteur/moteur'
+import { chargerDico, chercherCoups, decisionIA } from '../moteur/moteur'
 import {
   archiverIA,
   bilanParNiveau,
@@ -200,6 +207,9 @@ function EcranIA({
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
+  const [feuilleIndices, setFeuilleIndices] = useState(false)
+  // Le meilleur coup du chevalet, cherché à l'ouverture des indices (undefined : en cours ; null : aucun coup possible).
+  const [top, setTop] = useState<Coup | null | undefined>(undefined)
   // L'IA n'a pas pu jouer (dictionnaire introuvable…) ; `essai` relance sa réflexion.
   const [erreurIA, setErreurIA] = useState('')
   const [essai, setEssai] = useState(0)
@@ -231,6 +241,7 @@ function EcranIA({
     }
   }, [partie, plateau, onChange, essai])
 
+  // Un de mes coups : on garde la partie d'avant, pour pouvoir l'annuler.
   const appliquer = (r: PartieIA | { erreur: string }) => {
     if ('erreur' in r) {
       setMessage(r.erreur)
@@ -238,8 +249,31 @@ function EcranIA({
     }
     setMessage('')
     edition.rappeler()
+    onChange(memoriserAvant(partie, r))
+  }
+
+  const annuler = () => {
+    const r = annulerCoup(partie)
+    if ('erreur' in r) return setMessage(r.erreur)
+    setMessage('')
+    edition.rappeler()
     onChange(r)
   }
+
+  // Indices : on cherche le meilleur coup du chevalet quand la fenêtre s'ouvre.
+  useEffect(() => {
+    if (!feuilleIndices || !aMoi) return
+    let actuel = true
+    setTop(undefined)
+    chercherCoups(plateau, chevalet, 1).then(
+      (r) => actuel && setTop(r.coups[0] ?? null),
+      () => actuel && setTop(null),
+    )
+    return () => {
+      actuel = false
+    }
+  }, [feuilleIndices, aMoi, plateau, chevalet])
+  const reveles = indicesDuTour(partie)
 
   const dernier = partie.coups.at(-1)
   const derniers = useMemo(() => new Set(dernier?.coup ? dernier.coup.poses.map((p) => p.pos) : []), [dernier])
@@ -399,13 +433,65 @@ function EcranIA({
         </div>
       </Feuille>
 
+      <Feuille ouvert={feuilleIndices && aMoi} onFermer={() => setFeuilleIndices(false)}>
+        <h3>Indices</h3>
+        <p style={{ margin: 0 }} className="note">
+          Chaque indice demandé est compté dans le résumé de la partie.
+        </p>
+        {top === null && <span className="note ecart-neg">Aucun mot possible avec ce chevalet : change des lettres ou passe.</span>}
+        <div className="liste">
+          {INDICES.map((i) =>
+            reveles.includes(i) && top ? (
+              <div className="ligne" key={i} style={{ cursor: 'default' }}>
+                <div className="principal">
+                  <span className="note">{NOM_INDICE[i]}</span>
+                  <div style={{ fontWeight: 700 }}>{texteIndice(i, top)}</div>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="ligne" key={i} disabled={!top} onClick={() => onChange(demanderIndiceIA(partie, i))}>
+                <div className="principal">
+                  <div style={{ fontWeight: 700 }}>{NOM_INDICE[i]}</div>
+                  <span className="note">{top === undefined ? 'Recherche du meilleur coup…' : 'Toucher pour révéler'}</span>
+                </div>
+              </button>
+            ),
+          )}
+        </div>
+        <button type="button" className="bouton principal" onClick={() => setFeuilleIndices(false)}>
+          Continuer à chercher
+        </button>
+      </Feuille>
+
       <Feuille ouvert={menu} onFermer={() => setMenu(false)}>
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
-          Contre <b>{profil.nom}</b> · toi {moi}, IA {ia} · sac : {partie.sac.length} lettres
+          Contre <b>{profil.nom}</b> · toi {moi}, IA {ia} · sac : {nonVues.length} lettres
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre
+        </button>
+        <button
+          type="button"
+          className="bouton"
+          disabled={!aMoi}
+          onClick={() => {
+            setMenu(false)
+            setFeuilleIndices(true)
+          }}
+        >
+          Indice{aMoi ? '' : ' (à ton tour)'}
+        </button>
+        <button
+          type="button"
+          className="bouton"
+          disabled={!peutAnnuler(partie)}
+          onClick={() => {
+            setMenu(false)
+            annuler()
+          }}
+        >
+          Annuler mon dernier coup
         </button>
         <button type="button" className="bouton" onClick={onPause}>
           Mettre en pause
@@ -445,6 +531,7 @@ function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRe
         <span className="note">
           Score final : toi {partie.scores.moi}, IA {partie.scores.ia}
         </span>
+        {aides(partie) && <span className="note">Aides : {aides(partie)}</span>}
       </ContenuPanneau>
       {partie.coups.length > 0 && (
         <div className="actions">
