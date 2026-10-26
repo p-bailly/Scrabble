@@ -13,6 +13,7 @@ import { BoutonSac, Sac } from '../composants/Sac'
 import { reference, type Coup } from '../jeu/coup'
 import {
   INDICES,
+  graineDuJour,
   modeDe,
   nouvellePartie,
   plateauAvantCoup,
@@ -41,6 +42,7 @@ import {
   formatTemps,
   lireCoup,
   lireHistorique,
+  lirePartiesEnCours,
   lireReglages,
   retirerPartie,
   trouverPartieEnCours,
@@ -134,17 +136,42 @@ function AccueilDuplicate() {
       .catch((e: Error) => setDico('Dictionnaire indisponible : ' + e.message))
   }, [])
 
-  const lancer = () => {
+  const lancerAvec = (g: string) => {
     ecrireReglages({ temps, mode })
-    const g = graine.trim().toUpperCase() || nouvelleGraine()
     const p = nouvellePartie(g, temps, `${g}-${Date.now()}`, mode)
     enregistrerPartie(p)
     naviguer('solo/duplicate/' + encodeURIComponent(p.id))
   }
+  const lancer = () => lancerAvec(graine.trim().toUpperCase() || nouvelleGraine())
+
+  // Défi du jour : même graine pour tout le monde ; on reprend celui qu'on a commencé, ou on le rejoue.
+  const defi = graineDuJour()
+  const defiEnCours = lirePartiesEnCours().find((p) => p.graine === defi)
+  const defiFait = lireHistorique().find((p) => p.graine === defi && p.coups.length > 0)
 
   return (
     <div className="contenu">
       <EnteteRetour titre="Duplicate" vers="solo" />
+      <div className="carte carte-accent">
+        <b>Défi du jour</b>
+        <span className="note">
+          Les mêmes tirages pour tous ceux qui jouent aujourd’hui : compare ton score avec tes amis. Mode et temps comme ci-dessous.
+        </span>
+        {defiFait && !defiEnCours && (
+          <span className="note">Déjà joué aujourd’hui : {formatPct(totaux(defiFait).pourcentage)} des tops.</span>
+        )}
+        <div className="actions">
+          {defiEnCours ? (
+            <button type="button" className="bouton large" onClick={() => naviguer('solo/duplicate/' + encodeURIComponent(defiEnCours.id))}>
+              Reprendre le défi
+            </button>
+          ) : (
+            <button type="button" className="bouton large" onClick={() => lancerAvec(defi)}>
+              {defiFait ? 'Rejouer le défi' : 'Relever le défi'}
+            </button>
+          )}
+        </div>
+      </div>
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           À chaque coup, le même tirage de 7 lettres que pour tout le monde : trouve le meilleur mot avant la fin du temps.

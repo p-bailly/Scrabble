@@ -137,6 +137,12 @@ export function tirer(sac: readonly string[], reliquat: readonly string[], numer
 
 export const modeDe = (partie: PartieDuplicate): ModeDuplicate => partie.mode ?? 'entrainement'
 
+/** Graine du défi du jour : la date (locale), donc les mêmes tirages pour tous ceux qui jouent ce jour-là. */
+export function graineDuJour(date = new Date()): string {
+  const deux = (n: number) => String(n).padStart(2, '0')
+  return `DEFI-${date.getFullYear()}-${deux(date.getMonth() + 1)}-${deux(date.getDate())}`
+}
+
 export function nouvellePartie(
   graine: string,
   temps: number,

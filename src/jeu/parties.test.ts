@@ -4,6 +4,7 @@ import { analyserCoup, type Coup } from './coup'
 import {
   INDICES,
   compter,
+  graineDuJour,
   modeDe,
   nouvellePartie,
   plateauAvantCoup,
@@ -155,6 +156,15 @@ describe('topping du duplicate', () => {
     dir,
     debut,
     points,
+  })
+
+  it('le défi du jour a pour graine la date, avec des zéros devant', () => {
+    expect(graineDuJour(new Date(2026, 0, 5))).toBe('DEFI-2026-01-05')
+    expect(graineDuJour(new Date(2026, 9, 26))).toBe('DEFI-2026-10-26')
+    // Même jour, mêmes tirages ; un autre jour, d'autres tirages.
+    const t = (g: string) => nouvellePartie(g, 180).courant!.tirage.join('')
+    expect(t(graineDuJour(new Date(2026, 9, 26)))).toBe(t('DEFI-2026-10-26'))
+    expect(t('DEFI-2026-10-26')).not.toBe(t('DEFI-2026-10-27'))
   })
 
   it('une partie ancienne, sans mode, est un entraînement', () => {
