@@ -131,16 +131,16 @@ oublient d'autres.
 
 ## Parties à deux : créer le projet Firebase
 
-Le multijoueur utilise **Firebase** en offre gratuite (Spark) : Authentication par **lien envoyé par e-mail** (sans
-mot de passe ; un pseudo est choisi à la première connexion) et Cloud Firestore. (Pas de Supabase : ses projets
-gratuits se mettent en pause après une semaine sans activité.) Sans configuration, le solo et le calculateur marchent
-et l'onglet « Mes parties » l'explique.
+Le multijoueur utilise **Firebase** en offre gratuite (Spark) : Authentication par **nom d'utilisateur** (sans mot de
+passe ni e-mail, voir plus bas) et Cloud Firestore. (Pas de Supabase : ses projets gratuits se mettent en pause après
+une semaine sans activité.) Sans configuration, le solo et le calculateur marchent et l'onglet « Mes parties »
+l'explique.
 
 1. Sur <https://console.firebase.google.com>, **Ajouter un projet** (nom au choix, ex. `mon-scrabble`). Google
    Analytics n'est pas utile.
-2. **Build → Authentication → Commencer**, onglet *Sign-in method* : ouvrir **Adresse e-mail/Mot de passe** et activer
-   aussi l'option **Lien envoyé par e-mail (connexion sans mot de passe)** (Firebase demande d'activer la ligne du
-   dessus pour y accéder ; l'appli n'utilise jamais de mot de passe).
+2. **Build → Authentication → Commencer**, onglet *Sign-in method* : activer **Adresse e-mail/Mot de passe** (laisser
+   « Lien envoyé par e-mail » désactivé). L'appli s'en sert en coulisses pour les noms d'utilisateur, sans jamais
+   envoyer d'e-mail.
 3. **Build → Firestore Database → Créer une base de données** : emplacement `eur3 (europe-west)`, démarrer en
    **mode production**.
 4. Onglet **Règles** de Firestore : remplacer tout par le contenu de [`firestore.rules`](firestore.rules), puis
@@ -153,26 +153,25 @@ et l'onglet « Mes parties » l'explique.
    *Variante* : au lieu de committer le fichier, mettre son contenu dans une variable du dépôt nommée
    `FIREBASE_CONFIG` (Settings → Secrets and variables → Actions → onglet *Variables*) ; les workflows l'écrivent
    avant la compilation.
-7. **Authentication → Paramètres → Domaines autorisés** : ajouter `scrabble.pbailly.fr` (la version web). Sans cela,
-   Firebase refuse d'envoyer le lien de connexion. `localhost` y est déjà, pour le développement.
 
 La configuration web de Firebase n'est **pas un secret** : la sécurité repose sur les règles Firestore.
 
-### Connexion sans mot de passe
+### Compte : un nom d'utilisateur
 
-Dans « Mes parties », on saisit son adresse e-mail et Firebase envoie un lien ; le toucher connecte. Le compte est lié
-à l'adresse, donc le même sur tous les appareils (mêmes parties, même pseudo, retrouvé dans Firestore).
+Au premier lancement, l'appli demande un **nom d'utilisateur** (écran « Mes parties » ; « Jouer en solo sans compte »
+saute cette étape). Saisir le même nom sur un autre téléphone ou sur le site ouvre le même compte : mêmes parties,
+même pseudo. Aucun mot de passe, aucun e-mail.
 
-- Le lien ramène sur la page d'où la connexion a été demandée : depuis une invitation (`#/rejoindre/CODE`), on rejoint
-  la partie dès la connexion.
-- Même navigateur que la demande : la connexion se termine toute seule. Autre appareil ou autre navigateur : l'appli
-  redemande l'adresse pour confirmer.
-- **Dans l'appli Android**, le lien de l'e-mail s'ouvre dans le navigateur, pas dans l'appli. Après avoir demandé le
-  lien, coller le lien copié depuis l'e-mail dans le champ prévu à cet effet connecte l'appli ; sinon, jouer depuis la
-  version web.
-- L'e-mail part en français (`auth.languageCode`) de l'expéditeur Firebase (`noreply@…firebaseapp.com`) : il peut
-  arriver dans les courriers indésirables. Le modèle du message se change dans *Authentication → Modèles*.
-- Un lien ne sert qu'une fois et expire au bout d'un moment ; il suffit d'en redemander un.
+- **Comment ça marche.** Firebase ne propose pas de connexion par simple nom. L'appli fabrique donc, à partir du nom,
+  une adresse (`jean-luc@joueurs.scrabble.pbailly.fr`, qui n'existe pas et ne reçoit rien) et un mot de passe
+  (`scrabble-jean-luc`), puis crée le compte la première fois ou s'y connecte ensuite
+  ([`src/multi/firebase.ts`](src/multi/firebase.ts)). Le nom ignore les accents, les majuscules et la ponctuation :
+  « Jean Luc » et « jean-luc » désignent le même compte. Le nom saisi devient le pseudo vu par l'adversaire.
+- **Revers : le nom n'est pas secret.** Ni mot de passe ni code de vérification : quiconque connaît un nom (ou le
+  devine) peut s'y connecter et lire ses parties. C'est le prix de la simplicité, acceptable entre proches. Pour
+  durcir, il suffirait d'ajouter un code secret à quatre chiffres demandé en plus du nom et mêlangé au mot de passe
+  fabriqué ci-dessus.
+- Se déconnecter (en bas de « Mes parties ») permet de changer de compte sur un même appareil.
 
 ### Règles de sécurité
 
@@ -206,9 +205,9 @@ chevalet de l'autre, etc.).
 
 Le lien envoyé est celui de la version web : `https://scrabble.pbailly.fr/#/rejoindre/CODE`.
 
-- Sur un téléphone sans l'appli, il ouvre la version web : on peut jouer directement dans le navigateur (après s'être
-  connecté par e-mail). Sur Android, un bouton « Ouvrir dans l'appli » lance l'appli si elle est installée, sinon
-  télécharge l'APK.
+- Sur un téléphone sans l'appli, il ouvre la version web : on peut jouer directement dans le navigateur (après avoir
+  saisi son nom d'utilisateur, la partie est rejointe aussitôt). Sur Android, un bouton « Ouvrir dans l'appli » lance
+  l'appli si elle est installée, sinon télécharge l'APK.
 - L'appli Android déclare ce lien (et `fr.perso.scrabble://rejoindre/CODE`). Pour qu'Android l'ouvre **directement**
   dans l'appli, sans passer par le navigateur, il faut prouver que le domaine appartient à l'appli : c'est le rôle de
   [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json), publié avec la version web à
@@ -225,7 +224,8 @@ redirige vers elle).
    `p-bailly.github.io.` (point final compris).
 2. **GitHub** : *Settings → Pages → Custom domain* : `scrabble.pbailly.fr`, puis cocher *Enforce HTTPS* quand GitHub a
    émis le certificat (quelques minutes à une heure après la propagation DNS).
-3. **Firebase** : ajouter `scrabble.pbailly.fr` aux domaines autorisés (étape 7 ci-dessus).
+
+Firebase n'a pas besoin de connaître le domaine : la connexion par nom d'utilisateur ne passe par aucune redirection.
 
 ## Lancer l'app en local
 
@@ -276,7 +276,7 @@ src/
   composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, icônes
   pages/          Solo (duplicate), Correction, Stats, Calculateur
   solo/           sauvegarde du duplicate et historique
-  multi/          parties à deux : Firebase, connexion par e-mail, données Firestore, écrans, veille des coups
+  multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore, écrans, veille des coups
   lib/            routage par hash, stockage local, notifications
 scripts/dico.ts   liste de mots → public/dico/mots.dawg
 public/           manifest PWA, service worker, icônes, dictionnaire

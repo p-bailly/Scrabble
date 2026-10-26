@@ -1,16 +1,15 @@
-// Connexion à Firebase : Authentication par lien envoyé par e-mail (sans mot de passe) et Cloud Firestore
-// (offre gratuite Spark).
+// Connexion à Firebase : Authentication par nom d'utilisateur (sans mot de passe) et Cloud Firestore (offre
+// gratuite Spark).
 // La configuration est lue dans firebase.config.json, à la racine du dépôt (modèle : firebase.config.example.json).
 // Elle n'a rien de secret : la sécurité repose sur les règles Firestore (firestore.rules).
 
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
 import {
   connectAuthEmulator,
+  createUserWithEmailAndPassword,
   getAuth,
-  isSignInWithEmailLink,
   onAuthStateChanged,
-  sendSignInLinkToEmail,
-  signInWithEmailLink,
+  signInWithEmailAndPassword,
   signOut,
   type Auth,
   type User,
@@ -22,10 +21,9 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from 'firebase/firestore'
-import { natif } from '../lib/notifications'
 import { ecrire } from '../lib/stockage'
 
-/** Adresse publique de la version web : liens d'invitation et retour des liens de connexion. */
+/** Adresse publique de la version web, pour les liens d'invitation. */
 export const ADRESSE_WEB = 'https://scrabble.pbailly.fr/'
 
 // Fichier facultatif : sans lui, l'appli marche en solo et l'onglet « Mes parties » explique quoi faire.
@@ -44,7 +42,6 @@ function initialiser() {
     const { emulateurs, ...options } = configuration
     app = initializeApp(options)
     auth = getAuth(app)
-    auth.languageCode = 'fr' // l'e-mail du lien de connexion part en français
     // Cache local persistant : les parties s'affichent hors ligne et les coups joués sans réseau sont mis en
     // file, puis envoyés au retour du réseau.
     db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
@@ -83,25 +80,42 @@ export async function connexion(): Promise<User> {
   return u
 }
 
-/**
- * Envoie le lien de connexion par e-mail. Le lien ramène sur `chemin` (ex. « rejoindre/K7P2QX » : après la
- * connexion, on rejoint directement la partie). L'adresse est gardée pour valider le lien sur cet appareil.
- */
-export async function envoyerLien(email: string, chemin: string): Promise<void> {
+// Un nom d'utilisateur tient lieu de compte, sans mot de passe : Firebase n'offre pas ce mode, on le simule avec
+// une connexion « adresse + mot de passe » dont les deux dérivent du nom (l'adresse n'existe pas, aucun e-mail
+// n'est envoyé). Saisir le même nom sur un autre appareil ouvre donc le même compte. Revers : quiconque connaît le
+// nom peut s'y connecter. Pour l'éviter, il faudrait un secret que l'utilisateur seul connaît (voir le README).
+const DOMAINE_JOUEURS = 'joueurs.scrabble.pbailly.fr'
+
+/** Forme normalisée d'un nom : sans accents ni majuscules, « Jean Luc » et « jean-luc » désignent le même compte. */
+export const identifiant = (nom: string): string =>
+  nom
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+/** Se connecte avec ce nom d'utilisateur ; le compte est créé la première fois. */
+export async function connecterNom(nom: string): Promise<User> {
+  const id = identifiant(nom)
+  if (!id) throw new Error('Utilise des lettres ou des chiffres dans ton nom.')
   const { auth } = initialiser()
-  const retour = (natif ? ADRESSE_WEB : location.origin + location.pathname) + '#/' + chemin
-  await sendSignInLinkToEmail(auth, email, { url: retour, handleCodeInApp: true })
-  ecrire('multi.email', email)
-}
-
-/** Vrai si l'adresse (par défaut celle de la page) est un lien de connexion reçu par e-mail. */
-export const estLienDeConnexion = (lien: string = location.href): boolean => isSignInWithEmailLink(initialiser().auth, lien)
-
-/** Termine la connexion avec le lien reçu par e-mail. */
-export async function terminerConnexion(email: string, lien: string = location.href): Promise<User> {
-  const { user } = await signInWithEmailLink(initialiser().auth, email, lien)
-  ecrire('multi.email', null)
-  return user
+  const email = `${id}@${DOMAINE_JOUEURS}`
+  const mdp = `scrabble-${id}`
+  try {
+    return (await signInWithEmailAndPassword(auth, email, mdp)).user
+  } catch (e) {
+    // Compte inconnu (Firebase ne distingue pas « inconnu » de « mauvais mot de passe ») : on le crée.
+    const code = (e as { code?: string }).code
+    if (code !== 'auth/invalid-credential' && code !== 'auth/user-not-found') throw e
+  }
+  try {
+    return (await createUserWithEmailAndPassword(auth, email, mdp)).user
+  } catch (e) {
+    // Créé entre-temps depuis un autre appareil : on s'y connecte.
+    if ((e as { code?: string }).code === 'auth/email-already-in-use') return (await signInWithEmailAndPassword(auth, email, mdp)).user
+    throw e
+  }
 }
 
 export async function deconnexion(): Promise<void> {

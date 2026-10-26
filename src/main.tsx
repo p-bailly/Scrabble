@@ -9,10 +9,10 @@ import { lire } from './lib/stockage'
 import { chargerDico } from './moteur/moteur'
 import './styles.css'
 
-// Lien de connexion reçu par e-mail (…/?apiKey=…&oobCode=…&mode=signIn) : il doit retomber sur une page du
-// multijoueur, qui termine la connexion (voir multi/Compte.tsx).
-if (/[?&]mode=signIn\b/.test(location.search) && !/^#\/(parties|partie|rejoindre)\b/.test(location.hash)) {
-  history.replaceState(null, '', location.pathname + location.search + '#/parties')
+// Premier lancement sur cet appareil : on commence par le nom d'utilisateur (écran « Mes parties », multi/Compte.tsx).
+// Le solo reste à un toucher (« Jouer en solo sans compte ») et marche sans compte ni réseau.
+if (!location.hash && !lire('multi.pseudo', null) && !lire('multi.sansCompte', false)) {
+  history.replaceState(null, '', '#/parties')
 }
 
 createRoot(document.getElementById('root')!).render(
