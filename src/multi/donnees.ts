@@ -186,6 +186,36 @@ export function adversairesRecents(parties: readonly Partie[], uid: string): Jou
   return [...vus.values()]
 }
 
+/** Résultats contre un adversaire, sur les parties terminées. */
+export interface Bilan {
+  uid: string
+  pseudo: string
+  victoires: number
+  defaites: number
+  egalites: number
+}
+
+/**
+ * Bilan face à face avec chaque adversaire, sur les parties terminées (abandons compris : l'abandon donne la victoire à
+ * l'autre). Le plus joué d'abord, puis par ordre alphabétique du pseudo ; le pseudo est celui de la partie la plus récente.
+ */
+export function bilansFaceAFace(parties: readonly Partie[], uid: string): Bilan[] {
+  const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
+  const bilans = new Map<string, Bilan>()
+  for (const p of [...parties].sort((a, b) => date(b) - date(a))) {
+    const adv = autre(p, uid)
+    if (p.etat !== 'finie' || !adv) continue
+    const b = bilans.get(adv) ?? { uid: adv, pseudo: p.pseudos[adv] ?? '?', victoires: 0, defaites: 0, egalites: 0 }
+    const gagnant = p.fin?.gagnant ?? null
+    if (gagnant === null) b.egalites++
+    else if (gagnant === uid) b.victoires++
+    else b.defaites++
+    bilans.set(adv, b)
+  }
+  const total = (b: Bilan) => b.victoires + b.defaites + b.egalites
+  return [...bilans.values()].sort((a, b) => total(b) - total(a) || a.pseudo.localeCompare(b.pseudo))
+}
+
 /** Crée une partie et renvoie son code ; `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli). */
 export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTrouve): Promise<string> {
   const code = nouveauCode()

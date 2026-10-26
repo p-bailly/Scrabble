@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase/firestore'
 import { describe, expect, it } from 'vitest'
 import { reference } from '../jeu/coup'
-import { adversairesRecents, cleRecherche, MIN_RECHERCHE, toursDeMulti, type CoupMulti, type Partie } from './donnees'
+import { adversairesRecents, bilansFaceAFace, cleRecherche, MIN_RECHERCHE, toursDeMulti, type CoupMulti, type Partie } from './donnees'
 
 const instant = (ms: number) => ({ toMillis: () => ms }) as unknown as Timestamp
 
@@ -51,6 +51,45 @@ describe('adversaires récents', () => {
   it('une partie dont l’écriture n’est pas encore partie (date inconnue) passe pour la plus récente', () => {
     const parties = [partie('A', [moi, 'marie'], { marie: 'Marie' }, 100), partie('B', [moi, 'paul'], { paul: 'Paul' }, null)]
     expect(adversairesRecents(parties, moi).map((j) => j.uid)).toEqual(['paul', 'marie'])
+  })
+})
+
+describe('bilan face à face', () => {
+  const moi = 'moi'
+  const finie = (code: string, adv: string, pseudo: string, gagnant: string | null, majLe: number, ...autres: Partial<Partie>[]) =>
+    ({
+      ...partie(code, [moi, adv], { moi: 'Moi', [adv]: pseudo }, majLe),
+      etat: 'finie',
+      fin: { gagnant, raison: 'chevalet-vide', ajustements: {} },
+      ...Object.assign({}, ...autres),
+    }) as Partie
+
+  it('compte victoires, défaites et égalités par adversaire, le plus joué d’abord', () => {
+    const parties = [
+      finie('A', 'marie', 'Marie', moi, 100),
+      finie('B', 'marie', 'Marie', 'marie', 200),
+      finie('C', 'marie', 'Marie', moi, 300),
+      finie('D', 'paul', 'Paul', null, 400),
+    ]
+    expect(bilansFaceAFace(parties, moi)).toEqual([
+      { uid: 'marie', pseudo: 'Marie', victoires: 2, defaites: 1, egalites: 0 },
+      { uid: 'paul', pseudo: 'Paul', victoires: 0, defaites: 0, egalites: 1 },
+    ])
+  })
+
+  it('un abandon est une victoire pour l’autre ; les parties en cours et en attente ne comptent pas', () => {
+    const abandon = { fin: { gagnant: 'marie', raison: 'abandon', ajustements: {} } } as Partial<Partie>
+    const parties = [
+      finie('A', 'marie', 'Marie', moi, 100, abandon),
+      { ...partie('B', [moi, 'marie'], { marie: 'Marie' }, 200), etat: 'encours' } as Partie,
+      { ...partie('C', [moi], { moi: 'Moi' }, 300), etat: 'attente' } as Partie,
+    ]
+    expect(bilansFaceAFace(parties, moi)).toEqual([{ uid: 'marie', pseudo: 'Marie', victoires: 0, defaites: 1, egalites: 0 }])
+  })
+
+  it('reprend le pseudo de la partie la plus récente', () => {
+    const parties = [finie('A', 'marie', 'Marie', moi, 100), finie('B', 'marie', 'Marie-Claire', moi, 200)]
+    expect(bilansFaceAFace(parties, moi)[0].pseudo).toBe('Marie-Claire')
   })
 })
 

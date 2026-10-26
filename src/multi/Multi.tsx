@@ -18,12 +18,14 @@ import { demanderPermission, natif, notificationsAutorisees } from '../lib/notif
 import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
+import { ilYa, joursEcoules } from '../lib/temps'
 import { analyser } from '../moteur/moteur'
 import {
   abandonner,
   adversairesRecents,
   annulerInvitation,
   autre,
+  bilansFaceAFace,
   chercherJoueurs,
   cleRecherche,
   creerPartie,
@@ -150,6 +152,13 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const [code, setCode] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
+  // Parties terminées que j'ai retirées de ma liste (elles restent chez l'adversaire et dans le bilan).
+  const [masquees, setMasquees] = useState<string[]>(() => lire<string[]>('multi.masquees', []))
+  const masquer = (code: string) => {
+    const suite = [...masquees, code]
+    setMasquees(suite)
+    ecrire('multi.masquees', suite)
+  }
 
   useEffect(() => ecouterMesParties(uid, setParties, (e) => setErreur(e.message)), [uid])
   // Une erreur ici (règles Firestore pas encore à jour) ne doit pas gâcher le reste de l'écran : pas d'invitations, c'est tout.
@@ -176,6 +185,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const attente = liste.filter((p) => p.etat === 'encours' && p.tour !== uid).sort(tri)
   const invitations = liste.filter((p) => p.etat === 'attente').sort(tri)
   const finies = liste.filter((p) => p.etat === 'finie').sort(tri)
+  const bilans = bilansFaceAFace(liste, uid)
 
   return (
     <div className="contenu">
@@ -227,10 +237,26 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
           </div>
         </>
       )}
-      <Section titre="À toi de jouer" parties={aMoi} uid={uid} />
-      <Section titre="En attente de l’adversaire" parties={attente} uid={uid} />
-      <Section titre="Invitations envoyées" parties={invitations} uid={uid} />
-      <Section titre="Terminées" parties={finies.slice(0, 20)} uid={uid} />
+      <Section titre="À toi de jouer" parties={aMoi} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="En attente de l’adversaire" parties={attente} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="Invitations envoyées" parties={invitations} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="Terminées" parties={finies.filter((p) => !masquees.includes(p.code)).slice(0, 20)} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      {bilans.length > 0 && (
+        <>
+          <h2>Face à face</h2>
+          <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {bilans.map((b) => (
+              <div key={b.uid} style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <b style={{ flex: 1 }}>{b.pseudo}</b>
+                <span className="note">
+                  {b.victoires} victoire{b.victoires > 1 ? 's' : ''} · {b.defaites} défaite{b.defaites > 1 ? 's' : ''}
+                  {b.egalites > 0 && ` · ${b.egalites} égalité${b.egalites > 1 ? 's' : ''}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -281,14 +307,19 @@ function RappelNotifications() {
   )
 }
 
-function Section({ titre, parties, uid }: { titre: string; parties: Partie[]; uid: string }) {
+interface ActionsListe {
+  onErreur: (message: string) => void
+  onMasquer: (code: string) => void
+}
+
+function Section({ titre, parties, uid, ...actions }: { titre: string; parties: Partie[]; uid: string } & ActionsListe) {
   if (parties.length === 0) return null
   return (
     <>
       <h2>{titre}</h2>
       <div className="liste">
         {parties.map((p) => (
-          <LignePartie key={p.code} p={p} uid={uid} />
+          <LignePartie key={p.code} p={p} uid={uid} {...actions} />
         ))}
       </div>
     </>
@@ -340,7 +371,10 @@ function LigneInvitation({ p, uid, pseudo }: { p: Partie; uid: string; pseudo: s
   )
 }
 
-function LignePartie({ p, uid }: { p: Partie; uid: string }) {
+/** Sans réponse de l'adversaire depuis ce nombre de jours, la liste le dit : on peut abandonner. */
+const JOURS_SANS_REPONSE = 14
+
+function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string } & ActionsListe) {
   const adv = autre(p, uid)
   const nom = adv ? p.pseudos[adv] : null
   const aMoi = p.etat === 'encours' && p.tour === uid
@@ -361,6 +395,9 @@ function LignePartie({ p, uid }: { p: Partie; uid: string }) {
             ? `${qui} abandonné`
             : `${qui} passé`
   } else sousTitre = 'Début de partie'
+  const depuis = p.majLe?.toMillis?.() ?? Date.now()
+  const sansReponse = p.etat === 'encours' && !aMoi && joursEcoules(depuis) >= JOURS_SANS_REPONSE
+  sousTitre += ' · ' + ilYa(depuis)
   let titre = nom
     ? p.etat === 'finie'
       ? resultat(p, uid) + ' contre ' + nom
@@ -371,22 +408,39 @@ function LignePartie({ p, uid }: { p: Partie; uid: string }) {
       ? 'Invitation envoyée à ' + nomInvite
       : 'Invitation envoyée'
   if (p.enAttente) titre += ' · envoi en attente'
+
+  // Le bouton × : abandonner une partie en cours, supprimer une invitation envoyée, retirer une partie terminée de la liste.
+  const sortir = () => {
+    if (p.etat === 'encours') {
+      if (confirm(`Abandonner la partie contre ${nom ?? 'ton adversaire'} ? ${nom ?? 'Ton adversaire'} gagne.`)) abandonner(p, uid, onErreur)
+    } else if (p.etat === 'attente') {
+      if (confirm('Supprimer cette invitation ?')) void supprimerPartie(p.code).catch((e) => onErreur(messageErreur(e)))
+    } else if (confirm('Retirer cette partie de la liste ?')) onMasquer(p.code)
+  }
+  const libelleSortie = p.etat === 'encours' ? 'Abandonner la partie' : p.etat === 'attente' ? 'Supprimer l’invitation' : 'Retirer de la liste'
+
   return (
-    <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
-      <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
-        {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
-      </div>
-      <div className="principal">
-        <div style={{ fontWeight: 700 }}>{titre}</div>
-        <div className="note">{sousTitre}</div>
-      </div>
-      {adv && (
-        <div style={{ textAlign: 'right' }}>
-          <div className="pts">{p.scores[uid] ?? 0}</div>
-          <div className="note">{p.scores[adv] ?? 0}</div>
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
+        <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
+          {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
         </div>
-      )}
-    </button>
+        <div className="principal">
+          <div style={{ fontWeight: 700 }}>{titre}</div>
+          <div className={'note' + (sansReponse ? ' ecart-neg' : '')}>{sousTitre}</div>
+          {sansReponse && <div className="note ecart-neg">Pas de réponse depuis longtemps : tu peux abandonner.</div>}
+        </div>
+        {adv && (
+          <div style={{ textAlign: 'right' }}>
+            <div className="pts">{p.scores[uid] ?? 0}</div>
+            <div className="note">{p.scores[adv] ?? 0}</div>
+          </div>
+        )}
+      </button>
+      <button type="button" className="bouton-icone" aria-label={libelleSortie} title={libelleSortie} onClick={sortir} style={{ height: 'auto' }}>
+        ×
+      </button>
+    </div>
   )
 }
 
