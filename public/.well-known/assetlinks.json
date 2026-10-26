@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "fr.perso.scrabble",
+    "sha256_cert_fingerprints": ["0B:D9:37:5B:F3:9C:C9:BA:D5:F5:5B:5A:48:46:46:50:9F:81:74:76:5C:66:47:6C:7B:68:85:BC:86:85:17:8C"]
+  }
+}]

@@ -22,9 +22,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Liens d'invitation : la version web sur GitHub Pages ouvre l'appli si elle est installée
-                 (lien vérifié seulement si assetlinks.json est publié à la racine du domaine, voir le README). -->
+            <!-- Liens d'invitation : la version web (https://scrabble.pbailly.fr) ouvre l'appli si elle est installée.
+                 Lien vérifié grâce à public/.well-known/assetlinks.json, publié à la racine du domaine. -->
             <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="scrabble.pbailly.fr" />
+            </intent-filter>
+
+            <!-- Ancienne adresse (GitHub Pages sans domaine propre), gardée pour les liens déjà envoyés. -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

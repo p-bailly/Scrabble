@@ -9,6 +9,12 @@ import { lire } from './lib/stockage'
 import { chargerDico } from './moteur/moteur'
 import './styles.css'
 
+// Lien de connexion reçu par e-mail (…/?apiKey=…&oobCode=…&mode=signIn) : il doit retomber sur une page du
+// multijoueur, qui termine la connexion (voir multi/Compte.tsx).
+if (/[?&]mode=signIn\b/.test(location.search) && !/^#\/(parties|partie|rejoindre)\b/.test(location.hash)) {
+  history.replaceState(null, '', location.pathname + location.search + '#/parties')
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
@@ -24,7 +30,7 @@ if (lire('multi.pseudo', null)) import('./multi/veille').then((m) => m.demarrerV
 // Toucher une notification « À toi de jouer » ouvre la partie.
 surOuvertureNotification((hash) => naviguer(hash.replace(/^#\/?/, '')))
 
-// Liens d'invitation ouverts dans l'appli Android : https://p-bailly.github.io/Scrabble/#/rejoindre/CODE
+// Liens d'invitation ouverts dans l'appli Android : https://scrabble.pbailly.fr/#/rejoindre/CODE
 // ou fr.perso.scrabble://rejoindre/CODE.
 if (natif) {
   AppNative.addListener('appUrlOpen', ({ url }) => {

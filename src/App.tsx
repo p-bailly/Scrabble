@@ -8,7 +8,8 @@ import { Solo } from './pages/Solo'
 import { Stats } from './pages/Stats'
 
 // Le multijoueur (et Firebase) n'est chargé que si on l'ouvre : le solo reste léger et marche hors ligne.
-const Multi = lazy(() => import('./multi/Multi'))
+// Compte gère la connexion par e-mail, puis affiche les parties.
+const Multi = lazy(() => import('./multi/Compte'))
 
 /** Nom de l'événement émis par la veille des parties à deux (multi/veille.ts). */
 const EVENEMENT_TOUR = 'scrabble:tour'
