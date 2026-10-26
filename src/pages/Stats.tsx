@@ -1,13 +1,18 @@
 // Historique des parties de duplicate et statistiques.
 
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Entete } from '../composants/Entete'
 import { PROFILS } from '../jeu/ia'
 import { aides } from '../jeu/contreIA'
+import { configuration } from '../lib/configFirebase'
 import { naviguer } from '../lib/routeur'
+import { lire } from '../lib/stockage'
 import { useSynchro } from '../lib/synchro'
 import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
 import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
+
+// Les bilans des parties à deux viennent de Firestore : ce morceau (avec Firebase) n'est chargé que si l'appareil a un compte.
+const FaceAFace = lazy(() => import('../multi/FaceAFace'))
 
 export function Stats() {
   const [, rafraichir] = useState(0)
@@ -15,6 +20,7 @@ export function Stats() {
   const s = statistiques()
   const contreIA = bilanParNiveau().filter((b) => b.parties > 0)
   const partiesIA = lirePartiesIA().slice(0, 5)
+  const aUnCompte = !!configuration && !!lire('multi.pseudo', null)
   return (
     <div className="contenu">
       <Entete titre="Statistiques" />
@@ -84,6 +90,14 @@ export function Stats() {
               </button>
             ))}
           </div>
+        </>
+      )}
+      {aUnCompte && (
+        <>
+          <h2>Face à face</h2>
+          <Suspense fallback={<div className="vide-etat">Chargement…</div>}>
+            <FaceAFace />
+          </Suspense>
         </>
       )}
       <h2>Historique du duplicate</h2>

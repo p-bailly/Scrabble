@@ -6,8 +6,11 @@
 //    l'une après l'autre : elles se posent à la suite, comme si on tapait le mot ;
 //  - au clavier : taper les lettres (Retour arrière efface, Espace change le sens, Échap reprend tout, Entrée valide).
 // Toucher un jeton en cours de pose le renvoie sur le chevalet.
+// Réarranger le chevalet : la lettre qu'on tient quitte son emplacement, les autres s'écartent pour lui faire de la
+// place pendant qu'on la déplace, puis elle se pose en douceur. Les lettres sont placées par un décalage (--i) que le CSS
+// anime : échanger deux lettres ou mélanger le chevalet les fait aussi glisser à leur nouvelle place.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as PE } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as PE } from 'react'
 import type { Pose } from '../jeu/coup'
 import { ALPHABET, JOKER, valeur } from '../jeu/lettres'
 import { CENTRE, TAILLE, colonneDe, ligneDe, type Plateau } from '../jeu/plateau'
@@ -37,6 +40,44 @@ export interface Glisse {
   tuile: Tuile
   x: number
   y: number
+  /** Côté de la tuile à l'écran (celui d'un emplacement du chevalet). */
+  taille: number
+  /** Dépôt fait : la tuile glisse jusqu'à ce point (centre de son emplacement) avant de disparaître. */
+  vers?: { x: number; y: number }
+}
+
+/** Durée (ms) du dépôt d'une lettre sur son emplacement ; la même que dans styles.css (.tuile-volante.atterrit). */
+const DUREE_DEPOT = 170
+
+const emplacements = () => [...document.querySelectorAll<HTMLElement>('.chevalet .case-chevalet')]
+
+/** Côté d'une tuile du chevalet, tel qu'il est affiché. */
+const tailleTuile = () => emplacements()[0]?.getBoundingClientRect().width || 46
+
+/** Centre (à l'écran) de l'emplacement `i` du chevalet. */
+function centreEmplacement(i: number): { x: number; y: number } | null {
+  const r = emplacements()[i]?.getBoundingClientRect()
+  return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null
+}
+
+/** Emplacement du chevalet le plus proche du point, ou null si le point est loin du chevalet. */
+function emplacementProche(x: number, y: number): number | null {
+  const cases = emplacements()
+  if (cases.length === 0) return null
+  const bac = cases[0].closest('.chevalet')!.getBoundingClientRect()
+  const marge = 24
+  if (x < bac.left - marge || x > bac.right + marge || y < bac.top - marge || y > bac.bottom + marge) return null
+  let meilleur = 0
+  let ecart = Infinity
+  cases.forEach((c, i) => {
+    const r = c.getBoundingClientRect()
+    const d = Math.abs(x - (r.left + r.right) / 2)
+    if (d < ecart) {
+      ecart = d
+      meilleur = i
+    }
+  })
+  return meilleur
 }
 
 /** État de la pose en cours, pour un plateau et un chevalet donnés. */
@@ -45,6 +86,12 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
   const [etat, setEtat] = useState<EtatEdition>(() => vide(versTuiles(chevalet)))
   const [glisse, setGlisse] = useState<Glisse | null>(null)
   const [cible, setCible] = useState<number | null>(null)
+  // Emplacement du chevalet où la tuile tenue se poserait ; null tant qu'elle n'est pas au-dessus du chevalet.
+  const [survol, setSurvol] = useState<number | null>(null)
+  const survolRef = useRef<number | null>(null)
+  // Tuile qui vient d'être lâchée : elle reste cachée jusqu'à l'arrivée de sa copie volante.
+  const [atterri, setAtterri] = useState<number | null>(null)
+  const minuterie = useRef<number | undefined>(undefined)
   const plateauRef = useRef(plateau)
   plateauRef.current = plateau
   const entreeRef = useRef(surEntree)
@@ -265,21 +312,46 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
   const glisser = useRef<{ tuile: Tuile; depuis: 'chevalet' | 'plateau'; x0: number; y0: number; bouge: boolean } | null>(null)
 
   const sousLeDoigt = (x: number, y: number) => {
-    const el = document.elementFromPoint(x, y)
-    const c = el?.closest<HTMLElement>('[data-case]')
-    const em = el?.closest<HTMLElement>('[data-emplacement]')
-    return { pos: c ? Number(c.dataset.case) : null, emplacement: em ? Number(em.dataset.emplacement) : null }
+    const c = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-case]')
+    return { pos: c ? Number(c.dataset.case) : null }
+  }
+
+  const changerSurvol = (i: number | null) => {
+    if (survolRef.current === i) return
+    survolRef.current = i
+    setSurvol(i)
+  }
+
+  /** Fin du glisser : la copie volante disparaît et la tuile cachée réapparaît. */
+  const finDuVol = () => {
+    window.clearTimeout(minuterie.current)
+    setGlisse(null)
+    setAtterri(null)
+    changerSurvol(null)
+  }
+
+  /** La copie volante glisse jusqu'à l'emplacement `i`, puis laisse la place à la vraie tuile. */
+  const deposer = (id: number, i: number) => {
+    const vers = centreEmplacement(i)
+    if (!vers) return finDuVol()
+    setAtterri(id)
+    setGlisse((g) => g && { ...g, vers })
+    minuterie.current = window.setTimeout(finDuVol, DUREE_DEPOT)
   }
 
   const commencer = (tuile: Tuile, depuis: 'chevalet' | 'plateau', e: PE) => {
+    finDuVol() // un dépôt encore en cours se termine tout de suite
     glisser.current = { tuile, depuis, x0: e.clientX, y0: e.clientY, bouge: false }
     const bouger = (ev: PointerEvent) => {
       const g = glisser.current
       if (!g) return
       if (!g.bouge && Math.hypot(ev.clientX - g.x0, ev.clientY - g.y0) > 6) g.bouge = true
       if (g.bouge) {
-        setGlisse({ tuile: g.tuile, x: ev.clientX, y: ev.clientY })
-        setCible(sousLeDoigt(ev.clientX, ev.clientY).pos)
+        setGlisse({ tuile: g.tuile, x: ev.clientX, y: ev.clientY, taille: tailleTuile() })
+        const { pos } = sousLeDoigt(ev.clientX, ev.clientY)
+        setCible(pos)
+        const i = pos === null ? emplacementProche(ev.clientX, ev.clientY) : null
+        changerSurvol(i === null ? null : Math.min(i, etatRef.current.tuiles.length - 1))
       }
     }
     const lacher = (ev: PointerEvent) => {
@@ -288,10 +360,10 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
       window.removeEventListener('pointercancel', lacher)
       const g = glisser.current
       glisser.current = null
-      setGlisse(null)
       setCible(null)
-      if (!g) return
+      if (!g) return finDuVol()
       if (!g.bouge) {
+        finDuVol()
         if (g.depuis === 'chevalet') toucherTuile(g.tuile.id)
         else {
           const p = etatRef.current.poses[g.tuile.id]
@@ -299,10 +371,19 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
         }
         return
       }
-      if (ev.type === 'pointercancel') return
-      const { pos, emplacement } = sousLeDoigt(ev.clientX, ev.clientY)
-      if (pos !== null) placer(g.tuile.id, pos)
-      else if (emplacement !== null) ranger(g.tuile.id, emplacement)
+      if (ev.type === 'pointercancel') return finDuVol()
+      const { pos } = sousLeDoigt(ev.clientX, ev.clientY)
+      const i = survolRef.current
+      if (pos !== null) {
+        finDuVol()
+        placer(g.tuile.id, pos)
+      } else if (i !== null) {
+        ranger(g.tuile.id, i)
+        deposer(g.tuile.id, i)
+      } else if (g.depuis === 'chevalet') {
+        // Lâchée ailleurs : la lettre retourne à sa place.
+        deposer(g.tuile.id, etatRef.current.tuiles.findIndex((t) => t.id === g.tuile.id))
+      } else finDuVol()
     }
     window.addEventListener('pointermove', bouger)
     window.addEventListener('pointerup', lacher)
@@ -351,6 +432,8 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
     posesCarte,
     glisse,
     cible,
+    survol,
+    atterri,
     toucherCase,
     toucherTuile,
     appuiTuile,
@@ -366,36 +449,62 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
 export type Edition = ReturnType<typeof useEdition>
 
 export function Chevalet({ edition, marquees }: { edition: Edition; marquees?: Set<number> }) {
-  const { etat } = edition
+  const { etat, glisse, survol, atterri } = edition
+  const tuiles = etat.tuiles
+  // Place de chaque tuile. Pendant un glisser, la tuile tenue laisse un trou : à son emplacement d'origine, ou là où
+  // elle se poserait si on la lâchait maintenant ; les autres tuiles s'écartent pour lui faire de la place.
+  const tenue = glisse && tuiles.some((t) => t.id === glisse.tuile.id) ? glisse.tuile.id : null
+  const place = new Map<number, number>()
+  if (tenue === null) tuiles.forEach((t, k) => place.set(t.id, k))
+  else {
+    const trou = survol ?? tuiles.findIndex((t) => t.id === tenue)
+    tuiles
+      .filter((t) => t.id !== tenue)
+      .forEach((t, k) => place.set(t.id, k < trou ? k : k + 1))
+    place.set(tenue, trou)
+  }
   return (
     <div className="chevalet">
-      {etat.tuiles.map((t, i) => (
-        <div key={t.id} className={'emplacement' + (etat.poses[t.id] ? ' vide' : '')} data-emplacement={i}>
-          {!etat.poses[t.id] && (
+      <div className="rail">
+        {Array.from({ length: Math.max(7, tuiles.length) }, (_, i) => (
+          <div key={i} className="case-chevalet" />
+        ))}
+        {tuiles.map((t) => {
+          // Une tuile posée sur le plateau n'est plus dans le bac ; une tuile tenue ou qui se pose reste là, cachée.
+          const cachee = t.id === tenue || t.id === atterri
+          if (etat.poses[t.id] && !cachee) return null
+          return (
             <button
+              key={t.id}
               type="button"
-              className={'tuile' + (etat.choisie === t.id ? ' choisie' : '') + (marquees?.has(t.id) ? ' marquee' : '')}
+              className={
+                'tuile tuile-rail' +
+                (cachee ? ' cachee' : '') +
+                (etat.choisie === t.id ? ' choisie' : '') +
+                (marquees?.has(t.id) ? ' marquee' : '')
+              }
+              style={{ '--i': place.get(t.id) } as CSSProperties}
               onPointerDown={(e) => edition.appuiTuile(t.id, e)}
               aria-label={t.lettre === JOKER ? 'Joker' : t.lettre}
             >
               {t.lettre === JOKER ? '' : t.lettre}
               {t.lettre !== JOKER && <span className="points">{valeur(t.lettre)}</span>}
             </button>
-          )}
-        </div>
-      ))}
-      {Array.from({ length: Math.max(0, 7 - etat.tuiles.length) }, (_, i) => (
-        <div key={'v' + i} className="emplacement vide" data-emplacement={etat.tuiles.length + i} />
-      ))}
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-/** Tuile qui suit le doigt pendant un glisser. */
+/** Tuile qui suit le doigt pendant un glisser, puis glisse jusqu'à son emplacement quand on la lâche. */
 export function TuileVolante({ glisse }: { glisse: Glisse | null }) {
   if (!glisse) return null
   return (
-    <div className="tuile-volante" style={{ left: glisse.x, top: glisse.y }}>
+    <div
+      className={'tuile-volante' + (glisse.vers ? ' atterrit' : '')}
+      style={{ left: glisse.vers?.x ?? glisse.x, top: glisse.vers?.y ?? glisse.y, '--t': `${glisse.taille}px` } as CSSProperties}
+    >
       <div className="tuile">
         {glisse.tuile.lettre === JOKER ? '' : glisse.tuile.lettre}
         {glisse.tuile.lettre !== JOKER && <span className="points">{valeur(glisse.tuile.lettre)}</span>}

@@ -11,6 +11,7 @@ import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, useMasquerOnglets } from
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
+import { FeuilleVerifier } from '../composants/VerifierMot'
 import { lettresNonVues } from '../jeu/classique'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
@@ -25,7 +26,6 @@ import {
   adversairesRecents,
   annulerInvitation,
   autre,
-  bilansFaceAFace,
   chercherJoueurs,
   cleRecherche,
   creerPartie,
@@ -187,7 +187,6 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const attente = liste.filter((p) => p.etat === 'encours' && p.tour !== uid).sort(tri)
   const invitations = liste.filter((p) => p.etat === 'attente').sort(tri)
   const finies = liste.filter((p) => p.etat === 'finie').sort(tri)
-  const bilans = bilansFaceAFace(liste, uid)
 
   return (
     <div className="contenu">
@@ -243,22 +242,6 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
       <Section titre="En attente de l’adversaire" parties={attente} uid={uid} onErreur={setErreur} onMasquer={masquer} />
       <Section titre="Invitations envoyées" parties={invitations} uid={uid} onErreur={setErreur} onMasquer={masquer} />
       <Section titre="Terminées" parties={finies.filter((p) => !masquees.includes(p.code)).slice(0, 20)} uid={uid} onErreur={setErreur} onMasquer={masquer} />
-      {bilans.length > 0 && (
-        <>
-          <h2>Face à face</h2>
-          <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {bilans.map((b) => (
-              <div key={b.uid} style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <b style={{ flex: 1 }}>{b.pseudo}</b>
-                <span className="note">
-                  {b.victoires} victoire{b.victoires > 1 ? 's' : ''} · {b.defaites} défaite{b.defaites > 1 ? 's' : ''}
-                  {b.egalites > 0 && ` · ${b.egalites} égalité${b.egalites > 1 ? 's' : ''}`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   )
 }
@@ -668,6 +651,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const [historique, setHistorique] = useState(false)
   const [changement, setChangement] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
+  const [feuilleVerifier, setFeuilleVerifier] = useState(false)
   // Coup de l'historique dont on lit la définition (numéro du coup).
   const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
@@ -765,7 +749,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
               </div>
             )}
             <Chevalet edition={edition} />
-            {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
+            {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
             {p.etat === 'encours' && !aMoi && (
               <div className="apercu">
                 <span className="indice">{nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.</span>
@@ -831,6 +815,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={p.sac.length} adversaire={nomAdv} />
+      <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}

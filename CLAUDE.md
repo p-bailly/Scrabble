@@ -25,6 +25,7 @@ aux sections ci-dessous. Le message de `Multi.tsx` cite la rubrique « Parties �
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
 - Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore).
+- Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. En partie, la loupe sous le chevalet ouvre « Vérifier un mot » (même outil que le dictionnaire, jamais une recherche par lettres).
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
   aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).

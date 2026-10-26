@@ -11,6 +11,7 @@ import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, useMasqu
 import { IconeHistorique, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
+import { FeuilleVerifier } from '../composants/VerifierMot'
 import { lettresNonVues } from '../jeu/classique'
 import {
   abandonnerIA,
@@ -209,6 +210,7 @@ function EcranIA({
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
+  const [feuilleVerifier, setFeuilleVerifier] = useState(false)
   // Coup de l'historique dont on lit la définition (numéro du coup).
   const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
@@ -311,7 +313,7 @@ function EcranIA({
       />
       <ColonneJeu>
         <Chevalet edition={edition} />
-        {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
+        {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
         {!partie.finie && !aMoi && (
           <div className="apercu">
             <span className="indice">{erreurIA ? '' : 'L’IA réfléchit…'}</span>
@@ -399,6 +401,7 @@ function EcranIA({
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’IA" />
+      <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}
