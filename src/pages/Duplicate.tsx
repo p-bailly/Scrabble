@@ -7,11 +7,11 @@ import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, Chrono, ColonneJeu, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
-import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
+import { IconeCrayon, IconeMelanger, IconeMenu, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
 import { FeuilleVerifier } from '../composants/VerifierMot'
-import { reference, type Coup } from '../jeu/coup'
+import { reference, type Analyse, type Coup } from '../jeu/coup'
 import {
   INDICES,
   NOM_INDICE,
@@ -32,7 +32,7 @@ import {
 import { nouvelleGraine } from '../jeu/hasard'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { naviguer } from '../lib/routeur'
-import { chargerDico, chercherCoups } from '../moteur/moteur'
+import { analyser, chargerDico, chercherCoups } from '../moteur/moteur'
 import {
   abandonnerPartie,
   archiver,
@@ -77,6 +77,10 @@ const MODES: { mode: ModeDuplicate; nom: string; texte: string }[] = [
 
 /** Combien d'autres bons coups on garde pour la correction. */
 const NB_SOLUTIONS = 15
+
+/** Pourquoi les lettres posées sont refusées à la validation (le plateau est alors vidé). */
+const raisonRefus = (a: Analyse) =>
+  `${a.erreur ?? (a.motsInconnus.length ? `${a.motsInconnus.join(', ')} : mot refusé` : 'Mot refusé')}. Les lettres sont reprises.`
 
 /** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
 export function Duplicate({ id }: { id?: string }) {
@@ -296,8 +300,11 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   }, [courant?.numero, partie.id])
 
   useEffect(() => ecrireCoup(partie.id, coup), [partie.id, coup])
-  // Un message sur le coup précédent n'a plus de raison d'être dès qu'on bouge une lettre.
-  useEffect(() => setMessage(''), [edition.poses])
+  // Un message sur le coup précédent n'a plus de raison d'être dès qu'on pose une lettre. Un plateau vidé par un mot
+  // refusé garde le sien, qui s'efface à la lettre suivante.
+  useEffect(() => {
+    if (edition.poses.length) setMessage('')
+  }, [edition.poses])
 
   const derniers = useMemo(() => {
     const d = partie.coups.at(-1)
@@ -345,7 +352,17 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   }
 
   // Entraînement : on valide, le coup est terminé. Topping : le coup ne se termine que si c'est le top.
+  // Dans les deux modes, des lettres posées qui ne font pas un mot bon sont toutes reprises : on repart d'un plateau net.
   const valider = async () => {
+    if (edition.poses.length > 0) {
+      // Analyse refaite : celle de l'aperçu peut ne pas avoir rattrapé la dernière lettre posée.
+      const a = await analyser(plateau, edition.poses).catch(() => null)
+      if (a && !a.valide) {
+        setMessage(raisonRefus(a))
+        edition.rappeler()
+        return
+      }
+    }
     if (!topping) return void terminer()
     if (!analyse?.valide || !analyse.coup) {
       setMessage('Pose d’abord un mot valable.')
@@ -416,14 +433,21 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   return (
     <div className={'ecran-jeu' + (!resultat && estUrgent(coup.ecoule, partie.temps) ? ' urgent' : '')}>
       <BarreJeu
-        onRetour={() => setMenu(true)}
-        libelleRetour="Menu de la partie"
+        onRetour={() => naviguer('solo')}
+        libelleRetour="Retour"
         titre={
           <>
             Coup {resultat?.coup?.numero ?? numero} {topping && <span className="sous">· topping</span>}
           </>
         }
         pastille={<BoutonSac sac={partie.sac.length} onClick={() => setFeuilleSac(true)} />}
+        droite={
+          !partie.finie && (
+            <button type="button" className="bouton-icone" onClick={() => setMenu(true)} aria-label="Menu de la partie">
+              <IconeMenu />
+            </button>
+          )
+        }
       />
       <Plateau
         pleine

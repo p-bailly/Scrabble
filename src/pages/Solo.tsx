@@ -9,7 +9,7 @@ import { PROFILS } from '../jeu/ia'
 import { modeDe, totaux, type PartieDuplicate } from '../jeu/duplicate'
 import { naviguer } from '../lib/routeur'
 import { useSynchro } from '../lib/synchro'
-import { abandonnerPartie, formatPct, formatTemps, lireHistorique, lirePartiesEnCours } from '../solo/sauvegarde'
+import { abandonnerPartie, formatPct, lireHistorique, lirePartiesEnCours } from '../solo/sauvegarde'
 import { abandonnerPartieIA, bilanParNiveau, lirePartiesIAEnCours } from '../solo/sauvegardeIA'
 
 type EnCours = { type: 'duplicate'; partie: PartieDuplicate } | { type: 'ia'; partie: PartieIA }
@@ -81,44 +81,36 @@ export function Solo() {
   )
 }
 
-/** Une partie en cours : où elle en est, de quoi la reprendre ou l'abandonner. */
+/** Une partie en cours : son mode, son coup, l'autre joueur s'il y en a, de quoi la reprendre ou l'abandonner. */
 function PartieEnCours({ e, onAbandon }: { e: EnCours; onAbandon: () => void }) {
-  let titre: string
-  let gros: string
-  let detail: string
+  let mode: string
+  let coup: string
   let reprendre: string
   let question: string
   let abandonner: () => void
-  // Les parties en cours se ressemblent vite : la date de la dernière sauvegarde aide à les reconnaître.
-  const quand = new Date(e.partie.majLe ?? e.partie.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   if (e.type === 'duplicate') {
     const p = e.partie
-    const t = totaux(p)
-    const topping = modeDe(p) === 'topping'
-    titre = `Duplicate · ${topping ? 'topping' : 'entraînement'} · coup ${p.courant?.numero ?? p.coups.length}`
-    gros = !p.coups.length ? 'Début de partie' : topping ? `${t.trouves} / ${p.coups.length} tops` : formatPct(t.pourcentage)
-    detail = `${p.coups.length ? `${t.joueur} / ${t.top} points` : formatTemps(p.temps) + ' par coup'} · graine ${p.graine} · ${quand}`
+    mode = `Duplicate · ${modeDe(p) === 'topping' ? 'Topping' : 'Entraînement'}`
+    coup = `Coup ${p.courant?.numero ?? p.coups.length}`
     reprendre = 'solo/duplicate/' + encodeURIComponent(p.id)
     question = p.coups.length ? 'Abandonner cette partie ? Elle sera rangée dans l’historique.' : 'Abandonner cette partie ?'
     abandonner = () => abandonnerPartie(p)
   } else {
     const p = e.partie
-    titre = `Contre l’IA · ${PROFILS[p.niveau].nom} · ${p.coups.length} coup${p.coups.length > 1 ? 's' : ''}`
-    gros = `${p.scores.moi} – ${p.scores.ia}`
-    detail = `${p.tour === 'moi' ? 'À toi de jouer' : 'L’IA doit jouer'} · ${quand}`
+    mode = 'Contre l’IA'
+    coup = `Coup ${p.coups.length + 1} · contre ${PROFILS[p.niveau].nom}`
     reprendre = 'solo/ia/' + encodeURIComponent(p.id)
     question = p.coups.length ? 'Abandonner cette partie ? L’IA gagne.' : 'Abandonner cette partie ?'
     abandonner = () => abandonnerPartieIA(p)
   }
   return (
     <div className="carte carte-accent" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div className="note">{titre}</div>
-      <div style={{ fontSize: 26, fontWeight: 800 }}>{gros}</div>
-      <div className="note">{detail}</div>
+      <div style={{ fontSize: 18, fontWeight: 800 }}>{mode}</div>
+      <div className="note">{coup}</div>
       <div className="actions">
         <button
           type="button"
-          className="bouton danger large"
+          className="bouton danger plein large"
           onClick={() => {
             if (!confirm(question)) return
             abandonner()
