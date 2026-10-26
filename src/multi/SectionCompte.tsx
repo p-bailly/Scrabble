@@ -12,7 +12,7 @@ import { arreterSynchro } from './synchro'
 import { arreterVeille } from './veille'
 
 export default function SectionCompte() {
-  if (!configuration) return <Rangee titre="Compte" texte="Les parties à deux ne sont pas configurées (voir le README)." />
+  if (!configuration) return <Rangee titre="Compte" texte="Les parties à deux ne sont pas configurées (voir CLAUDE.md, « Firebase »)." />
   return <Compte />
 }
 

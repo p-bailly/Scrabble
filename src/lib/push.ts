@@ -1,6 +1,6 @@
 // Notifications appli fermée (push) : l'appareil s'enregistre auprès de Firebase Cloud Messaging et dépose son jeton dans
 // Firestore ; une Cloud Function (dossier functions/) l'utilise pour prévenir quand l'adversaire joue. Chargé à la demande
-// (il dépend de Firebase), seulement quand le projet l'a configuré (« push » dans firebase.config.json, voir le README).
+// (il dépend de Firebase), seulement quand le projet l'a configuré (« push » dans firebase.config.json, voir CLAUDE.md, « Notifications push »).
 
 import { deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { configuration } from './configFirebase'

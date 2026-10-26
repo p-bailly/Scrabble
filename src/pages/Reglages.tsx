@@ -117,7 +117,7 @@ function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<Regl
     setAutorisees(await notificationsAutorisees())
   }
 
-  // Notifications appli fermée : proposées quand le projet les a configurées (voir le README).
+  // Notifications appli fermée : proposées quand le projet les a configurées (voir CLAUDE.md, « Notifications push »).
   const [pushOn, setPushOn] = useState(pushActif)
   const [pushMessage, setPushMessage] = useState('')
   const avecCompte = async (action: (uid: string) => Promise<void>) => {

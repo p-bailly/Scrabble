@@ -1,6 +1,6 @@
 // Notifications locales : plugin natif dans l'appli Android, API du navigateur (via le service worker) en web.
 // Elles partent quand l'appli est ouverte ou revient au premier plan. Appli fermée, ce sont les notifications push du
-// serveur (lib/push.ts, functions/), si le projet Firebase les a configurées : voir le README.
+// serveur (lib/push.ts, functions/), si le projet Firebase les a configurées : voir CLAUDE.md, « Notifications push ».
 
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
