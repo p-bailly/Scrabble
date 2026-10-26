@@ -39,6 +39,11 @@ Pour que « Mes applis » continue de suivre l'appli, ne jamais changer : le dé
 `fr.perso.scrabble`, le nom de fichier `scrabble.apk`, la clé de signature ; le `versionCode` est le numéro de build
 de la CI, toujours croissant.
 
+**Numéro de version** : `majeur.mineur.build`, par exemple `1.1.27`. `majeur.mineur` se change à la main dans le champ
+`version` de `package.json` (à chaque nouvelle fonctionnalité notable) ; `build` est le numéro de construction de la CI,
+qui monte tout seul. C'est le nom de version de l'APK (ce que « Mes applis » affiche) et ce que montrent les Réglages, y
+compris dans la version web ; le contrôle des pull requests vérifie que l'APK le porte bien.
+
 ## Règles du jeu
 
 Scrabble francophone : plateau 15 × 15 avec les cases bonus du plateau classique (mot compte triple en rouge, mot
