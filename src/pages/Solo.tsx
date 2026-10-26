@@ -8,6 +8,7 @@ import type { PartieIA } from '../jeu/contreIA'
 import { PROFILS } from '../jeu/ia'
 import { modeDe, totaux, type PartieDuplicate } from '../jeu/duplicate'
 import { naviguer } from '../lib/routeur'
+import { useSynchro } from '../lib/synchro'
 import { abandonnerPartie, formatPct, formatTemps, lireHistorique, lirePartiesEnCours } from '../solo/sauvegarde'
 import { abandonnerPartieIA, bilanParNiveau, lirePartiesIAEnCours } from '../solo/sauvegardeIA'
 
@@ -23,8 +24,9 @@ function lireEnCours(): EnCours[] {
 }
 
 export function Solo() {
-  // Abandonner une partie change la liste affichée.
+  // Abandonner une partie change la liste affichée ; la synchro avec le compte aussi.
   const [, rafraichir] = useState(0)
+  useSynchro()
   const enCours = lireEnCours()
   const dernierDuplicate = lireHistorique()[0]
   const victoires = bilanParNiveau().reduce((n, b) => n + b.victoires, 0)

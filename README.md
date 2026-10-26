@@ -343,6 +343,36 @@ chevalet de l'autre, etc.).
   par l'adversaire (mots, score, plateau), mais un joueur malin peut choisir ses lettres. C'est accepté pour un usage
   entre amis.
 
+## Synchronisation des données solo
+
+Quand on est connecté à un compte (rubrique « Parties à deux »), les **parties solo en cours** (duplicate et contre l'IA,
+plusieurs à la fois), les **historiques** (duplicate, résultats et parties gardées contre l'IA) et les **réglages**
+(thème, étiquettes, confirmation avant de passer, mode et temps du duplicate, niveau contre l'IA) sont enregistrés dans
+Firestore, sous `joueurs/{uid}/solo`, et retrouvés sur tous les appareils où l'on saisit le même nom. Les
+notifications ne sont pas synchronisées : elles dépendent de l'appareil. Sans compte, rien ne change : tout reste sur
+l'appareil (et la sauvegarde par fichier des Réglages sert toujours).
+
+- **Pas de bouton** : l'écoute est en direct, une partie commencée sur un téléphone apparaît dans le menu Solo de
+  l'autre. Hors ligne, on joue comme avant ; les changements partent au retour du réseau.
+- **Premier compte** : les parties et historiques déjà présents sur l'appareil sont envoyés au compte, et ceux du compte
+  arrivent sur l'appareil (on réunit les deux).
+- **Fusion** : par élément, la version la plus récente gagne (c'est aussi ce que vérifient les règles Firestore : une
+  écriture plus ancienne que celle du serveur est refusée). Une suppression est une version comme une autre, gardée six
+  mois : une partie abandonnée ou effacée sur un appareil ne revient pas depuis un autre. Les plafonds d'historique
+  (60 parties de duplicate, 100 résultats et 10 parties gardées contre l'IA) s'appliquent partout de la même façon.
+- **Même partie sur deux appareils** : la dernière sauvegarde l'emporte, sans fusion des coups ; le chrono du coup en cours
+  reste sur l'appareil.
+- **Changer de compte** sur un appareil demande de remplacer ses parties solo par celles du nouveau compte (les
+  anciennes restent sur l'ancien compte).
+- **Règles à republier** : `npx firebase-tools deploy --only firestore:rules --project <projectId>` (ou les coller dans
+  la console), pour la sous-collection `solo` ; sans cela, la synchro est refusée et le solo continue en local.
+- Limite connue : quiconque connaît ton nom d'utilisateur peut ouvrir ton compte, et donc lire ces données (voir
+  « Limites »).
+
+Le code : [`src/lib/synchro.ts`](src/lib/synchro.ts) (signaux, suppressions, décision),
+[`src/lib/moteurSynchro.ts`](src/lib/moteurSynchro.ts) (comparaison et application, testées avec deux appareils simulés dans
+`src/lib/synchro.test.ts`) et [`src/multi/synchro.ts`](src/multi/synchro.ts) (liaison Firestore).
+
 ## Notifications push (appli fermée)
 
 Tout le code est dans le dépôt ; il reste éteint tant que `firebase.config.json` ne contient pas `"push": true`. Le
@@ -416,9 +446,11 @@ Version de production : `npm run build` puis `npm run preview`. Chaque pull requ
 [`verification.yml`](.github/workflows/verification.yml) : types, tests, construction de l'appli web et de l'APK.
 
 Tester le multijoueur sans projet Firebase : lancer les émulateurs
-(`npx firebase-tools emulators:start --only auth,firestore --project demo-scrabble`, avec un `firebase.json` qui
-pointe vers `firestore.rules`) et créer un `firebase.config.json` avec `"projectId": "demo-scrabble"`,
-`"apiKey": "demo"` et `"emulateurs": true` ; ne pas le committer.
+(`npx firebase-tools emulators:start --only auth,firestore --project demo-scrabble`, Java requis ; le `firebase.json` du
+dépôt les configure) et créer un `firebase.config.json` avec `"projectId": "demo-scrabble"`, `"apiKey": "demo"` et
+`"emulateurs": true` ; ne pas le committer. Les règles de sécurité ont leurs tests (`src/multi/regles.test.ts`), qui
+tournent sur l'émulateur : `npx firebase-tools emulators:exec --only firestore --project demo-scrabble "npm test"`
+(sans émulateur, ils sont simplement ignorés).
 
 APK en local : Android SDK (plateforme 36) + Java 21, puis `npm run android`
 → `android/app/build/outputs/apk/release/app-release.apk`.

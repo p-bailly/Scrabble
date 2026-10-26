@@ -37,7 +37,10 @@ chargerDico().catch(() => {})
 const apresAffichage = (tache: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(tache, { timeout: 2000 }) : setTimeout(tache, 500))
 apresAffichage(() => {
   prechargerEcrans()
-  if (lire('multi.pseudo', null)) import('./multi/veille').then((m) => m.demarrerVeille()).catch(() => {})
+  if (lire('multi.pseudo', null)) {
+    import('./multi/veille').then((m) => m.demarrerVeille()).catch(() => {})
+    import('./multi/synchro').then((m) => m.demarrerSynchro()).catch(() => {})
+  }
 })
 
 // Toucher une notification « À toi de jouer » ouvre la partie.

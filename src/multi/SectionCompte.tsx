@@ -8,6 +8,7 @@ import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
 import { enregistrerJoueur, lireJoueur, type Joueur } from './donnees'
 import { configuration, deconnexion, utilisateur } from './firebase'
+import { arreterSynchro } from './synchro'
 import { arreterVeille } from './veille'
 
 export default function SectionCompte() {
@@ -66,6 +67,7 @@ function Compte() {
 
   const sortir = async () => {
     arreterVeille() // avant la déconnexion : sinon les écoutes en cours seraient refusées
+    arreterSynchro()
     // Cet appareil ne doit plus recevoir les notifications de ce compte.
     if (uid && pushActif()) await import('../lib/push').then((m) => m.desactiverPush(uid)).catch(() => {})
     await deconnexion()

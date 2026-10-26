@@ -5,11 +5,13 @@ import { Entete } from '../composants/Entete'
 import { PROFILS } from '../jeu/ia'
 import { aides } from '../jeu/contreIA'
 import { naviguer } from '../lib/routeur'
+import { useSynchro } from '../lib/synchro'
 import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
 import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
 
 export function Stats() {
   const [, rafraichir] = useState(0)
+  useSynchro()
   const s = statistiques()
   const contreIA = bilanParNiveau().filter((b) => b.parties > 0)
   const partiesIA = lirePartiesIA().slice(0, 5)

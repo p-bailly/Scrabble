@@ -51,6 +51,7 @@ import {
 } from './donnees'
 import { configuration, connexion } from './firebase'
 import AnalyseMulti from './AnalyseMulti'
+import { demarrerSynchro } from './synchro'
 import { demarrerVeille } from './veille'
 
 export default function Multi({ chemin }: { chemin: string[] }) {
@@ -92,6 +93,7 @@ function AvecSession({ chemin }: { chemin: string[] }) {
           }
         }
         void demarrerVeille()
+        void demarrerSynchro()
       })
       .catch((e: Error) => setErreur('Connexion impossible : ' + e.message))
   }, [])

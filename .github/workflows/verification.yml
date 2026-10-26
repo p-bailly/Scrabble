@@ -23,9 +23,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: emulateurs-firebase-${{ runner.os }}
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      # Les tests des règles de sécurité Firestore (src/multi/regles.test.ts) ont besoin de l'émulateur.
+      - run: npx firebase-tools emulators:exec --only firestore --project demo-scrabble "npm test"
       - run: npm run build
 
   # L'APK doit toujours se construire (plugins natifs, Gradle) : on le vérifie avant la fusion, sans le publier.

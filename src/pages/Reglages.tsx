@@ -8,6 +8,8 @@ import { nbDefinitionsGardees, viderDefinitions } from '../lib/definitions'
 import { demanderPermission, natif, notificationsAutorisees, notifier, pushActif } from '../lib/notifications'
 import { THEMES, lireReglages, modifierReglages, type Reglages as ReglagesAppli } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
+import { useSynchro } from '../lib/synchro'
+import { ilYa } from '../lib/temps'
 import { exporterDonnees, importerDonnees, nomFichier } from '../lib/sauvegardeAppareil'
 import { pushConfigure } from '../lib/configFirebase'
 import { lire } from '../lib/stockage'
@@ -23,8 +25,9 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 export function Reglages() {
   const [r, setR] = useState<ReglagesAppli>(lireReglages)
   const maj = (modif: Partial<ReglagesAppli>) => setR(modifierReglages(modif))
-  // Les données effacées changent les compteurs affichés.
+  // Les données effacées (ou apportées par la synchro) changent les compteurs affichés.
   const [, rafraichir] = useState(0)
+  useSynchro()
 
   return (
     <div className="contenu">
@@ -90,6 +93,7 @@ export function Reglages() {
         <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
       </div>
       <div className="carte">
+        <Synchronisation />
         <Sauvegarde />
       </div>
 
@@ -241,6 +245,26 @@ function Donnees({ rafraichir }: { rafraichir: () => void }) {
         droite={bouton(nbDefinitions, effacer('Vider les définitions gardées sur l’appareil ?', viderDefinitions))}
       />
     </>
+  )
+}
+
+/** Où en est la synchronisation des données solo avec le compte (voir lib/synchro.ts). */
+function Synchronisation() {
+  useSynchro()
+  const pseudo = lire<string | null>('multi.pseudo', null)
+  const lie = lire<string | null>('synchro.uid', null)
+  const derniere = lire<number>('synchro.derniere', 0)
+  return (
+    <Rangee
+      titre="Synchronisation"
+      texte={
+        !pseudo
+          ? 'Connecte-toi (rubrique « Parties à deux ») pour retrouver tes parties solo en cours, tes historiques et tes réglages sur tous tes appareils.'
+          : lie
+            ? `Tes parties solo en cours, historiques et réglages sont enregistrés sur ton compte ${pseudo} et retrouvés sur tes autres appareils. Dernière synchro : ${derniere ? ilYa(derniere) : 'à l’instant'}.`
+            : 'Synchronisation avec ton compte en attente de connexion à Internet…'
+      }
+    />
   )
 }
 
