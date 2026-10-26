@@ -469,7 +469,10 @@ export function Chevalet({ edition, marquees }: { edition: Edition; marquees?: S
         {Array.from({ length: Math.max(7, tuiles.length) }, (_, i) => (
           <div key={i} className="case-chevalet" />
         ))}
-        {tuiles.map((t) => {
+        {/* Toujours dans le même ordre (celui des identifiants) : changer l'ordre des éléments dans la page les
+            déplacerait, ce qui relance leur animation d'arrivée (clignotement) et annule leur glissement. Leur place à
+            l'écran ne vient que de --i. */}
+        {[...tuiles].sort((a, b) => a.id - b.id).map((t) => {
           // Une tuile posée sur le plateau n'est plus dans le bac ; une tuile tenue ou qui se pose reste là, cachée.
           const cachee = t.id === tenue || t.id === atterri
           if (etat.poses[t.id] && !cachee) return null
