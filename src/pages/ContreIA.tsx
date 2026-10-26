@@ -24,6 +24,7 @@ import {
 import { reference } from '../jeu/coup'
 import { NIVEAUX, PROFILS } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
+import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { chargerDico, decisionIA } from '../moteur/moteur'
 import {
@@ -349,7 +350,7 @@ function EcranIA({
               type="button"
               className="bouton large"
               onClick={() => {
-                if (confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
+                if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
               }}
             >
               Passer
@@ -460,6 +461,13 @@ function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRe
           Score final : toi {partie.scores.moi}, IA {partie.scores.ia}
         </span>
       </ContenuPanneau>
+      {partie.coups.length > 0 && (
+        <div className="actions">
+          <button type="button" className="bouton large" onClick={() => naviguer('solo/ia/analyse/' + encodeURIComponent(partie.id))}>
+            Analyser la partie
+          </button>
+        </div>
+      )}
       <div className="actions">
         <button type="button" className="bouton large" onClick={onQuitter}>
           Terminer

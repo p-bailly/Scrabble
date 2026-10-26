@@ -10,32 +10,43 @@ import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composa
 import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { plateauDepuisTexte } from '../jeu/plateau'
-import { demanderPermission, natif } from '../lib/notifications'
+import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
+import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
+import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
 import { analyser } from '../moteur/moteur'
 import {
   abandonner,
+  adversairesRecents,
+  annulerInvitation,
   autre,
+  chercherJoueurs,
+  cleRecherche,
   creerPartie,
   ecouterChevalet,
   ecouterCoups,
+  ecouterInvitations,
   ecouterMesParties,
   ecouterPartie,
   enregistrerPseudo,
+  inviter,
   jouerCoup,
-  lirePseudo,
+  lireJoueur,
+  messageErreur,
+  MIN_RECHERCHE,
   normaliserCode,
+  refuserInvitation,
   rejoindre,
   supprimerPartie,
   verifierCoups,
   type CoupMulti,
+  type JoueurTrouve,
   type Partie,
 } from './donnees'
-import { ADRESSE_WEB as URL_WEB, configuration, connexion } from './firebase'
+import { configuration, connexion } from './firebase'
+import AnalyseMulti from './AnalyseMulti'
 import { demarrerVeille } from './veille'
-
-const URL_APK = 'https://github.com/p-bailly/Scrabble/releases/latest/download/scrabble.apk'
 
 export default function Multi({ chemin }: { chemin: string[] }) {
   if (!configuration) return <NonConfigure />
@@ -69,10 +80,10 @@ function AvecSession({ chemin }: { chemin: string[] }) {
       .then(async (u) => {
         setMoi(u)
         if (!lire('multi.pseudo', null)) {
-          const p = await lirePseudo(u.uid).catch(() => null)
-          if (p) {
-            ecrire('multi.pseudo', p)
-            setPseudo(p)
+          const j = await lireJoueur(u.uid).catch(() => null)
+          if (j) {
+            ecrire('multi.pseudo', j.pseudo)
+            setPseudo(j.pseudo)
           }
         }
         void demarrerVeille()
@@ -91,6 +102,7 @@ function AvecSession({ chemin }: { chemin: string[] }) {
   if (!moi) return <div className="vide-etat">Connexion…</div>
   if (!pseudo) return <ChoixPseudo uid={moi.uid} onFini={setPseudo} />
 
+  if (chemin[0] === 'partie' && chemin[1] && chemin[2] === 'analyse') return <AnalyseMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'partie' && chemin[1]) return <PartieMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'rejoindre' && chemin[1]) return <Rejoindre code={normaliserCode(chemin[1])} uid={moi.uid} pseudo={pseudo} />
   return <ListeParties uid={moi.uid} pseudo={pseudo} onPseudo={() => setPseudo(null)} />
@@ -131,11 +143,14 @@ function ChoixPseudo({ uid, onFini }: { uid: string; onFini: (p: string) => void
 
 function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; onPseudo: () => void }) {
   const [parties, setParties] = useState<Partie[] | null>(null)
+  const [recues, setRecues] = useState<Partie[]>([])
   const [code, setCode] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
 
   useEffect(() => ecouterMesParties(uid, setParties, (e) => setErreur(e.message)), [uid])
+  // Une erreur ici (règles Firestore pas encore à jour) ne doit pas gâcher le reste de l'écran : pas d'invitations, c'est tout.
+  useEffect(() => ecouterInvitations(uid, setRecues, (e) => console.warn('Invitations indisponibles', e)), [uid])
 
   const nouvelle = async () => {
     setOccupe(true)
@@ -194,14 +209,71 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
         </button>
       </form>
       {erreur && <div className="apercu erreur">{erreur}</div>}
+      <RappelNotifications />
       {parties === null && <div className="vide-etat">Chargement…</div>}
-      {parties && liste.length === 0 && (
-        <div className="vide-etat">Aucune partie. Crée-en une et envoie le lien à un ami par SMS ou WhatsApp.</div>
+      {parties && liste.length === 0 && recues.length === 0 && (
+        <div className="vide-etat">Aucune partie. Crée-en une, puis invite un joueur de l’appli ou envoie le lien à un ami par SMS ou WhatsApp.</div>
+      )}
+      {recues.length > 0 && (
+        <>
+          <h2>Invitations reçues</h2>
+          <div className="liste">
+            {recues.map((p) => (
+              <LigneInvitation key={p.code} p={p} uid={uid} pseudo={pseudo} />
+            ))}
+          </div>
+        </>
       )}
       <Section titre="À toi de jouer" parties={aMoi} uid={uid} />
       <Section titre="En attente de l’adversaire" parties={attente} uid={uid} />
       <Section titre="Invitations envoyées" parties={invitations} uid={uid} />
       <Section titre="Terminées" parties={finies.slice(0, 20)} uid={uid} />
+    </div>
+  )
+}
+
+/**
+ * Rappel tant que les notifications sont voulues mais pas autorisées par le système. Sans lui, un joueur qui n'a jamais
+ * créé ni rejoint de partie ne les aurait pas encore demandées quand arrive sa première invitation.
+ */
+function RappelNotifications() {
+  // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
+  const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)
+  const [ecarte, setEcarte] = useState(() => lire('multi.rappelNotifications', false))
+  const [refuse, setRefuse] = useState(false)
+  useEffect(() => {
+    void notificationsAutorisees().then(setAutorisees)
+  }, [])
+  if (ecarte || autorisees !== false || !lireReglages().notifications) return null
+
+  const autoriser = async () => {
+    await demanderPermission()
+    const ok = await notificationsAutorisees()
+    setAutorisees(ok)
+    setRefuse(!ok)
+  }
+  return (
+    <div className="carte carte-accent">
+      <b>Être prévenu quand c’est ton tour</b>
+      <span className="note">Autorise les notifications pour recevoir les invitations et les coups de tes adversaires.</span>
+      {refuse && (
+        <span className="note">Le système a refusé : ouvre les réglages du téléphone (ou du navigateur), rubrique Notifications de Scrabble, et autorise-les.</span>
+      )}
+      <div className="actions">
+        <button
+          type="button"
+          className="bouton large"
+          onClick={() => {
+            ecrire('multi.rappelNotifications', true)
+            setEcarte(true)
+          }}
+        >
+          Masquer
+        </button>
+        <button type="button" className="bouton large" onClick={() => void autoriser()}>
+          Autoriser
+        </button>
+      </div>
     </div>
   )
 }
@@ -220,12 +292,61 @@ function Section({ titre, parties, uid }: { titre: string; parties: Partie[]; ui
   )
 }
 
+/** Invitation reçue : on l'accepte (la partie commence) ou on la refuse (le créateur en est informé). */
+function LigneInvitation({ p, uid, pseudo }: { p: Partie; uid: string; pseudo: string }) {
+  const [occupe, setOccupe] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const nom = p.pseudos[p.createur] ?? 'Un joueur'
+  const repondre = async (action: () => Promise<void>) => {
+    setOccupe(true)
+    setErreur('')
+    try {
+      await action()
+    } catch (e) {
+      setErreur(messageErreur(e))
+      setOccupe(false)
+    }
+  }
+  const accepter = () =>
+    repondre(async () => {
+      void demanderPermission()
+      await rejoindre(p.code, uid, pseudo)
+      naviguer('partie/' + p.code)
+    })
+  return (
+    <div className="ligne choisie" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'default' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="avatar" style={{ background: 'var(--accent)' }}>
+          {nom.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="principal">
+          <div style={{ fontWeight: 700 }}>{nom} t’invite à jouer</div>
+          <div className="note">Partie à deux · {nom} commence</div>
+        </div>
+      </div>
+      <div className="actions">
+        <button type="button" className="bouton large" disabled={occupe} onClick={() => void repondre(() => refuserInvitation(p.code, uid))}>
+          Refuser
+        </button>
+        <button type="button" className="bouton principal large" disabled={occupe} onClick={() => void accepter()}>
+          Accepter
+        </button>
+      </div>
+      {erreur && <div className="apercu erreur">{erreur}</div>}
+    </div>
+  )
+}
+
 function LignePartie({ p, uid }: { p: Partie; uid: string }) {
   const adv = autre(p, uid)
   const nom = adv ? p.pseudos[adv] : null
   const aMoi = p.etat === 'encours' && p.tour === uid
+  // Partie en attente : l'invité, s'il y en a un, a un nom ; sinon on attend quelqu'un qui aura le code.
+  const invite = p.etat === 'attente' ? p.invites?.[0] : undefined
+  const nomInvite = invite ? p.pseudos[invite] : undefined
   let sousTitre = ''
-  if (p.etat === 'attente') sousTitre = `Code ${p.code} · personne n’a encore rejoint`
+  if (p.etat === 'attente')
+    sousTitre = `Code ${p.code} · ${nomInvite ? 'en attente de sa réponse' : p.refus?.length ? 'invitation refusée' : 'personne n’a encore rejoint'}`
   else if (p.dernier) {
     const qui = p.dernier.uid === uid ? 'Tu as' : (p.pseudos[p.dernier.uid] ?? '?') + ' a'
     sousTitre =
@@ -237,12 +358,20 @@ function LignePartie({ p, uid }: { p: Partie; uid: string }) {
             ? `${qui} abandonné`
             : `${qui} passé`
   } else sousTitre = 'Début de partie'
-  let titre = nom ? (p.etat === 'finie' ? resultat(p, uid) + ' contre ' + nom : aMoi ? nom : 'En attente de ' + nom) : 'Invitation envoyée'
+  let titre = nom
+    ? p.etat === 'finie'
+      ? resultat(p, uid) + ' contre ' + nom
+      : aMoi
+        ? nom
+        : 'En attente de ' + nom
+    : nomInvite
+      ? 'Invitation envoyée à ' + nomInvite
+      : 'Invitation envoyée'
   if (p.enAttente) titre += ' · envoi en attente'
   return (
     <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
       <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
-        {(nom ?? '?').slice(0, 1).toUpperCase()}
+        {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
       </div>
       <div className="principal">
         <div style={{ fontWeight: 700 }}>{titre}</div>
@@ -262,7 +391,7 @@ const resultat = (p: Partie, uid: string) => (!p.fin?.gagnant ? 'Égalité' : p.
 
 /** Lien d'invitation : la version web publiée (ou celle qu'on utilise, si on est déjà sur le web). */
 function lienInvitation(code: string) {
-  const baseWeb = natif || location.hostname === 'localhost' ? URL_WEB : location.origin + location.pathname
+  const baseWeb = natif || location.hostname === 'localhost' ? ADRESSE_WEB : location.origin + location.pathname
   return `${baseWeb}#/rejoindre/${code}`
 }
 
@@ -284,11 +413,11 @@ function Invitation({ p }: { p: Partie }) {
   }
   return (
     <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <b>Invite ton adversaire</b>
+      <b>Ou envoie le lien</b>
       <div className="code-invitation">{p.code}</div>
       <span className="note">
-        Envoie ce lien : il ouvre l’appli Scrabble si elle est installée, sinon la version web. On peut aussi saisir le
-        code dans « Mes parties ».
+        Pour quelqu’un qui n’a pas encore l’appli, ou que tu ne trouves pas ci-dessus : le lien ouvre l’appli Scrabble si
+        elle est installée, sinon la version web. On peut aussi saisir le code dans « Mes parties ».
       </span>
       <div className="actions" style={{ flexWrap: 'wrap' }}>
         <button type="button" className="bouton principal large" onClick={() => void partager()}>
@@ -320,6 +449,125 @@ function Invitation({ p }: { p: Partie }) {
       >
         Supprimer l’invitation
       </button>
+    </div>
+  )
+}
+
+/**
+ * Inviter directement un joueur de l'appli : on tape son pseudo (ou on touche un adversaire déjà rencontré), il reçoit
+ * l'invitation dans « Mes parties » et l'accepte ou la refuse. Un seul invité à la fois : un nouveau remplace l'ancien.
+ */
+function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
+  const [texte, setTexte] = useState('')
+  const [trouves, setTrouves] = useState<JoueurTrouve[] | null>(null)
+  const [recents, setRecents] = useState<JoueurTrouve[]>([])
+  const [occupe, setOccupe] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  // Adversaires déjà rencontrés : proposés d'un toucher, sans rien taper.
+  useEffect(() => ecouterMesParties(uid, (parties) => setRecents(adversairesRecents(parties, uid).slice(0, 6))), [uid])
+
+  // Recherche au fil de la frappe, après une courte pause.
+  useEffect(() => {
+    if (cleRecherche(texte).length < MIN_RECHERCHE) {
+      setTrouves(null)
+      return
+    }
+    let actuel = true
+    const minuteur = setTimeout(() => {
+      chercherJoueurs(texte, uid)
+        .then((r) => {
+          if (!actuel) return
+          setTrouves(r)
+          setErreur('')
+        })
+        .catch((e) => actuel && setErreur(messageErreur(e)))
+    }, 300)
+    return () => {
+      actuel = false
+      clearTimeout(minuteur)
+    }
+  }, [texte, uid])
+
+  const invite = p.invites?.[0]
+  const refuse = p.refus?.[p.refus.length - 1]
+  const agir = async (action: () => Promise<void>) => {
+    setOccupe(true)
+    setErreur('')
+    try {
+      await action()
+    } catch (e) {
+      setErreur(messageErreur(e))
+    } finally {
+      setOccupe(false)
+    }
+  }
+  const choisir = (j: JoueurTrouve) => {
+    if (j.uid !== invite) void agir(() => inviter(p, j))
+  }
+
+  return (
+    <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <b>Inviter un joueur</b>
+      {invite ? (
+        <div className="liste">
+          <div className="ligne choisie" style={{ cursor: 'default' }}>
+            <div className="principal">
+              <div style={{ fontWeight: 700 }}>Invitation envoyée à {p.pseudos[invite] ?? '?'}</div>
+              <div className="note">Elle la trouvera dans « Mes parties » et te préviendra en l’acceptant.</div>
+            </div>
+            <button type="button" className="bouton discret" disabled={occupe} onClick={() => void agir(() => annulerInvitation(p))}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      ) : (
+        refuse && <span className="note ecart-neg">{p.pseudos[refuse] ?? 'Le joueur'} a refusé ton invitation.</span>
+      )}
+      {recents.length > 0 && (
+        <div className="champ">
+          Joué récemment
+          <div className="segments">
+            {recents.map((j) => (
+              <button key={j.uid} type="button" className={j.uid === invite ? 'actif' : ''} disabled={occupe} onClick={() => choisir(j)}>
+                {j.pseudo}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <label className="champ">
+        Chercher un joueur
+        <input
+          value={texte}
+          onChange={(e) => setTexte(e.target.value)}
+          placeholder="Son pseudo"
+          maxLength={20}
+          autoComplete="off"
+          autoCapitalize="none"
+        />
+      </label>
+      {trouves &&
+        (trouves.length === 0 ? (
+          <span className="note">
+            Personne ne s’appelle comme ça. Il n’a peut-être pas encore de compte, ou ne veut pas être trouvé : envoie-lui le lien ci-dessous.
+          </span>
+        ) : (
+          <div className="liste">
+            {trouves.map((j) => (
+              <button key={j.uid} type="button" className={'ligne' + (j.uid === invite ? ' choisie' : '')} disabled={occupe} onClick={() => choisir(j)}>
+                <div className="avatar" style={{ background: 'var(--accent)' }}>
+                  {j.pseudo.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="principal" style={{ fontWeight: 700 }}>
+                  {j.pseudo}
+                </div>
+                <span className="note">{j.uid === invite ? 'Invité' : 'Inviter'}</span>
+              </button>
+            ))}
+          </div>
+        ))}
+      {erreur && <div className="apercu erreur">{erreur}</div>}
     </div>
   )
 }
@@ -415,6 +663,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       {p.etat === 'attente' ? (
         <div className="contenu">
           <Retour droite={boutonHistorique} />
+          {p.createur === uid && <InviterJoueur p={p} uid={uid} />}
           <Invitation p={p} />
         </div>
       ) : (
@@ -481,7 +730,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                   type="button"
                   className="bouton large"
                   onClick={() => {
-                    if (confirm('Passer ton tour ?')) jouer({ type: 'passe' })
+                    if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) jouer({ type: 'passe' })
                   }}
                 >
                   Passer
@@ -569,6 +818,20 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
 function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
   const f = p.fin
   const adv = autre(p, uid)
+  const [occupe, setOccupe] = useState(false)
+  const [erreur, setErreur] = useState('')
+  // Revanche : une nouvelle partie, avec la même personne déjà invitée.
+  const revanche = async () => {
+    if (!adv) return
+    setOccupe(true)
+    setErreur('')
+    try {
+      naviguer('partie/' + (await creerPartie(uid, p.pseudos[uid] ?? '?', { uid: adv, pseudo: nomAdv })))
+    } catch (e) {
+      setErreur(messageErreur(e))
+      setOccupe(false)
+    }
+  }
   return (
     <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <b style={{ fontSize: 20 }}>{f?.gagnant ? (f.gagnant === uid ? 'Tu as gagné !' : `${nomAdv} a gagné`) : 'Égalité'}</b>
@@ -580,6 +843,17 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
             : 'Le sac est vide et un chevalet aussi : les lettres restantes changent de camp'}
         {f && f.raison !== 'abandon' && adv && ` (toi ${signe(f.ajustements[uid] ?? 0)}, ${nomAdv} ${signe(f.ajustements[adv] ?? 0)}).`}
       </span>
+      {p.nbCoups > 0 && (
+        <button type="button" className="bouton" onClick={() => naviguer('partie/' + p.code + '/analyse')}>
+          Analyser la partie
+        </button>
+      )}
+      {adv && (
+        <button type="button" className="bouton principal" disabled={occupe} onClick={() => void revanche()}>
+          Proposer une revanche à {nomAdv}
+        </button>
+      )}
+      {erreur && <div className="apercu erreur">{erreur}</div>}
     </div>
   )
 }

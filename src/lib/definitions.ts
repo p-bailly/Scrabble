@@ -30,6 +30,14 @@ async function definitionDe(titre: string): Promise<Definition | null> {
   return sens.length ? { titre, sens } : null
 }
 
+/** Nombre de mots dont la définition est gardée sur l'appareil. */
+export const nbDefinitionsGardees = () => memoire.size
+
+export function viderDefinitions() {
+  memoire.clear()
+  ecrire(CLE, null)
+}
+
 /** Définition d'un mot du dictionnaire (majuscules sans accents) ; null si le Wiktionnaire n'en a pas. */
 export async function chercherDefinition(mot: string): Promise<Definition | null> {
   const m = mot.toLowerCase()

@@ -48,39 +48,39 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e2238;
-    --surface: #16314d;
-    --surface-2: #1d3d5e;
-    --text: #e8f1fb;
-    --muted: #9db6d0;
-    --line: #2f5276;
-    --bord: #6e93b9;
-    --cadre: #06131f;
-    --tapis: #2f7040;
-    --trait: #163b24;
-    --tile: #ecdfb2;
-    --tile-edge: #a08e58;
-    --ring: #7fb0f5;
-    --joker: #ff8a80;
-    --rack: #0f4a85;
-    --rack-slot: #1d3d5e;
-    --chip: #1f3f66;
-    --chip-text: #b9d4fa;
-    --accent: #4d8fe8;
-    --accent-bord: #4d8fe8;
-    --accent-text: #06162b;
-    --lien: #b9d4fa;
-    --ok: #54d08a;
-    --err: #ff7f72;
-    --ombre: 0 2px 10px rgba(0, 0, 0, 0.45);
-    --mt: #c8322c;
-    --md: #c98a88;
-    --lt: #1c74b9;
-    --ld: #6f9fc7;
-    color-scheme: dark;
-  }
+/* Thème sombre : data-theme est posé sur <html> par index.html (avant l'affichage) puis par lib/reglages.ts, qui
+   résout « automatique » d'après le système. */
+:root[data-theme='dark'] {
+  --bg: #0e2238;
+  --surface: #16314d;
+  --surface-2: #1d3d5e;
+  --text: #e8f1fb;
+  --muted: #9db6d0;
+  --line: #2f5276;
+  --bord: #6e93b9;
+  --cadre: #06131f;
+  --tapis: #2f7040;
+  --trait: #163b24;
+  --tile: #ecdfb2;
+  --tile-edge: #a08e58;
+  --ring: #7fb0f5;
+  --joker: #ff8a80;
+  --rack: #0f4a85;
+  --rack-slot: #1d3d5e;
+  --chip: #1f3f66;
+  --chip-text: #b9d4fa;
+  --accent: #4d8fe8;
+  --accent-bord: #4d8fe8;
+  --accent-text: #06162b;
+  --lien: #b9d4fa;
+  --ok: #54d08a;
+  --err: #ff7f72;
+  --ombre: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --mt: #c8322c;
+  --md: #c98a88;
+  --lt: #1c74b9;
+  --ld: #6f9fc7;
+  color-scheme: dark;
 }
 
 * {
@@ -816,6 +816,10 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.champ-code.libre {
+  text-transform: none;
+  letter-spacing: normal;
+}
 /* Le code d'invitation est un mot de jetons. */
 .code-invitation {
   font-size: 38px;
@@ -1020,6 +1024,76 @@ a.bouton {
 .panneau-bas > .actions.dense .bouton {
   padding: 0 6px;
   font-size: 14px;
+}
+
+/* Réglages : des lignes dans une carte, avec un interrupteur ou un bouton à droite. */
+.reglage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.carte > .reglage:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.carte > .reglage:last-child {
+  padding-bottom: 0;
+}
+.reglage .texte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.reglage .titre {
+  font-weight: 700;
+  font-size: 15px;
+}
+.reglage .bouton {
+  min-height: 40px;
+  flex: none;
+}
+.interrupteur {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex: none;
+  padding: 0;
+  border: 1.5px solid var(--bord);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.interrupteur::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--muted);
+  transition: transform 0.15s;
+}
+.interrupteur[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent-bord);
+}
+.interrupteur[aria-checked='true']::after {
+  background: var(--accent-text);
+  transform: translateX(22px);
+}
+.interrupteur:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Étiquettes des cases bonus masquables (réglage) ; l'étoile du centre reste. */
+:root[data-etiquettes='non'] .case:not(.centre) .etiq {
+  display: none;
 }
 
 /* Topping : mots essayés pendant le coup. */

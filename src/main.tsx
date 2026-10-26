@@ -3,10 +3,14 @@ import { createRoot } from 'react-dom/client'
 import { App as AppNative } from '@capacitor/app'
 import { App } from './App'
 import { natif, surOuvertureNotification } from './lib/notifications'
+import { demarrerReglages } from './lib/reglages'
 import { naviguer } from './lib/routeur'
 import { lire } from './lib/stockage'
 import { chargerDico } from './moteur/moteur'
 import './styles.css'
+
+// Thème, étiquettes du plateau : appliqués avant le premier rendu.
+demarrerReglages()
 
 // Premier lancement sur cet appareil : on commence par le nom d'utilisateur (écran « Mes parties », multi/Compte.tsx).
 // Le solo reste à un toucher (« Jouer en solo sans compte ») et marche sans compte ni réseau.

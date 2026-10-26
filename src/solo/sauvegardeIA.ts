@@ -7,7 +7,10 @@ import { ecrire, lire } from '../lib/stockage'
 const PARTIE = 'ia.partie'
 const HISTORIQUE = 'ia.historique'
 const REGLAGES = 'ia.reglages'
+const PARTIES = 'ia.parties'
 const MAX_HISTORIQUE = 100
+/** Parties terminées gardées en entier (avec leurs coups) pour pouvoir les analyser plus tard. */
+const MAX_PARTIES = 10
 
 export const lirePartieIA = (): PartieIA | null => lire<PartieIA | null>(PARTIE, null)
 export const ecrirePartieIA = (p: PartieIA | null) => ecrire(PARTIE, p)
@@ -27,10 +30,22 @@ export const lireHistoriqueIA = (): ResumeIA[] => lire<ResumeIA[]>(HISTORIQUE, [
 export function archiverIA(p: PartieIA) {
   const h = lireHistoriqueIA().filter((x) => x.id !== p.id)
   ecrire(HISTORIQUE, [resumeIA(p), ...h].slice(0, MAX_HISTORIQUE))
+  if (p.coups.length) ecrire(PARTIES, [p, ...lirePartiesIA().filter((x) => x.id !== p.id)].slice(0, MAX_PARTIES))
+}
+
+/** Les dernières parties terminées, avec leurs coups, la plus récente en premier. */
+export const lirePartiesIA = (): PartieIA[] => lire<PartieIA[]>(PARTIES, [])
+
+/** Une partie à analyser : la partie en cours de l'appareil (si c'est elle) ou une partie terminée gardée. */
+export function trouverPartieIA(id: string): PartieIA | null {
+  const courante = lirePartieIA()
+  if (courante && (id === 'courante' || courante.id === id)) return courante
+  return lirePartiesIA().find((p) => p.id === id) ?? null
 }
 
 export function supprimerHistoriqueIA() {
   ecrire(HISTORIQUE, [])
+  ecrire(PARTIES, [])
 }
 
 export interface BilanNiveau {

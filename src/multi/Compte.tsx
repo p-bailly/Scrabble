@@ -5,9 +5,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
 import { Entete } from '../composants/Entete'
 import { naviguer } from '../lib/routeur'
-import { ecrire, lire } from '../lib/stockage'
-import { enregistrerPseudo, lirePseudo } from './donnees'
-import { configuration, connecterNom, deconnexion, utilisateur } from './firebase'
+import { demanderPermission } from '../lib/notifications'
+import { notificationVoulue } from '../lib/reglages'
+import { ecrire } from '../lib/stockage'
+import { enregistrerJoueur, lireJoueur } from './donnees'
+import { configuration, connecterNom, utilisateur } from './firebase'
 import Multi from './Multi'
 
 function message(e: unknown): string {
@@ -46,21 +48,8 @@ function Session({ chemin }: { chemin: string[] }) {
     )
   if (moi === undefined) return <div className="vide-etat">Connexion…</div>
   if (!moi) return <Connexion onConnecte={setMoi} />
-  return (
-    <>
-      <Multi chemin={chemin} />
-      {chemin[0] === 'parties' && (
-        <div style={{ padding: '0 16px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="note" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Connecté : {lire('multi.pseudo', '') || moi.email?.split('@')[0]}
-          </span>
-          <button type="button" className="bouton discret" onClick={() => void deconnexion().then(() => setMoi(null))}>
-            Se déconnecter
-          </button>
-        </div>
-      )}
-    </>
-  )
+  // Le pseudo, la visibilité et la déconnexion se règlent dans l'onglet Réglages.
+  return <Multi chemin={chemin} />
 }
 
 /** Saisie du nom d'utilisateur : crée le compte la première fois, le retrouve ensuite (sur n'importe quel appareil). */
@@ -73,14 +62,17 @@ function Connexion({ onConnecte }: { onConnecte: (u: User) => void }) {
     e.preventDefault()
     const n = nom.trim().slice(0, 20)
     if (!n) return
+    // Tout de suite, dans le geste de l'utilisateur (les navigateurs l'exigent) : un joueur invité doit pouvoir être
+    // prévenu dès sa première invitation, avant d'avoir créé ni rejoint une partie.
+    if (notificationVoulue()) void demanderPermission()
     setOccupe(true)
     setErreur('')
     try {
       const u = await connecterNom(n)
       // Le nom sert de pseudo ; un compte déjà connu garde le pseudo enregistré (même écriture sur tous les appareils).
-      const existant = await lirePseudo(u.uid).catch(() => null)
-      if (!existant) await enregistrerPseudo(u.uid, n)
-      ecrire('multi.pseudo', existant ?? n)
+      const existant = await lireJoueur(u.uid).catch(() => null)
+      if (!existant) await enregistrerJoueur(u.uid, n, true)
+      ecrire('multi.pseudo', existant?.pseudo ?? n)
       onConnecte(u)
     } catch (err) {
       setErreur(message(err))

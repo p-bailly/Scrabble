@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
-import { IconeLoupe, IconeParties, IconeSolo, IconeStats } from './composants/Icones'
+import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
+import { AnalyseIA } from './pages/Analyse'
 import { ContreIA } from './pages/ContreIA'
 import { Correction } from './pages/Correction'
 import { Dictionnaire } from './pages/Dictionnaire'
 import { Duplicate } from './pages/Duplicate'
+import { Reglages } from './pages/Reglages'
 import { Solo } from './pages/Solo'
 import { Stats } from './pages/Stats'
 
@@ -33,6 +35,7 @@ export function App() {
   if (page === 'correction') contenu = <Correction id={decodeURIComponent(chemin[1] ?? 'courante')} />
   else if (page === 'dictionnaire') contenu = <Dictionnaire />
   else if (page === 'stats') contenu = <Stats />
+  else if (page === 'reglages') contenu = <Reglages />
   else if (page === 'parties' || page === 'partie' || page === 'rejoindre')
     contenu = (
       <Suspense fallback={<div className="vide-etat">Chargement…</div>}>
@@ -40,6 +43,7 @@ export function App() {
       </Suspense>
     )
   else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate />
+  else if (page === 'solo' && chemin[1] === 'ia' && chemin[2] === 'analyse') contenu = <AnalyseIA id={decodeURIComponent(chemin[3] ?? 'courante')} />
   else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA />
   else contenu = <Solo />
 
@@ -52,6 +56,7 @@ export function App() {
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
         <Onglet href="#/dictionnaire" actif={onglet === 'dictionnaire'} icone={<IconeLoupe />} texte="Dictionnaire" />
         <Onglet href="#/stats" actif={onglet === 'stats'} icone={<IconeStats />} texte="Stats" />
+        <Onglet href="#/reglages" actif={onglet === 'reglages'} icone={<IconeReglages />} texte="Réglages" />
       </nav>
     </div>
   )

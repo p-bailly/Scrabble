@@ -34,6 +34,14 @@ export const IconeStats = ({ taille = 22 }: P) => (
     <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
   </svg>
 )
+export const IconeReglages = ({ taille = 22 }: P) => (
+  <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
+    <path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h11M19 18h1" />
+    <circle cx="16" cy="6" r="2" />
+    <circle cx="9" cy="12" r="2" />
+    <circle cx="17" cy="18" r="2" />
+  </svg>
+)
 export const IconeMelanger = ({ taille = 18 }: P) => (
   <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
     <path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />

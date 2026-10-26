@@ -3,8 +3,19 @@
 
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
+import { notificationVoulue, type GenreNotification } from './reglages'
 
 export const natif = Capacitor.isNativePlatform()
+
+/** Le système autorise-t-il les notifications ? `null` si cet appareil ne les propose pas. */
+export async function notificationsAutorisees(): Promise<boolean | null> {
+  try {
+    if (natif) return (await LocalNotifications.checkPermissions()).display === 'granted'
+    return 'Notification' in window ? Notification.permission === 'granted' : null
+  } catch {
+    return null
+  }
+}
 
 export async function demanderPermission(): Promise<boolean> {
   try {
@@ -24,8 +35,9 @@ function idNumerique(cle: string): number {
   return Math.abs(h)
 }
 
-/** Affiche une notification qui, touchée, ouvre `hash` (ex. « #/partie/K7P2QX »). */
-export async function notifier(cle: string, titre: string, texte: string, hash: string) {
+/** Affiche une notification qui, touchée, ouvre `hash` (ex. « #/partie/K7P2QX »), si les réglages la permettent. */
+export async function notifier(cle: string, titre: string, texte: string, hash: string, genre?: GenreNotification) {
+  if (!notificationVoulue(genre)) return
   try {
     if (natif) {
       await LocalNotifications.schedule({ notifications: [{ id: idNumerique(cle), title: titre, body: texte, extra: { hash } }] })
