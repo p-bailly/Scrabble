@@ -1,20 +1,18 @@
-// Dictionnaire : tous les mots valables (ODS), avec trois outils : chercher (début, fin ou contenu, « ? » pour une
-// lettre), vérifier qu'un mot est valable, et trouver les mots qu'on écrit avec ses lettres. Toucher un mot en donne la définition.
+// Dictionnaire : tous les mots valables (ODS), avec deux outils : chercher (début, fin ou contenu, « ? » pour une
+// lettre) et vérifier qu'un mot est valable. Toucher un mot en donne la définition. Pas de recherche « avec mes
+// lettres » : ce serait tricher en cours de partie.
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Mot } from '../composants/Apercu'
+import { useEffect, useMemo, useState } from 'react'
 import { DefinitionMot } from '../composants/Definition'
 import { Entete } from '../composants/Entete'
-import { motsAvecLettres, nettoyerLettres } from '../jeu/anagrammes'
 import { Dawg } from '../jeu/dawg'
 import { sommeValeurs } from '../jeu/lettres'
 import { URL_DICO } from '../moteur/moteur'
 
-type Outil = 'chercher' | 'verifier' | 'lettres'
+type Outil = 'chercher' | 'verifier'
 const OUTILS: { outil: Outil; nom: string }[] = [
   { outil: 'chercher', nom: 'Chercher' },
   { outil: 'verifier', nom: 'Vérifier' },
-  { outil: 'lettres', nom: 'Mes lettres' },
 ]
 
 type Mode = 'debut' | 'fin' | 'contient'
@@ -24,8 +22,6 @@ const MODES: { mode: Mode; nom: string }[] = [
   { mode: 'contient', nom: 'Contient' },
 ]
 const PAGE = 200
-/** Au-delà, la recherche des mots possibles devient trop longue pour un téléphone. */
-const MAX_LETTRES = 15
 
 let dico: Promise<Dawg> | null = null
 const charger = () =>
@@ -87,7 +83,6 @@ export function Dictionnaire() {
       {!d && !erreur && <div className="vide-etat">Chargement du dictionnaire…</div>}
       {d && outil === 'chercher' && <Chercher d={d} />}
       {d && outil === 'verifier' && <Verifier d={d} />}
-      {d && outil === 'lettres' && <MesLettres d={d} />}
     </div>
   )
 }
@@ -144,10 +139,13 @@ function Chercher({ d }: { d: Dawg }) {
   )
 }
 
+/** Lettres A à Z d'une saisie (accents et casse ignorés). */
+const nettoyer = (saisie: string) => saisie.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '')
+
 /** Un mot est-il valable ? La réponse de l'arbitre, avec ses points sans case bonus et sa définition. */
 function Verifier({ d }: { d: Dawg }) {
   const [saisie, setSaisie] = useState('')
-  const mot = nettoyerLettres(saisie).replace(/\?/g, '')
+  const mot = nettoyer(saisie)
   const valable = mot.length > 0 && d.contient(mot)
   return (
     <>
@@ -172,67 +170,6 @@ function Verifier({ d }: { d: Dawg }) {
         <div className="vide-etat">Tape un mot : l’appli te dit s’il est dans le dictionnaire.</div>
       )}
       {valable && <DefinitionMot mot={mot} />}
-    </>
-  )
-}
-
-/** Les mots qu'on écrit avec des lettres données (un chevalet), joker « ? » compris. */
-function MesLettres({ d }: { d: Dawg }) {
-  const [saisie, setSaisie] = useState('')
-  const [toutes, setToutes] = useState(false)
-  const [ouvert, setOuvert] = useState<string | null>(null)
-  // Le calcul passe après la frappe : le champ reste fluide même avec des jokers.
-  const lettres = useDeferredValue(nettoyerLettres(saisie))
-  const trop = lettres.length > MAX_LETTRES
-  const r = useMemo(() => (lettres.length >= 2 && !trop ? motsAvecLettres(d, lettres, { toutes }) : null), [d, lettres, trop, toutes])
-  return (
-    <>
-      <input
-        value={saisie}
-        onChange={(e) => setSaisie(e.target.value)}
-        placeholder="Tes lettres (? = joker)"
-        autoCapitalize="characters"
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        aria-label="Tes lettres"
-      />
-      <div className="segments">
-        <button type="button" className={!toutes ? 'actif' : ''} onClick={() => setToutes(false)}>
-          Tous les mots
-        </button>
-        <button type="button" className={toutes ? 'actif' : ''} onClick={() => setToutes(true)}>
-          Toutes les lettres
-        </button>
-      </div>
-      {!r && (
-        <div className="vide-etat">
-          {trop ? `${MAX_LETTRES} lettres au plus.` : `Tape deux lettres ou plus (jusqu’à ${MAX_LETTRES}, avec « ? » pour un joker).`}
-        </div>
-      )}
-      {r && r.mots.length === 0 && <div className="vide-etat">Aucun mot ne se forme avec ces lettres.</div>}
-      {r && r.mots.length > 0 && (
-        <span className="note">
-          {r.mots.length}
-          {r.tronque ? '+' : ''} mot{r.mots.length > 1 ? 's' : ''}, les plus longs d’abord · points sans case bonus
-        </span>
-      )}
-      <div className="liste">
-        {r?.mots.map((m) => {
-          const clair = m.mot.toUpperCase()
-          return (
-            <div key={m.mot}>
-              <button type="button" className={'ligne' + (ouvert === m.mot ? ' choisie' : '')} onClick={() => setOuvert(ouvert === m.mot ? null : m.mot)}>
-                <div className="principal">
-                  <Mot mot={m.mot} />
-                </div>
-                <span className="pts">{m.points}</span>
-              </button>
-              {ouvert === m.mot && <DefinitionMot mot={clair} />}
-            </div>
-          )
-        })}
-      </div>
     </>
   )
 }

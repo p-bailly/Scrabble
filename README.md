@@ -7,9 +7,9 @@ Appli perso de **Scrabble en français**, en quatre parties :
 - **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
   on invite directement un joueur de l'appli (par son pseudo), ou on envoie un lien à qui ne l'a pas ;
-- **Dictionnaire** : tous les mots valables, avec trois outils : *Chercher* (commence par, finit par, contient ;
-  `?` = une lettre), *Vérifier* (un mot est-il valable, et combien vaut-il ?) et *Mes lettres* (les mots qu'on écrit
-  avec un chevalet, joker `?` compris, ou seulement les anagrammes). Toucher un mot affiche sa définition (Wiktionnaire,
+- **Dictionnaire** : tous les mots valables, avec deux outils : *Chercher* (commence par, finit par, contient ;
+  `?` = une lettre) et *Vérifier* (un mot est-il valable, et combien vaut-il ?). Pas de recherche « avec mes
+  lettres » : ce serait tricher en cours de partie. Toucher un mot affiche sa définition (Wiktionnaire,
   connexion nécessaire, gardée ensuite sur l'appareil) ; on la retrouve aussi depuis les historiques, l'analyse et la
   correction des parties.
 
@@ -173,6 +173,15 @@ un joker. Sur l'écran de jeu : le chevalet dans un bac bleu juste sous le plate
 15 dernières secondes), la ligne du coup en cours, les boutons carrés, puis tout en bas le chrono encadré avec le
 score (`74 / 93 pts (−19 | 79,6 %)`) et sa jauge verte. Thème clair ou sombre selon le téléphone (ou au choix, dans les Réglages), police système.
 Les couleurs sont des variables CSS en tête de [`src/styles.css`](src/styles.css).
+
+**Grand écran** (ordinateur, tablette à l'horizontale : à partir de 900 px de large) : les écrans de jeu passent en
+deux colonnes, comme DupliJeu sur ordinateur. Le plateau est à gauche, aussi grand que la hauteur de la fenêtre le
+permet (la page ne défile pas) ; à droite, la barre du haut, le chevalet, l'aperçu du coup, les boutons et le chrono.
+Si la colonne de droite est plus haute que la fenêtre (liste des autres bons coups après un coup de duplicate), c'est
+elle qui défile, boutons et chrono restant visibles en bas. Les fenêtres (sac, indices, menu…) s'ouvrent au centre. Les
+autres écrans (menus, réglages, dictionnaire…) gardent leur colonne centrée. En CSS, c'est la requête `@media
+(min-width: 900px)` à la fin de `styles.css` ; sur téléphone, `ColonneJeu` (dans `EcranJeu.tsx`) n'ajoute aucun
+niveau à la mise en page.
 
 ## Réglages
 

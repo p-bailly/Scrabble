@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, Chrono, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, Chrono, ColonneJeu, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -434,78 +434,80 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
         onCase={resultat ? undefined : edition.toucherCase}
         onAppuiPose={resultat ? undefined : edition.appuiPose}
       />
-      {resultat ? (
-        <PanneauBas statut={statut}>
-          <ContenuPanneau>
-            {resultat.coup && (
-              <ResultatCoup coup={resultat.coup} topping={topping} montre={montre} onMontrer={setMontre} />
-            )}
-            {partie.finie && <FinDePartie partie={partie} />}
-          </ContenuPanneau>
-          {partie.finie ? (
-            <div className="actions">
-              <button
-                type="button"
-                className="bouton large"
-                onClick={() => {
-                  onSuivant()
-                  naviguer('correction/' + encodeURIComponent(partie.id))
-                }}
-              >
-                Correction
-              </button>
-              <button type="button" className="bouton principal large" onClick={onSuivant}>
-                Terminer
-              </button>
-            </div>
-          ) : (
-            <div className="actions">
-              <button type="button" className="bouton principal large" onClick={onSuivant}>
-                Coup suivant
-              </button>
-            </div>
-          )}
-        </PanneauBas>
-      ) : (
-        <>
-          <Chevalet edition={edition} />
-          <Apercu analyse={analyse} indice="" />
-          {message && <div className="note note-centree ecart-neg">{message}</div>}
-          {topping && coup.essais.length > 0 && <HistoriqueEssais essais={coup.essais} />}
-          {topping && coup.indices.length > 0 && topConnu && (
-            <div className="note note-centree">
-              Indices : {coup.indices.map((i) => texteIndice(i, topConnu)).join(' · ')}
-            </div>
-          )}
-          {!topping && coup.bulletin && (
-            <div className="note note-centree">
-              Noté : <Mot mot={coup.bulletin.mot} /> {reference(coup.bulletin.debut, coup.bulletin.dir)} · {coup.bulletin.points} pts
-            </div>
-          )}
+      <ColonneJeu>
+        {resultat ? (
           <PanneauBas statut={statut}>
-            <div className="actions">
-              <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-                <IconeMelanger />
-              </button>
-              <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
-                <IconeRappeler />
-              </button>
-              {topping ? (
-                <button type="button" className="bouton contour large" onClick={() => setFeuilleIndices(true)}>
-                  <IconeCrayon /> Indices{coup.indices.length > 0 && ` (${coup.indices.length})`}
-                </button>
-              ) : (
-                <button type="button" className="bouton contour large" onClick={noter} disabled={!analyse?.valide}>
-                  <IconeCrayon /> Noter
-                </button>
+            <ContenuPanneau>
+              {resultat.coup && (
+                <ResultatCoup coup={resultat.coup} topping={topping} montre={montre} onMontrer={setMontre} />
               )}
-              <button type="button" className="bouton principal large" onClick={() => void valider()} disabled={calcul}>
-                <IconeOk /> {calcul ? 'Calcul…' : 'Valider'}
-              </button>
-            </div>
+              {partie.finie && <FinDePartie partie={partie} />}
+            </ContenuPanneau>
+            {partie.finie ? (
+              <div className="actions">
+                <button
+                  type="button"
+                  className="bouton large"
+                  onClick={() => {
+                    onSuivant()
+                    naviguer('correction/' + encodeURIComponent(partie.id))
+                  }}
+                >
+                  Correction
+                </button>
+                <button type="button" className="bouton principal large" onClick={onSuivant}>
+                  Terminer
+                </button>
+              </div>
+            ) : (
+              <div className="actions">
+                <button type="button" className="bouton principal large" onClick={onSuivant}>
+                  Coup suivant
+                </button>
+              </div>
+            )}
           </PanneauBas>
-        </>
-      )}
+        ) : (
+          <>
+            <Chevalet edition={edition} />
+            <Apercu analyse={analyse} indice="" />
+            {message && <div className="note note-centree ecart-neg">{message}</div>}
+            {topping && coup.essais.length > 0 && <HistoriqueEssais essais={coup.essais} />}
+            {topping && coup.indices.length > 0 && topConnu && (
+              <div className="note note-centree">
+                Indices : {coup.indices.map((i) => texteIndice(i, topConnu)).join(' · ')}
+              </div>
+            )}
+            {!topping && coup.bulletin && (
+              <div className="note note-centree">
+                Noté : <Mot mot={coup.bulletin.mot} /> {reference(coup.bulletin.debut, coup.bulletin.dir)} · {coup.bulletin.points} pts
+              </div>
+            )}
+            <PanneauBas statut={statut}>
+              <div className="actions">
+                <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                  <IconeMelanger />
+                </button>
+                <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+                  <IconeRappeler />
+                </button>
+                {topping ? (
+                  <button type="button" className="bouton contour large" onClick={() => setFeuilleIndices(true)}>
+                    <IconeCrayon /> Indices{coup.indices.length > 0 && ` (${coup.indices.length})`}
+                  </button>
+                ) : (
+                  <button type="button" className="bouton contour large" onClick={noter} disabled={!analyse?.valide}>
+                    <IconeCrayon /> Noter
+                  </button>
+                )}
+                <button type="button" className="bouton principal large" onClick={() => void valider()} disabled={calcul}>
+                  <IconeOk /> {calcul ? 'Calcul…' : 'Valider'}
+                </button>
+              </div>
+            </PanneauBas>
+          </>
+        )}
+      </ColonneJeu>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={partie.sac} sac={partie.sac.length} />
