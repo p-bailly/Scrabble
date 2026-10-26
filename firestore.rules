@@ -9,12 +9,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Pseudo de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
+    // Fiche de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
     match /joueurs/{uid} {
-      allow read: if connecte();
+      allow get: if connecte();
+      // Chercher un joueur à inviter (par sa clé de recherche) : 10 fiches au plus par requête, et une requête sans
+      // `limit` est refusée, pour qu'on ne puisse pas tout lister d'un coup.
+      allow list: if connecte() && request.query.limit <= 10;
       allow write: if connecte() && request.auth.uid == uid
         && request.resource.data.pseudo is string
-        && request.resource.data.pseudo.size() > 0 && request.resource.data.pseudo.size() <= 20;
+        && request.resource.data.pseudo.size() > 0 && request.resource.data.pseudo.size() <= 20
+        // La clé de recherche (le pseudo simplifié) n'est écrite que si le joueur accepte d'être trouvé.
+        && (!('recherche' in request.resource.data)
+          || (request.resource.data.recherche is string && request.resource.data.recherche.size() <= 20))
+        && (!('visible' in request.resource.data) || request.resource.data.visible is bool);
     }
 
     match /parties/{code} {
@@ -30,16 +37,25 @@ service cloud.firestore {
       function inchange(champs) {
         return !request.resource.data.diff(resource.data).affectedKeys().hasAny(champs);
       }
+      function seulementChange(champs) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(champs);
+      }
+      // Joueur invité directement à cette partie (champ absent des parties d'avant les invitations).
+      function invite(d) {
+        return request.auth.uid in d.get('invites', []);
+      }
 
-      // Lecture : les deux joueurs ; une partie en attente d'adversaire est lisible par qui a le code.
-      allow read: if connecte() && (joueur(resource.data) || resource.data.etat == 'attente');
+      // Lecture : les deux joueurs ; le joueur invité ; une partie en attente d'adversaire est lisible par qui a le code.
+      allow read: if connecte() && (joueur(resource.data) || invite(resource.data) || resource.data.etat == 'attente');
 
-      // Création : par son créateur, seul joueur inscrit, en attente d'un adversaire.
+      // Création : par son créateur, seul joueur inscrit, en attente d'un adversaire (et d'un invité au plus).
       allow create: if connecte()
         && request.resource.data.createur == request.auth.uid
         && request.resource.data.joueurs == [request.auth.uid]
         && request.resource.data.etat == 'attente'
-        && request.resource.data.nbCoups == 0;
+        && request.resource.data.nbCoups == 0
+        && request.resource.data.get('invites', []).size() <= 1
+        && !invite(request.resource.data);
 
       allow update: if connecte() && (
         // Rejoindre une partie en attente : on s'ajoute comme second joueur, la partie commence.
@@ -62,6 +78,20 @@ service cloud.firestore {
           && request.resource.data.etat == 'finie'
           && request.resource.data.nbCoups == resource.data.nbCoups
           && inchange(['createur', 'code', 'creeLe', 'joueurs', 'plateau', 'sac', 'scores']))
+        ||
+        // Inviter un joueur, ou annuler l'invitation : le créateur, tant que personne n'a rejoint (un invité au plus).
+        (resource.data.etat == 'attente'
+          && resource.data.createur == request.auth.uid
+          && seulementChange(['invites', 'refus', 'pseudos', 'majLe'])
+          && request.resource.data.invites.size() <= 1
+          && !invite(request.resource.data))
+        ||
+        // Refuser une invitation : on se retire des invités et le créateur le voit dans « refus ».
+        (resource.data.etat == 'attente'
+          && invite(resource.data)
+          && seulementChange(['invites', 'refus', 'majLe'])
+          && request.resource.data.invites == resource.data.invites.removeAll([request.auth.uid])
+          && request.resource.data.refus == resource.data.get('refus', []).concat([request.auth.uid]))
       );
 
       // Supprimer : le créateur, tant que personne n'a rejoint.

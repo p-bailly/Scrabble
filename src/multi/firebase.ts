@@ -23,9 +23,6 @@ import {
 } from 'firebase/firestore'
 import { ecrire } from '../lib/stockage'
 
-/** Adresse publique de la version web, pour les liens d'invitation. */
-export const ADRESSE_WEB = 'https://scrabble.pbailly.fr/'
-
 // Fichier facultatif : sans lui, l'appli marche en solo et l'onglet « Mes parties » explique quoi faire.
 // Avec « "emulateurs": true », l'appli utilise les émulateurs Firebase locaux (tests, voir le README).
 type Configuration = FirebaseOptions & { emulateurs?: boolean }

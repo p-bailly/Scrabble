@@ -67,6 +67,10 @@ export function supprimerDeHistorique(id: string) {
   ecrire(HISTORIQUE, lireHistorique().filter((x) => x.id !== id))
 }
 
+export function viderHistorique() {
+  ecrire(HISTORIQUE, [])
+}
+
 export const resume = (p: PartieDuplicate): ResumePartie => {
   const t = totaux(p)
   return {

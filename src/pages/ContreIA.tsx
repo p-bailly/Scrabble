@@ -24,6 +24,7 @@ import {
 import { reference } from '../jeu/coup'
 import { NIVEAUX, PROFILS } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
+import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { chargerDico, decisionIA } from '../moteur/moteur'
 import {
@@ -349,7 +350,7 @@ function EcranIA({
               type="button"
               className="bouton large"
               onClick={() => {
-                if (confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
+                if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
               }}
             >
               Passer

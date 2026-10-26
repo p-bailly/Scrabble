@@ -6,8 +6,11 @@ Appli perso de **Scrabble en français**, en quatre parties :
   le top qui est posé ; en « entraînement » (partie entière) ou en « topping » (il faut trouver le top, avec indices) ;
 - **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
+  on invite directement un joueur de l'appli (par son pseudo), ou on envoie un lien à qui ne l'a pas ;
 - **Dictionnaire** : tous les mots valables, avec recherche (commence par, finit par, contient ; `?` = une lettre) ;
   toucher un mot affiche sa définition (Wiktionnaire, connexion nécessaire, gardée ensuite sur l'appareil).
+
+Un onglet **Réglages** regroupe le thème, les notifications, le compte et les données de l'appareil.
 
 C'est une web app installable (PWA), aussi livrée en **APK Android**, reconstruite automatiquement par GitHub
 Actions et suivie par « Mes applis » ([p-bailly/Managing-Apps](https://github.com/p-bailly/Managing-Apps)).
@@ -107,13 +110,23 @@ lettres (s'il en reste au moins 7 dans le sac) ou on passe. Un mot absent du dic
 Fin de partie : le sac est vide et un joueur a vidé son chevalet (il gagne la valeur des lettres restant à
 l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
 
-- **Nouvelle partie** donne un code court et un lien à envoyer par SMS ou WhatsApp. Le lien ouvre l'appli Android si
-  elle est installée, sinon la version web (voir « Liens d'invitation » plus bas) ; on peut aussi saisir le code.
-- **Mes parties** : « À toi de jouer » en tête, puis « En attente de … », les invitations envoyées et les parties
-  terminées. Plusieurs parties en parallèle.
+- **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
+  - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà
+    rencontré (« Joué récemment »). L'invité trouve l'invitation en tête de **Mes parties** (« Invitations reçues »),
+    avec une pastille sur l'onglet, et l'**accepte** (la partie commence, l'inviteur joue en premier) ou la **refuse**
+    (l'inviteur en est informé et peut inviter quelqu'un d'autre). Un seul invité à la fois : en inviter un autre
+    remplace le premier, et l'inviteur peut annuler. À la fin d'une partie, **Proposer une revanche** crée une
+    nouvelle partie avec le même adversaire déjà invité.
+  - **Un code court et un lien** à envoyer par SMS ou WhatsApp, pour qui n'a pas encore l'appli ou n'est pas
+    trouvable. Le lien ouvre l'appli Android si elle est installée, sinon la version web (voir « Liens d'invitation »
+    plus bas) ; on peut aussi saisir le code. Le lien reste valable même si un joueur est invité : le premier qui
+    rejoint prend la place.
+- **Mes parties** : « Invitations reçues » et « À toi de jouer » en tête, puis « En attente de … », les invitations
+  envoyées et les parties terminées. Plusieurs parties en parallèle.
 - Mise à jour en direct quand l'appli est ouverte ; hors ligne, le coup est mis en file et envoyé au retour du
   réseau.
-- Notification « À toi de jouer » quand l'appli détecte le coup de l'adversaire (au premier plan ou à la reprise).
+- Notification « À toi de jouer » quand l'appli détecte le coup de l'adversaire (au premier plan ou à la reprise),
+  de même pour une invitation reçue, un refus ou la fin d'une partie.
 - Historique des coups de la partie (mot, position, points) ; chaque coup reçu est revérifié par le client de
   l'adversaire (mots du dictionnaire, score), un coup non conforme est signalé.
 
@@ -125,8 +138,27 @@ blanc, cases « double » en étoiles à huit pointes (rose pour le mot, bleu cl
 en carrés pleins (rouge, bleu), jetons crème à lettres noires, bleues tant qu'ils ne sont pas validés, rouges pour
 un joker. Sur l'écran de jeu : le chevalet dans un bac bleu juste sous le plateau (il passe au rouge pendant les
 15 dernières secondes), la ligne du coup en cours, les boutons carrés, puis tout en bas le chrono encadré avec le
-score (`74 / 93 pts (−19 | 79,6 %)`) et sa jauge verte. Thème clair ou sombre selon le téléphone, police système.
+score (`74 / 93 pts (−19 | 79,6 %)`) et sa jauge verte. Thème clair ou sombre selon le téléphone (ou au choix, dans les Réglages), police système.
 Les couleurs sont des variables CSS en tête de [`src/styles.css`](src/styles.css).
+
+## Réglages
+
+L'onglet **Réglages** ([`src/pages/Reglages.tsx`](src/pages/Reglages.tsx)). Tout est gardé sur l'appareil
+([`src/lib/reglages.ts`](src/lib/reglages.ts)), sauf la visibilité dans la recherche, qui est dans Firestore :
+
+| Rubrique | Réglage |
+| --- | --- |
+| Apparence | **Thème** : automatique (suit le téléphone), clair ou sombre ; **étiquettes des cases bonus** (MT, MD, LT, LD) affichées ou non sur le plateau |
+| Jeu | **Confirmer avant de passer** son tour (parties à deux et contre l'IA) |
+| Notifications | Activer ou non « À toi de jouer » et les invitations ; état de l'autorisation du système, bouton pour la demander et pour envoyer un essai |
+| Parties à deux | **Pseudo** ; **être trouvé par les autres joueurs** (désactivé, on ne peut te faire jouer que par code ou lien) ; **se déconnecter** |
+| Données de cet appareil | Effacer l'historique du duplicate (et ses statistiques), les résultats contre l'IA, les définitions gardées |
+| À propos | Date de construction, dictionnaire, recherche d'une mise à jour (ou lien de l'APK dans l'appli Android), partage de l'appli |
+
+Le thème est posé avant le premier affichage par un petit script d'[`index.html`](index.html) (pas d'éclair clair sur un
+téléphone en mode sombre), puis suivi par `reglages.ts` ; les couleurs sombres sont sous `:root[data-theme='dark']`
+dans [`src/styles.css`](src/styles.css). La rubrique « Parties à deux » ne se charge (avec Firebase) que si un compte
+existe sur l'appareil.
 
 ## Dictionnaire
 
@@ -190,7 +222,9 @@ l'explique.
 3. **Build → Firestore Database → Créer une base de données** : emplacement `eur3 (europe-west)`, démarrer en
    **mode production**.
 4. Onglet **Règles** de Firestore : remplacer tout par le contenu de [`firestore.rules`](firestore.rules), puis
-   **Publier**.
+   **Publier**. **À refaire quand ce fichier évolue** (c'est le cas avec les invitations directes) : tant que les règles
+   publiées sont anciennes, tout marche sauf « Inviter un joueur », qui répond que les règles ne sont pas à jour (le
+   code et le lien d'invitation restent utilisables).
 5. **Paramètres du projet** (roue dentée) → *Vos applications* → icône **Web** `</>` : nom `Scrabble`, sans
    Firebase Hosting. Copier l'objet `firebaseConfig` affiché.
 6. Dans le dépôt, créer `firebase.config.json` sur le modèle de
@@ -217,7 +251,13 @@ même pseudo. Aucun mot de passe, aucun e-mail.
   devine) peut s'y connecter et lire ses parties. C'est le prix de la simplicité, acceptable entre proches. Pour
   durcir, il suffirait d'ajouter un code secret à quatre chiffres demandé en plus du nom et mélangé au mot de passe
   fabriqué ci-dessus.
-- Se déconnecter (en bas de « Mes parties ») permet de changer de compte sur un même appareil.
+- **Retrouver un joueur.** Pour pouvoir inviter quelqu'un par son pseudo, sa fiche (`joueurs/{uid}`) porte une clé de
+  recherche : son pseudo sans accents ni majuscules. N'importe quel joueur connecté peut chercher par début de pseudo
+  (dix fiches au plus par requête, les règles refusent une requête sans limite) : c'est une exposition de plus des
+  noms, déjà peu secrets (voir ci-dessus). Chacun peut s'en retirer dans Réglages → « Être trouvé par les autres
+  joueurs » ; la clé disparaît alors de sa fiche. Les fiches d'avant les invitations reçoivent leur clé au prochain
+  lancement de l'appli.
+- Se déconnecter (Réglages → Parties à deux) permet de changer de compte sur un même appareil.
 
 ### Règles de sécurité
 
@@ -227,6 +267,9 @@ même pseudo. Aucun mot de passe, aucun e-mail.
   pour pouvoir la rejoindre) ;
 - seul le joueur dont c'est le tour peut jouer, un coup à la fois (numéro de coup + 1, puis le tour passe à
   l'autre) ; la liste des joueurs ne peut plus changer une fois la partie commencée ;
+- une invitation directe ne peut être envoyée (ou annulée) que par le créateur, tant que la partie attend son
+  adversaire, avec un invité au plus ; l'invité peut la lire et la refuser (il se retire alors de la liste et le
+  créateur le voit), sans rien pouvoir changer d'autre ;
 - le chevalet de chaque joueur est dans un document que lui seul peut lire ;
 - l'historique des coups ne peut pas être modifié après coup.
 
@@ -236,7 +279,7 @@ chevalet de l'autre, etc.).
 ## Limites
 
 - **Pas de notification appli fermée.** La notification « À toi de jouer » est locale : elle part quand l'appli est
-  ouverte ou revient au premier plan et voit que l'adversaire a joué. De vraies notifications push, appli fermée,
+  ouverte ou revient au premier plan et voit que l'adversaire a joué (ou qu'on a reçu une invitation). De vraies notifications push, appli fermée,
   demanderaient Firebase Cloud Messaging *et* une Cloud Function déclenchée à chaque coup (écriture dans
   `parties/{code}`) qui envoie le message au joueur dont c'est le tour, avec les jetons FCM des appareils enregistrés
   dans Firestore. Les Cloud Functions exigent l'offre payante **Blaze** (paiement à l'usage, quasi gratuit à cette
@@ -321,11 +364,11 @@ src/
     contreIA.ts     partie contre l'IA : état sauvegardable et transitions (mot, échange, passe, fin)
     hasard.ts       générateur pseudo-aléatoire reproductible (graine)
   moteur/         Web Worker du moteur (analyse, coups, coup de l'IA) et son accès depuis l'interface
-  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, changement de lettres, icônes
-  pages/          Solo (menu), Duplicate, ContreIA, Correction, Stats, Calculateur
+  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, changement de lettres, icônes, lignes de réglage
+  pages/          Solo (menu), Duplicate, ContreIA, Correction, Stats, Dictionnaire, Réglages
   solo/           sauvegarde du duplicate et de la partie contre l'IA, historiques
-  multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore, écrans, veille des coups
-  lib/            routage par hash, stockage local, notifications
+  multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore (dont invitations), écrans, section compte des réglages, veille des coups et des invitations
+  lib/            routage par hash, stockage local, réglages, notifications, adresses à partager
 scripts/dico.ts   liste de mots → public/dico/mots.dawg
 public/           manifest PWA, service worker, icônes, dictionnaire
 android/          projet Android (Capacitor) qui embarque l'app web

@@ -1,7 +1,10 @@
 // Parties à deux stockées dans Firestore.
 //
-//   joueurs/{uid}                      { pseudo }
-//   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour…)
+//   joueurs/{uid}                      { pseudo, visible, recherche } ; `recherche` (le pseudo simplifié) n'est écrit que si
+//                                      le joueur accepte d'être trouvé : c'est ce qu'interroge la recherche de joueurs
+//   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour…) ; `invites`
+//                                      est le joueur invité directement (il y voit l'invitation), `refus` ceux qui ont dit non
+
 //   parties/{code}/chevalets/{uid}     les lettres d'un joueur, lisibles par lui seul
 //   parties/{code}/coups/{n}           historique des coups (mot, position, points)
 //
@@ -10,14 +13,20 @@
 // triche reste possible, ce qui est accepté pour un usage entre amis.
 
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
+  deleteField,
   doc,
   getDoc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
   deleteDoc,
@@ -28,7 +37,7 @@ import { changer, finDePartie, lettresAdversaire, piocher } from '../jeu/classiq
 import { jetonsUtilises, jouer, reference, retirerDuChevalet, type Analyse, type Pose } from '../jeu/coup'
 import { tousLesJetons } from '../jeu/lettres'
 import { plateauDepuisTexte, plateauEnTexte, plateauVide } from '../jeu/plateau'
-import { base } from './firebase'
+import { base, identifiant } from './firebase'
 
 export type Etat = 'attente' | 'encours' | 'finie'
 
@@ -56,8 +65,27 @@ export interface Partie {
   fin: { ajustements: Record<string, number>; raison: 'chevalet-vide' | 'passes' | 'abandon'; gagnant: string | null } | null
   creeLe: Timestamp | null
   majLe: Timestamp | null
+  /** Joueur invité directement (au plus un) tant que la partie attend son adversaire. Absent des parties anciennes. */
+  invites?: string[]
+  /** Joueurs qui ont refusé l'invitation. */
+  refus?: string[]
   /** Écriture locale pas encore envoyée (hors ligne). */
   enAttente?: boolean
+}
+
+/** Fiche publique d'un joueur. */
+export interface Joueur {
+  pseudo: string
+  /** Peut-on le trouver en tapant son nom pour l'inviter ? */
+  visible: boolean
+  /** Clé de recherche enregistrée (absente si le joueur n'est pas visible, ou si la fiche date d'avant les invitations). */
+  recherche?: string
+}
+
+/** Un joueur trouvé, qu'on peut inviter. */
+export interface JoueurTrouve {
+  uid: string
+  pseudo: string
 }
 
 export interface CoupMulti {
@@ -84,17 +112,76 @@ export const normaliserCode = (c: string) => c.trim().toUpperCase().replace(/[^A
 
 export const autre = (p: Partie, uid: string) => p.joueurs.find((j) => j !== uid) ?? null
 
-export async function enregistrerPseudo(uid: string, pseudo: string) {
-  await setDoc(doc(base(), 'joueurs', uid), { pseudo })
+/** Message lisible pour une erreur Firestore (hors ligne, règles de sécurité pas à jour…). */
+export function messageErreur(e: unknown): string {
+  const code = (e as { code?: string })?.code
+  if (code === 'permission-denied')
+    return 'Refusé par le serveur. Si cela dure, les règles Firestore du projet ne sont peut-être pas à jour (voir le README).'
+  if (code === 'unavailable') return 'Pas de connexion à Internet.'
+  return e instanceof Error ? e.message : String(e)
 }
 
-export async function lirePseudo(uid: string): Promise<string | null> {
+/** Clé de recherche d'un pseudo : sans accents, majuscules ni ponctuation (« Jean Luc » et « jean-luc » se valent). */
+export const cleRecherche = identifiant
+
+/** Une recherche de joueur commence à deux caractères (un seul rendrait presque tout le monde). */
+export const MIN_RECHERCHE = 2
+
+export async function lireJoueur(uid: string): Promise<Joueur | null> {
   const d = await getDoc(doc(base(), 'joueurs', uid))
-  return d.exists() ? (d.data().pseudo as string) : null
+  if (!d.exists()) return null
+  const { pseudo, visible, recherche } = d.data()
+  return { pseudo: pseudo as string, visible: visible !== false, recherche: recherche as string | undefined }
 }
 
-/** Crée une partie et renvoie son code. */
-export async function creerPartie(uid: string, pseudo: string): Promise<string> {
+/** Écrit la fiche du joueur. Visible, elle porte la clé de recherche : les autres peuvent l'inviter en tapant son nom. */
+export async function enregistrerJoueur(uid: string, pseudo: string, visible: boolean) {
+  await setDoc(doc(base(), 'joueurs', uid), { pseudo, visible, ...(visible ? { recherche: cleRecherche(pseudo) } : {}) })
+}
+
+/** Change le pseudo en gardant le choix « visible » déjà enregistré (visible par défaut). */
+export async function enregistrerPseudo(uid: string, pseudo: string) {
+  const j = await lireJoueur(uid).catch(() => null)
+  await enregistrerJoueur(uid, pseudo, j?.visible ?? true)
+}
+
+/** Remet la fiche à jour si besoin : celles d'avant les invitations n'ont pas de clé de recherche. */
+export async function synchroniserJoueur(uid: string): Promise<Joueur | null> {
+  const j = await lireJoueur(uid)
+  if (j?.visible && j.recherche !== cleRecherche(j.pseudo)) await enregistrerJoueur(uid, j.pseudo, true)
+  return j
+}
+
+/**
+ * Joueurs dont le pseudo commence par ce texte (8 au plus, moi exclu). Ceux qui ne veulent pas être trouvés n'y sont
+ * pas. Demande une connexion : hors ligne, le cache ne dirait que ce qu'il connaît déjà.
+ */
+export async function chercherJoueurs(texte: string, moi: string): Promise<JoueurTrouve[]> {
+  const cle = cleRecherche(texte)
+  if (cle.length < MIN_RECHERCHE) return []
+  const s = await getDocs(
+    query(collection(base(), 'joueurs'), where('recherche', '>=', cle), where('recherche', '<=', cle + ''), orderBy('recherche'), limit(10)),
+  )
+  if (s.metadata.fromCache) throw new Error('Pas de connexion : la recherche demande Internet.')
+  return s.docs
+    .filter((d) => d.id !== moi)
+    .slice(0, 8)
+    .map((d) => ({ uid: d.id, pseudo: d.data().pseudo as string }))
+}
+
+/** Adversaires déjà rencontrés, du plus récent au plus ancien : on peut les réinviter d'un geste. */
+export function adversairesRecents(parties: readonly Partie[], uid: string): JoueurTrouve[] {
+  const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
+  const vus = new Map<string, JoueurTrouve>()
+  for (const p of [...parties].sort((a, b) => date(b) - date(a))) {
+    const adv = autre(p, uid)
+    if (adv && !vus.has(adv)) vus.set(adv, { uid: adv, pseudo: p.pseudos[adv] ?? '?' })
+  }
+  return [...vus.values()]
+}
+
+/** Crée une partie et renvoie son code ; `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli). */
+export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTrouve): Promise<string> {
   const code = nouveauCode()
   const { tires, sac } = piocher(tousLesJetons(), 7)
   const b = writeBatch(base())
@@ -102,7 +189,9 @@ export async function creerPartie(uid: string, pseudo: string): Promise<string> 
     code,
     createur: uid,
     joueurs: [uid],
-    pseudos: { [uid]: pseudo },
+    pseudos: { [uid]: pseudo, ...(invite ? { [invite.uid]: invite.pseudo } : {}) },
+    invites: invite ? [invite.uid] : [],
+    refus: [],
     etat: 'attente',
     tour: null,
     plateau: plateauEnTexte(plateauVide()),
@@ -137,6 +226,7 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
     [`scores.${uid}`]: 0,
     etat: 'encours',
     tour: p.createur,
+    invites: [],
     sac: sac.join(''),
     majLe: serverTimestamp(),
   })
@@ -146,6 +236,54 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
 
 export async function supprimerPartie(code: string) {
   await deleteDoc(doc(base(), 'parties', code))
+}
+
+/**
+ * Les invitations demandent une connexion : hors ligne, Firestore garderait l'écriture en file et ne répondrait qu'au
+ * retour du réseau, laissant l'écran en attente (comme pour rejoindre une partie, voir plus haut).
+ */
+function exigerConnexion() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Pas de connexion à Internet.')
+}
+
+/** Invite un joueur de l'appli à une partie en attente (un seul invité à la fois : le nouveau remplace l'ancien). */
+export async function inviter(p: Partie, invite: JoueurTrouve) {
+  exigerConnexion()
+  const ancien = p.invites?.[0]
+  await updateDoc(doc(base(), 'parties', p.code), {
+    invites: [invite.uid],
+    refus: [],
+    [`pseudos.${invite.uid}`]: invite.pseudo,
+    ...(ancien && ancien !== invite.uid ? { [`pseudos.${ancien}`]: deleteField() } : {}),
+    majLe: serverTimestamp(),
+  })
+}
+
+/** Retire l'invitation envoyée (la partie reste, avec son code et son lien). */
+export async function annulerInvitation(p: Partie) {
+  exigerConnexion()
+  const ancien = p.invites?.[0]
+  await updateDoc(doc(base(), 'parties', p.code), {
+    invites: [],
+    refus: [],
+    ...(ancien ? { [`pseudos.${ancien}`]: deleteField() } : {}),
+    majLe: serverTimestamp(),
+  })
+}
+
+/** Refuse une invitation reçue : le créateur le voit, la partie reste ouverte pour quelqu'un d'autre. */
+export async function refuserInvitation(code: string, uid: string) {
+  exigerConnexion()
+  await updateDoc(doc(base(), 'parties', code), { invites: arrayRemove(uid), refus: arrayUnion(uid), majLe: serverTimestamp() })
+}
+
+/** Invitations reçues, pas encore acceptées ni refusées (mise à jour en direct). */
+export function ecouterInvitations(uid: string, rappel: (parties: Partie[]) => void, erreur?: (e: Error) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(base(), 'parties'), where('invites', 'array-contains', uid)),
+    (s) => rappel(s.docs.map((d) => d.data() as Partie).filter((p) => p.etat === 'attente')),
+    erreur,
+  )
 }
 
 /** Parties où je joue (mise à jour en direct). */
