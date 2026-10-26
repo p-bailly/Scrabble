@@ -47,3 +47,23 @@ export function DefinitionMot({ mot }: { mot: string }) {
     </div>
   )
 }
+
+/** Quelques mots (le coup joué, le meilleur coup…) : on touche celui dont on veut la définition. */
+export function DefinitionsDe({ mots }: { mots: (string | undefined)[] }) {
+  const [ouvert, setOuvert] = useState<string | null>(null)
+  const uniques = [...new Set(mots.filter((m): m is string => !!m).map((m) => m.toUpperCase()))]
+  if (uniques.length === 0) return null
+  return (
+    <div className="champ">
+      <span className="note">Définition de :</span>
+      <div className="segments">
+        {uniques.map((m) => (
+          <button key={m} type="button" className={ouvert === m ? 'actif' : ''} aria-pressed={ouvert === m} onClick={() => setOuvert(ouvert === m ? null : m)}>
+            {m}
+          </button>
+        ))}
+      </div>
+      {ouvert && <DefinitionMot mot={ouvert} />}
+    </div>
+  )
+}

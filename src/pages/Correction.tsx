@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Mot } from '../composants/Apercu'
+import { DefinitionsDe } from '../composants/Definition'
 import { Entete } from '../composants/Entete'
 import { IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
@@ -95,6 +96,7 @@ export function Correction({ id }: { id: string }) {
               </button>
               {ouvert === i && (
                 <div className="liste" style={{ paddingLeft: 12 }}>
+                  <DefinitionsDe mots={[c.top.mot, j?.mot]} />
                   {j && (
                     <button type="button" className={'ligne' + (montre?.coup === j ? ' choisie' : '')} onClick={() => setMontre({ coup: j, style: 'mien' })}>
                       <div className="principal">

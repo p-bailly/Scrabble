@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
+import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
@@ -207,6 +208,8 @@ function EcranIA({
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
+  // Coup de l'historique dont on lit la définition (numéro du coup).
+  const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
   // Le meilleur coup du chevalet, cherché à l'ouverture des indices (undefined : en cours ; null : aucun coup possible).
   const [top, setTop] = useState<Coup | null | undefined>(undefined)
@@ -407,26 +410,34 @@ function EcranIA({
       <Feuille ouvert={historique} onFermer={() => setHistorique(false)}>
         <h3>Historique</h3>
         {partie.coups.length === 0 && <div className="note">Aucun coup pour l’instant.</div>}
+        {partie.coups.some((c) => c.coup) && <div className="note">Touche un mot pour lire sa définition.</div>}
         <div className="liste">
           {[...partie.coups].reverse().map((c) => {
             const d = decrire(c)
             return (
-              <div className="ligne" key={c.numero} style={{ cursor: 'default' }}>
-                <span className="note" style={{ width: 22 }}>
-                  {c.numero}
-                </span>
-                <div className="principal">
-                  <div className="note">{NOM_CAMP[c.camp]}</div>
-                  {d.coup ? (
-                    <>
-                      <Mot mot={d.coup.mot} />
-                      <span className="ref">{reference(d.coup.debut, d.coup.dir)}</span>
-                    </>
-                  ) : (
-                    <span>{c.type === 'change' ? `A changé ${c.nbChanges} lettre${(c.nbChanges ?? 0) > 1 ? 's' : ''}` : 'A passé'}</span>
-                  )}
+              <div key={c.numero}>
+                <div
+                  className={'ligne' + (defOuverte === c.numero ? ' choisie' : '')}
+                  style={{ cursor: d.coup ? 'pointer' : 'default' }}
+                  onClick={() => d.coup && setDefOuverte(defOuverte === c.numero ? null : c.numero)}
+                >
+                  <span className="note" style={{ width: 22 }}>
+                    {c.numero}
+                  </span>
+                  <div className="principal">
+                    <div className="note">{NOM_CAMP[c.camp]}</div>
+                    {d.coup ? (
+                      <>
+                        <Mot mot={d.coup.mot} />
+                        <span className="ref">{reference(d.coup.debut, d.coup.dir)}</span>
+                      </>
+                    ) : (
+                      <span>{c.type === 'change' ? `A changé ${c.nbChanges} lettre${(c.nbChanges ?? 0) > 1 ? 's' : ''}` : 'A passé'}</span>
+                    )}
+                  </div>
+                  <span className="pts">{c.points}</span>
                 </div>
-                <span className="pts">{c.points}</span>
+                {defOuverte === c.numero && d.coup && <DefinitionMot mot={d.coup.mot.toUpperCase()} />}
               </div>
             )
           })}

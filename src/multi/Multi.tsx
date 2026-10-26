@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
+import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
@@ -611,6 +612,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const [historique, setHistorique] = useState(false)
   const [changement, setChangement] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
+  // Coup de l'historique dont on lit la définition (numéro du coup).
+  const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -783,27 +786,35 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       <Feuille ouvert={historique} onFermer={() => setHistorique(false)}>
         <h3>Historique</h3>
         {coups.length === 0 && <div className="note">Aucun coup pour l’instant.</div>}
+        {coups.some((c) => c.type === 'mot') && <div className="note">Touche un mot pour lire sa définition.</div>}
         <div className="liste">
           {coups.map((c) => (
-            <div className="ligne" key={c.n} style={{ cursor: 'default' }}>
-              <span className="note" style={{ width: 22 }}>
-                {c.n}
-              </span>
-              <div className="principal">
-                <div className="note">{p.pseudos[c.uid] ?? '?'}</div>
-                {c.type === 'mot' ? (
-                  <>
-                    <Mot mot={c.mot ?? ''} />
-                    <span className="ref">{c.ref}</span>
-                    {suspects.has(c.n) && <div className="note ecart-neg">Coup non conforme (mot ou score)</div>}
-                  </>
-                ) : c.type === 'change' ? (
-                  <span>A changé {c.nbChanges} lettre{(c.nbChanges ?? 0) > 1 ? 's' : ''}</span>
-                ) : (
-                  <span>A passé</span>
-                )}
+            <div key={c.n}>
+              <div
+                className={'ligne' + (defOuverte === c.n ? ' choisie' : '')}
+                style={{ cursor: c.type === 'mot' ? 'pointer' : 'default' }}
+                onClick={() => c.type === 'mot' && setDefOuverte(defOuverte === c.n ? null : c.n)}
+              >
+                <span className="note" style={{ width: 22 }}>
+                  {c.n}
+                </span>
+                <div className="principal">
+                  <div className="note">{p.pseudos[c.uid] ?? '?'}</div>
+                  {c.type === 'mot' ? (
+                    <>
+                      <Mot mot={c.mot ?? ''} />
+                      <span className="ref">{c.ref}</span>
+                      {suspects.has(c.n) && <div className="note ecart-neg">Coup non conforme (mot ou score)</div>}
+                    </>
+                  ) : c.type === 'change' ? (
+                    <span>A changé {c.nbChanges} lettre{(c.nbChanges ?? 0) > 1 ? 's' : ''}</span>
+                  ) : (
+                    <span>A passé</span>
+                  )}
+                </div>
+                <span className="pts">{c.points}</span>
               </div>
-              <span className="pts">{c.points}</span>
+              {defOuverte === c.n && c.type === 'mot' && c.mot && <DefinitionMot mot={c.mot.toUpperCase()} />}
             </div>
           ))}
         </div>
