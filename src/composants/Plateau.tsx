@@ -156,10 +156,8 @@ export function Plateau({ plateau, poses, apercu, derniers, curseur, cible, onCa
             <span className="lettre">{lettre.toUpperCase()}</span>
             {!estJoker(lettre) && <span className="points">{valeur(lettre)}</span>}
           </div>
-        ) : pos === CENTRE ? (
-          '★'
         ) : (
-          b
+          <span className="etiq">{pos === CENTRE ? '★' : b}</span>
         )}
         {curseur?.pos === pos && !lettre && <Fleche dir={curseur.dir} />}
       </div>,

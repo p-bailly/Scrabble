@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { AnneauChrono, BarreJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
-import { IconeMelanger, IconeRappeler } from '../composants/Icones'
+import { BarreJeu, BarreStatut, Chrono, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { reference, type Coup } from '../jeu/coup'
 import { nouvellePartie, terminerCoup, totaux, type CoupDuplicate, type PartieDuplicate } from '../jeu/duplicate'
@@ -267,7 +267,7 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon, onPause
   }
 
   return (
-    <div className="ecran-jeu">
+    <div className={'ecran-jeu' + (estUrgent(coup.ecoule, partie.temps) ? ' urgent' : '')}>
       <BarreJeu
         onRetour={() => setMenu(true)}
         libelleRetour="Menu de la partie"
@@ -276,16 +276,6 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon, onPause
             Coup {numero} <span className="sous">· sac {partie.sac.length} lettre{partie.sac.length > 1 ? 's' : ''}</span>
           </>
         }
-        progression={{
-          gauche: (
-            <>
-              <b>{t.joueur}</b> / {t.top}
-            </>
-          ),
-          part: t.top ? t.joueur / t.top : 0,
-          droite: <span className="fort">{t.top ? `${Math.round(t.pourcentage)} %` : '—'}</span>,
-        }}
-        droite={<AnneauChrono ecoule={coup.ecoule} total={partie.temps} />}
       />
       <Plateau
         pleine
@@ -297,14 +287,27 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon, onPause
         onCase={edition.toucherCase}
         onAppuiPose={edition.appuiPose}
       />
+      <Chevalet edition={edition} />
       <Apercu analyse={analyse} indice="Touche une case puis tes lettres, ou glisse-les." />
       {coup.bulletin && (
         <div className="note note-centree">
           Noté : <Mot mot={coup.bulletin.mot} /> {reference(coup.bulletin.debut, coup.bulletin.dir)} · {coup.bulletin.points} pts
         </div>
       )}
-      <PanneauBas>
-        <Chevalet edition={edition} />
+      <PanneauBas
+        statut={
+          <BarreStatut
+            chrono={<Chrono ecoule={coup.ecoule} total={partie.temps} />}
+            texte={
+              <>
+                <b>{t.joueur}</b> / {t.top} pts
+                {t.top > 0 && ` (${t.joueur - t.top >= 0 ? '+' : '−'}${Math.abs(t.joueur - t.top)} | ${formatPct(t.pourcentage)})`}
+              </>
+            }
+            part={t.top ? t.joueur / t.top : 0}
+          />
+        }
+      >
         <div className="actions">
           <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
             <IconeMelanger />
@@ -313,10 +316,10 @@ function PartieSolo({ partie, resultat, onFinCoup, onSuivant, onAbandon, onPause
             <IconeRappeler />
           </button>
           <button type="button" className="bouton contour large" onClick={noter} disabled={!analyse?.valide}>
-            Noter
+            <IconeCrayon /> Noter
           </button>
           <button type="button" className="bouton principal large" onClick={() => void terminer()} disabled={calcul}>
-            {calcul ? 'Calcul…' : 'Valider'}
+            <IconeOk /> {calcul ? 'Calcul…' : 'Valider'}
           </button>
         </div>
       </PanneauBas>

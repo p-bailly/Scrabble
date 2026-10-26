@@ -1,64 +1,84 @@
-/* Direction artistique « Minimal moderne » : blanc cassé / anthracite, accent indigo, jetons sable,
-   cases bonus aux couleurs du vrai plateau. Thème clair / sombre automatique. */
+/* Direction artistique « DupliJeu » : celle de l'appli officielle du duplicate. Fond bleu ciel, plateau vert avec
+   ses cases bonus en étoiles, jetons crème à lettres noires (bleues tant qu'ils sont à poser), chevalet dans un
+   bac bleu, boutons carrés blancs au contour fin, chrono encadré et jauge verte en bas de l'écran de jeu.
+   Thème clair / sombre automatique. */
 
 :root {
-  --bg: #fafaf7;
+  --bg: #a9d3f4;
   --surface: #ffffff;
-  --surface-2: #f3f3ef;
-  --text: #17181c;
-  --muted: #5d6070;
-  --line: #e6e6e1;
-  --frame: #ffffff;
-  --empty: #eeeee9;
-  --tile: #f3d9a4;
-  --tile-text: #2b2116;
-  --tile-edge: #d9b877;
-  --pending: #ffe7b8;
-  --ring: #4c5fd5;
-  --rack: #eeeee9;
-  --chip: #eceefb;
-  --chip-text: #3346b8;
-  --accent: #4c5fd5;
+  --surface-2: #e3f0fb;
+  --text: #0f2238;
+  --muted: #475f7a;
+  --line: #7ba6cd;
+  --bord: #2c4768;
+  /* Plateau */
+  --cadre: #2c4768;
+  --tapis: #4f9e5f;
+  --trait: #e4f1e2;
+  --empty: var(--tapis);
+  --tile: #f1e6bf;
+  --tile-text: #101214;
+  --tile-edge: #b3a066;
+  --pending: var(--tile);
+  --ring: #1f62c0;
+  --joker: #d32f2f;
+  /* Chevalet */
+  --rack: #1b5ea6;
+  --rack-slot: #ffffff;
+  --chip: #d6e8fa;
+  --chip-text: #164a94;
+  --accent: #1f62c0;
+  --accent-bord: #164a94;
   --accent-text: #ffffff;
-  --ok: #1f8a5b;
-  --err: #c62f21;
-  --ombre: 0 6px 20px rgba(20, 22, 40, 0.08);
-  /* Cases bonus : couleurs du plateau classique. */
-  --mt: #e2453d;
+  --lien: #143f82;
+  --ok: #1c8a4a;
+  --err: #cf2f25;
+  --ombre: 0 2px 8px rgba(15, 34, 56, 0.2);
+  /* Cases bonus : couleurs du plateau classique ; les doubles sont des étoiles. */
+  --mt: #e03a33;
   --mt-text: #ffffff;
-  --md: #f7b7ae;
-  --md-text: #6b1e17;
-  --lt: #1f6fb2;
+  --md: #f4a9a6;
+  --md-text: #5a1a17;
+  --lt: #1e86d8;
   --lt-text: #ffffff;
-  --ld: #9ed3ea;
+  --ld: #a7cdec;
   --ld-text: #0e3a52;
-  --rayon: 14px;
+  --rayon: 8px;
+  --etoile: polygon(50% 0, 64.5% 14.9%, 85.4% 14.6%, 85.1% 35.5%, 100% 50%, 85.1% 64.5%, 85.4% 85.4%, 64.5% 85.1%, 50% 100%, 35.5% 85.1%, 14.6% 85.4%, 14.9% 64.5%, 0 50%, 14.9% 35.5%, 14.6% 14.6%, 35.5% 14.9%);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #16171b;
-    --surface: #202228;
-    --surface-2: #2a2d35;
-    --text: #f2f2f4;
-    --muted: #a3a6b4;
-    --line: #2e3038;
-    --frame: #202228;
-    --empty: #2a2d35;
-    --tile: #f0d59e;
-    --tile-text: #2b2116;
-    --tile-edge: #c9a86a;
-    --pending: #ffe2a8;
-    --ring: #7c8cf0;
-    --rack: #2a2d35;
-    --chip: #2a2f52;
-    --chip-text: #c3caf7;
-    --accent: #7c8cf0;
-    --accent-text: #0e1030;
-    --ok: #5bd39a;
-    --err: #ff7a6b;
-    --ombre: 0 6px 20px rgba(0, 0, 0, 0.35);
+    --bg: #0e2238;
+    --surface: #16314d;
+    --surface-2: #1d3d5e;
+    --text: #e8f1fb;
+    --muted: #9db6d0;
+    --line: #2f5276;
+    --bord: #6e93b9;
+    --cadre: #06131f;
+    --tapis: #2f7040;
+    --trait: #163b24;
+    --tile: #ecdfb2;
+    --tile-edge: #a08e58;
+    --ring: #7fb0f5;
+    --joker: #ff8a80;
+    --rack: #0f4a85;
+    --rack-slot: #1d3d5e;
+    --chip: #1f3f66;
+    --chip-text: #b9d4fa;
+    --accent: #4d8fe8;
+    --accent-bord: #4d8fe8;
+    --accent-text: #06162b;
+    --lien: #b9d4fa;
+    --ok: #54d08a;
+    --err: #ff7f72;
+    --ombre: 0 2px 10px rgba(0, 0, 0, 0.45);
+    --mt: #c8322c;
+    --md: #c98a88;
+    --lt: #1c74b9;
+    --ld: #6f9fc7;
     color-scheme: dark;
   }
 }
@@ -73,7 +93,7 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Outfit Variable', system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
@@ -109,7 +129,7 @@ select {
   padding: 14px 16px 16px;
 }
 
-/* En-tête */
+/* En-tête : le logo est un jeton crème posé sur le vert du plateau. */
 .entete {
   display: flex;
   align-items: center;
@@ -120,40 +140,41 @@ select {
   margin: 0;
   font-size: 23px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   flex: 1;
 }
 .logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--accent);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--tapis);
+  border: 2px solid var(--cadre);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
 }
 .logo span {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: #f3d9a4;
-  color: #2b2116;
-  transform: rotate(-8deg);
+  width: 19px;
+  height: 19px;
+  border-radius: 3px;
+  background: #f1e6bf;
+  border: 1px solid #b3a066;
+  color: #101214;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 .puce {
   padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--chip);
-  color: var(--chip-text);
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1.5px solid var(--bord);
+  color: var(--lien);
   font-size: 13px;
   font-weight: 700;
-  border: none;
   white-space: nowrap;
 }
 
@@ -163,9 +184,9 @@ select {
   bottom: 0;
   display: flex;
   justify-content: space-around;
-  border-top: 1px solid var(--line);
+  border-top: 2px solid var(--bord);
   background: var(--surface);
-  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  padding: 4px 0 calc(6px + env(safe-area-inset-bottom));
   z-index: 5;
 }
 .onglets a {
@@ -178,20 +199,30 @@ select {
   color: var(--muted);
   text-decoration: none;
   min-width: 64px;
-  padding: 4px 0;
+  padding: 7px 0 4px;
   position: relative;
 }
 .onglets a.actif {
-  color: var(--accent);
+  color: var(--lien);
   font-weight: 700;
+}
+.onglets a.actif::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  right: 14px;
+  height: 4px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
 }
 .pastille {
   position: absolute;
-  top: 0;
+  top: 2px;
   right: 14px;
   min-width: 18px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--mt);
   color: #fff;
   font-size: 11px;
@@ -205,6 +236,7 @@ select {
 /* Cartes, statistiques */
 .carte {
   background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--rayon);
   padding: 14px;
 }
@@ -216,6 +248,7 @@ select {
   flex: 1;
   padding: 8px 10px;
   border-radius: var(--rayon);
+  border: 1px solid var(--line);
   background: var(--surface);
   min-width: 0;
 }
@@ -230,6 +263,7 @@ select {
 }
 .stat.accent {
   background: var(--accent);
+  border-color: var(--accent-bord);
   color: var(--accent-text);
   display: flex;
   flex-direction: column;
@@ -243,10 +277,11 @@ select {
 }
 .stat.urgent {
   background: var(--mt);
+  border-color: var(--mt);
   color: #fff;
 }
 
-/* Boutons */
+/* Boutons : carrés blancs au contour fin, le principal est bleu. */
 .actions {
   display: flex;
   gap: 8px;
@@ -254,7 +289,7 @@ select {
 .bouton {
   min-height: 48px;
   padding: 0 14px;
-  border: none;
+  border: 1.5px solid var(--bord);
   border-radius: var(--rayon);
   background: var(--surface);
   color: var(--text);
@@ -272,6 +307,7 @@ select {
 }
 .bouton.principal {
   background: var(--accent);
+  border-color: var(--accent-bord);
   color: var(--accent-text);
   font-size: 15px;
 }
@@ -280,7 +316,8 @@ select {
 }
 .bouton.discret {
   background: transparent;
-  color: var(--accent);
+  border-color: transparent;
+  color: var(--lien);
   min-height: 40px;
 }
 .bouton.danger {
@@ -289,9 +326,10 @@ select {
 .bouton-icone {
   width: 44px;
   height: 44px;
-  border: none;
-  border-radius: 12px;
+  border: 1.5px solid var(--bord);
+  border-radius: 6px;
   background: var(--surface);
+  color: var(--accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -299,13 +337,13 @@ select {
   flex: none;
 }
 
-/* Plateau */
+/* Plateau : tapis vert, quadrillage clair, cadre sombre. */
 .zone-plateau {
   position: relative;
   overflow: hidden;
-  border-radius: var(--rayon);
-  background: var(--frame);
-  box-shadow: var(--ombre);
+  border-radius: 4px;
+  background: var(--trait);
+  border: 2px solid var(--cadre);
   touch-action: none;
   aspect-ratio: 1;
   container-type: inline-size;
@@ -315,107 +353,132 @@ select {
 .plateau {
   position: absolute;
   inset: 0;
-  padding: 1.6cqw;
+  padding: 1px;
   display: grid;
   grid-template-columns: repeat(15, minmax(0, 1fr));
   grid-template-rows: repeat(15, minmax(0, 1fr));
-  gap: 0.5cqw;
+  gap: 1px;
+  background: var(--trait);
   transform-origin: 0 0;
   will-change: transform;
 }
 .case {
-  border-radius: 0.9cqw;
   background: var(--empty);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2cqw;
+  font-size: 1.9cqw;
   font-weight: 700;
   color: transparent;
+}
+.case .etiq {
+  position: relative;
+  z-index: 2;
 }
 .case.MT {
   background: var(--mt);
   color: var(--mt-text);
 }
-.case.MD {
-  background: var(--md);
-  color: var(--md-text);
-}
 .case.LT {
   background: var(--lt);
   color: var(--lt-text);
 }
+/* Les cases « double » sont des étoiles à huit pointes qui débordent un peu sur le quadrillage. */
+.case.MD,
 .case.LD {
-  background: var(--ld);
+  z-index: 1;
+}
+.case.MD::before,
+.case.LD::before {
+  content: '';
+  position: absolute;
+  inset: -0.35cqw;
+  clip-path: var(--etoile);
+}
+.case.MD {
+  color: var(--md-text);
+}
+.case.MD::before {
+  background: var(--md);
+}
+.case.LD {
   color: var(--ld-text);
 }
+.case.LD::before {
+  background: var(--ld);
+}
 .case.centre {
-  font-size: 3.4cqw;
+  font-size: 3.6cqw;
 }
 .case.curseur {
   outline: 0.6cqw solid var(--ring);
   outline-offset: -0.3cqw;
+  z-index: 4;
 }
 .case.cible {
   outline: 0.6cqw dashed var(--ring);
   outline-offset: -0.3cqw;
+  z-index: 4;
 }
 
-/* Jetons (plateau et chevalet) */
+/* Jetons (plateau) : crème, lettre noire ; bleue tant que le jeton n'est qu'à poser ou montré, rouge pour un joker. */
 .jeton {
   position: absolute;
-  inset: 0;
-  border-radius: 0.9cqw;
+  inset: 0.1cqw;
+  z-index: 3;
+  border-radius: 0.7cqw;
   background: var(--tile);
+  border: 0.18cqw solid var(--tile-edge);
   color: var(--tile-text);
-  box-shadow: 0 0.2cqw 0.5cqw rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3.9cqw;
+  font-size: 4.2cqw;
   font-weight: 700;
   line-height: 1;
 }
 .jeton .points {
   position: absolute;
-  right: 0.35cqw;
-  bottom: 0.15cqw;
-  font-size: 1.55cqw;
+  right: 0.4cqw;
+  bottom: 0.2cqw;
+  font-size: 1.5cqw;
+  font-weight: 600;
 }
 .jeton.joker .lettre {
-  color: var(--chip-text);
-}
-@media (prefers-color-scheme: dark) {
-  .jeton.joker .lettre {
-    color: #3346b8;
-  }
+  color: var(--joker);
 }
 .jeton.pose {
   background: var(--pending);
-  box-shadow: inset 0 0 0 0.45cqw var(--ring);
+  color: var(--ring);
+  box-shadow: inset 0 0 0 0.4cqw var(--ring), 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.3);
 }
 .jeton.dernier {
-  box-shadow: inset 0 0 0 0.35cqw var(--ok), 0 0.2cqw 0.5cqw rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 0.35cqw var(--ok), 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.3);
 }
 .jeton.apercu {
-  background: var(--pending);
-  box-shadow: inset 0 0 0 0.45cqw var(--ok);
+  color: var(--ring);
+  box-shadow: inset 0 0 0 0.4cqw var(--ok), 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.3);
 }
 .jeton.mien {
   background: var(--chip);
   color: var(--chip-text);
-  box-shadow: inset 0 0 0 0.45cqw var(--chip-text);
-  opacity: 0.9;
+  border-color: var(--chip-text);
+  box-shadow: inset 0 0 0 0.35cqw var(--chip-text);
+}
+.jeton.pose.joker .lettre,
+.jeton.apercu.joker .lettre {
+  color: var(--joker);
 }
 
-/* Chevalet */
+/* Chevalet : un bac bleu aux sept emplacements blancs (rouge quand le temps presse). */
 .chevalet {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: center;
-  padding: 8px;
-  border-radius: var(--rayon);
+  padding: 7px 8px;
+  border-radius: 10px;
   background: var(--rack);
   touch-action: none;
   user-select: none;
@@ -424,21 +487,19 @@ select {
 .emplacement {
   width: 42px;
   height: 42px;
-  border-radius: 9px;
+  border-radius: 5px;
+  background: var(--rack-slot);
   position: relative;
   flex: none;
-}
-.emplacement.vide {
-  border: 1.5px dashed var(--muted);
-  opacity: 0.45;
 }
 .tuile {
   width: 100%;
   height: 100%;
-  border-radius: 9px;
+  border-radius: 5px;
   background: var(--tile);
+  border: 1.5px solid var(--tile-edge);
   color: var(--tile-text);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   position: relative;
   display: flex;
   align-items: center;
@@ -446,18 +507,18 @@ select {
   font-size: 22px;
   font-weight: 700;
   cursor: grab;
-  border: none;
   padding: 0;
 }
 .tuile .points {
   position: absolute;
   right: 4px;
-  bottom: 3px;
+  bottom: 2px;
   font-size: 10px;
+  font-weight: 600;
 }
 .tuile.choisie {
   transform: translateY(-6px);
-  box-shadow: 0 0 0 3px var(--ring), 0 6px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0 0 3px var(--ring), 0 6px 12px rgba(0, 0, 0, 0.3);
 }
 .tuile.marquee {
   box-shadow: 0 0 0 3px var(--err);
@@ -472,14 +533,15 @@ select {
   transform: translate(-50%, -70%) scale(1.1);
 }
 
-/* Aperçu du coup */
-.apercu {
+/* Aperçu du coup : une ligne comme dans la liste des coups de DupliJeu (mot en gras, points à droite). */
+.apercu:not(.jeton) {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--rayon);
   background: var(--surface);
+  border: 1px solid var(--line);
   min-height: 46px;
   font-size: 14px;
 }
@@ -494,6 +556,7 @@ select {
   font-size: 20px;
   font-weight: 800;
   white-space: nowrap;
+  color: var(--lien);
 }
 .apercu.erreur {
   color: var(--err);
@@ -510,7 +573,7 @@ select {
   color: var(--muted);
 }
 
-/* Listes */
+/* Listes : une ligne par coup, la ligne choisie passe en bleu. */
 .liste {
   display: flex;
   flex-direction: column;
@@ -521,9 +584,9 @@ select {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--rayon);
   background: var(--surface);
-  border: none;
+  border: 1px solid var(--line);
   text-align: left;
   width: 100%;
   cursor: pointer;
@@ -531,7 +594,12 @@ select {
   text-decoration: none;
 }
 .ligne.choisie {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--chip);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ligne.choisie .mot {
+  color: var(--lien);
 }
 .ligne .principal {
   flex: 1;
@@ -551,13 +619,13 @@ select {
   font-variant-numeric: tabular-nums;
 }
 .mot .j {
-  color: var(--chip-text);
+  color: var(--joker);
   text-transform: lowercase;
 }
 h2 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--lien);
   margin: 8px 0 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -567,7 +635,7 @@ h2 {
 .voile {
   position: fixed;
   inset: 0;
-  background: rgba(10, 12, 20, 0.45);
+  background: rgba(6, 22, 40, 0.5);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -575,11 +643,12 @@ h2 {
 }
 .feuille {
   background: var(--bg);
+  border-top: 2px solid var(--bord);
   width: 100%;
   max-width: 560px;
   max-height: 88dvh;
   overflow: auto;
-  border-radius: 22px 22px 0 0;
+  border-radius: 14px 14px 0 0;
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
@@ -597,8 +666,8 @@ h2 {
 }
 .clavier button {
   height: 46px;
-  border: none;
-  border-radius: 10px;
+  border: 1.5px solid var(--bord);
+  border-radius: 6px;
   background: var(--surface);
   font-size: 18px;
   font-weight: 700;
@@ -606,6 +675,7 @@ h2 {
 }
 .clavier button.actif {
   background: var(--accent);
+  border-color: var(--accent-bord);
   color: var(--accent-text);
 }
 
@@ -619,8 +689,8 @@ h2 {
 }
 .champ input {
   min-height: 46px;
-  border-radius: 12px;
-  border: 1.5px solid var(--line);
+  border-radius: var(--rayon);
+  border: 1.5px solid var(--bord);
   background: var(--surface);
   color: var(--text);
   padding: 0 12px;
@@ -634,17 +704,17 @@ h2 {
 .segments button {
   flex: 1;
   min-height: 44px;
-  border-radius: 12px;
-  border: 1.5px solid var(--line);
+  border-radius: var(--rayon);
+  border: 1.5px solid var(--bord);
   background: var(--surface);
   font-weight: 700;
   cursor: pointer;
   min-width: 60px;
 }
 .segments button.actif {
-  border-color: var(--accent);
-  background: var(--chip);
-  color: var(--chip-text);
+  border-color: var(--accent-bord);
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .vide-etat {
@@ -662,7 +732,7 @@ h2 {
 .titre-page {
   font-size: 23px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 .toast {
@@ -673,7 +743,7 @@ h2 {
   background: var(--text);
   color: var(--bg);
   padding: 10px 16px;
-  border-radius: 12px;
+  border-radius: var(--rayon);
   font-size: 14px;
   font-weight: 600;
   z-index: 60;
@@ -695,8 +765,9 @@ h2 {
   max-width: 560px;
   z-index: 30;
   background: var(--bg);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -8px 24px rgba(20, 22, 40, 0.12);
+  border-top: 2px solid var(--bord);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 24px rgba(15, 34, 56, 0.2);
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
@@ -707,7 +778,7 @@ h2 {
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 20px;
+  border-radius: 6px;
   color: #fff;
   display: flex;
   align-items: center;
@@ -721,7 +792,7 @@ h2 {
   min-width: 0;
   min-height: 48px;
   border-radius: var(--rayon);
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--bord);
   background: var(--surface);
   color: var(--text);
   padding: 0 12px;
@@ -729,15 +800,17 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+/* Le code d'invitation est un mot de jetons. */
 .code-invitation {
   font-size: 38px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-align: center;
-  padding: 10px;
+  padding: 10px 10px 10px calc(10px + 0.18em);
   border-radius: var(--rayon);
-  background: var(--chip);
-  color: var(--chip-text);
+  background: var(--tile);
+  border: 2px solid var(--tile-edge);
+  color: var(--tile-text);
 }
 a.bouton {
   text-decoration: none;
@@ -750,7 +823,8 @@ a.bouton {
   background: var(--surface-2);
 }
 
-/* Écrans de jeu (agencement « plateau plein écran ») */
+/* Écrans de jeu : plateau en haut d'un bord à l'autre, chevalet dessous, ligne du coup, boutons, puis en bas
+   le chrono encadré avec le score et sa jauge, comme dans DupliJeu. */
 .ecran-jeu {
   flex: 1;
   display: flex;
@@ -761,16 +835,11 @@ a.bouton {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 12px 10px;
-}
-.barre-jeu .milieu {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  padding: 8px 12px;
 }
 .barre-jeu .titre {
+  flex: 1;
+  min-width: 0;
   font-size: 17px;
   font-weight: 800;
   white-space: nowrap;
@@ -782,142 +851,135 @@ a.bouton {
   color: var(--muted);
   font-size: 14px;
 }
-.progression {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.progression b {
-  color: var(--text);
-}
-.progression .fort {
-  color: var(--chip-text);
-  font-weight: 700;
-}
-.jauge {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--line);
-  overflow: hidden;
-  min-width: 40px;
-}
-.jauge > div {
-  height: 6px;
-  background: var(--accent);
-  transition: width 0.4s;
-}
-.anneau {
-  width: 52px;
-  height: 52px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  font-size: 14px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-.anneau svg {
-  position: absolute;
-  inset: 0;
-  transform: rotate(-90deg);
-}
-.anneau .fond {
-  stroke: var(--line);
-}
-.anneau .avant {
-  stroke: var(--accent);
-  transition: stroke-dashoffset 1s linear;
-}
-.anneau.urgent .avant {
-  stroke: var(--mt);
-}
-.anneau.urgent {
-  color: var(--mt);
-}
 .zone-plateau.pleine {
   border-radius: 0;
-  box-shadow: none;
-  background: var(--surface);
+  border-left: 0;
+  border-right: 0;
 }
-.zone-plateau.pleine .plateau {
-  padding: 0.8cqw;
-  gap: 0.4cqw;
+.ecran-jeu .chevalet {
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 0;
+  border-bottom: 2px solid var(--cadre);
+  transition: background 0.3s;
 }
-.ecran-jeu .apercu {
-  background: transparent;
-  justify-content: center;
+.ecran-jeu .emplacement {
+  flex: 1;
+  width: auto;
+  height: auto;
+  max-width: 58px;
+  aspect-ratio: 1;
+}
+.ecran-jeu .tuile {
+  font-size: clamp(22px, 7.4vw, 34px);
+}
+.ecran-jeu .tuile .points {
+  font-size: clamp(10px, 2.6vw, 13px);
+  right: 5px;
+  bottom: 3px;
+}
+.ecran-jeu.urgent .chevalet {
+  background: var(--err);
+}
+.ecran-jeu .apercu:not(.jeton) {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
   padding: 10px 16px;
   font-size: 15px;
 }
-.ecran-jeu .apercu .mots {
-  flex: 0 1 auto;
-}
 .ecran-jeu .note-centree {
   text-align: center;
-  margin-top: -8px;
-  padding: 0 16px;
+  padding: 8px 16px 0;
 }
 .panneau-bas {
   margin-top: auto;
   position: sticky;
   bottom: 0;
   z-index: 4;
-  background: var(--surface);
-  border-radius: 26px 26px 0 0;
-  box-shadow: 0 -8px 24px rgba(20, 22, 40, 0.08);
-  padding: 16px 14px calc(18px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  padding-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
-.panneau-bas .chevalet {
-  background: transparent;
-  padding: 0;
-}
-.panneau-bas .emplacement {
-  width: 46px;
-  height: 46px;
-}
-.panneau-bas .tuile {
-  border-radius: 10px;
-  font-size: 24px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+.panneau-bas > .actions {
+  padding: 0 12px;
 }
 .panneau-bas .bouton-icone {
   width: 52px;
   height: 52px;
-  border-radius: 16px;
-  background: var(--surface-2);
 }
 .panneau-bas .bouton {
   min-height: 52px;
-  border-radius: 16px;
   padding: 0 10px;
 }
-.panneau-bas .bouton:not(.principal) {
-  background: var(--surface-2);
-}
 .panneau-bas .bouton.contour {
-  background: transparent;
-  border: 1.5px solid var(--accent);
-  color: var(--chip-text);
+  color: var(--lien);
 }
 .panneau-bas .bouton.principal {
   font-size: 16px;
+}
+.statut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.chrono {
+  min-width: 62px;
+  padding: 4px 8px;
+  border: 2px solid var(--bord);
+  border-radius: 4px;
+  background: var(--surface);
+  font-size: 19px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  flex: none;
+}
+.chrono.urgent {
+  background: var(--err);
+  border-color: var(--err);
+  color: #fff;
+}
+.statut .milieu {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.statut .texte {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statut .texte b {
+  font-weight: 800;
+}
+.jauge {
+  height: 9px;
+  border-radius: 2px;
+  border: 1px solid var(--bord);
+  background: var(--surface);
+  overflow: hidden;
+}
+.jauge > div {
+  height: 100%;
+  background: var(--ok);
+  transition: width 0.4s;
 }
 .onglets[hidden] {
   display: none;
 }
 .carte-accent {
   background: var(--accent);
+  border-color: var(--accent-bord);
   color: var(--accent-text);
-  border-radius: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -929,5 +991,17 @@ a.bouton {
 .carte .carte-accent .bouton,
 .carte-accent .bouton {
   background: var(--surface);
-  color: var(--chip-text);
+  color: var(--lien);
+}
+
+/* Ligne de boutons serrée (deux icônes + trois boutons : Changer, Passer, Jouer) */
+.panneau-bas > .actions.dense {
+  gap: 6px;
+}
+.panneau-bas > .actions.dense .bouton-icone {
+  width: 44px;
+}
+.panneau-bas > .actions.dense .bouton {
+  padding: 0 6px;
+  font-size: 14px;
 }

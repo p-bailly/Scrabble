@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
+import { Changement } from '../composants/Changement'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { BarreJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
-import { MIN_SAC_POUR_CHANGER } from '../jeu/classique'
-import { JOKER, valeur } from '../jeu/lettres'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { demanderPermission, natif } from '../lib/notifications'
 import { naviguer } from '../lib/routeur'
@@ -429,19 +428,6 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 <span className="sous">· sac {p.sac.length}</span>
               </>
             }
-            progression={{
-              gauche: (
-                <>
-                  Moi <b>{moi}</b>
-                </>
-              ),
-              part: moi + lui ? moi / (moi + lui) : 0.5,
-              droite: (
-                <>
-                  <b>{lui}</b> {nomAdv}
-                </>
-              ),
-            }}
             droite={boutonHistorique}
           />
           <Plateau
@@ -459,6 +445,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
               <Fin p={p} uid={uid} nomAdv={nomAdv} />
             </div>
           )}
+          <Chevalet edition={edition} />
           {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
           {p.etat === 'encours' && !aMoi && (
             <div className="apercu">
@@ -467,10 +454,20 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           )}
           {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
           {message && <div className="apercu erreur">{message}</div>}
-          <PanneauBas>
-            <Chevalet edition={edition} />
+          <PanneauBas
+            statut={
+              <BarreStatut
+                texte={
+                  <>
+                    Moi <b>{moi}</b> · <b>{lui}</b> {nomAdv}
+                  </>
+                }
+                part={moi + lui ? moi / (moi + lui) : 0.5}
+              />
+            }
+          >
             {aMoi ? (
-              <div className="actions">
+              <div className="actions dense">
                 <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
                   <IconeMelanger />
                 </button>
@@ -588,63 +585,6 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
 }
 
 const signe = (n: number) => (n > 0 ? '+' + n : String(n))
-
-function Changement({
-  ouvert,
-  chevalet,
-  sac,
-  onFermer,
-  onChanger,
-}: {
-  ouvert: boolean
-  chevalet: string[]
-  sac: number
-  onFermer: () => void
-  onChanger: (lettres: string[]) => void
-}) {
-  const [choix, setChoix] = useState<Set<number>>(new Set())
-  useEffect(() => setChoix(new Set()), [ouvert])
-  const possible = sac >= MIN_SAC_POUR_CHANGER
-  return (
-    <Feuille ouvert={ouvert} onFermer={onFermer}>
-      <h3>Changer des lettres</h3>
-      {possible ? (
-        <span className="note">Touche les lettres à remettre dans le sac. Tu passes ton tour.</span>
-      ) : (
-        <span className="note ecart-neg">Il faut au moins 7 lettres dans le sac pour changer (il en reste {sac}).</span>
-      )}
-      <div className="chevalet">
-        {chevalet.map((l, i) => (
-          <div className="emplacement" key={i}>
-            <button
-              type="button"
-              className={'tuile' + (choix.has(i) ? ' marquee' : '')}
-              onClick={() => {
-                const c = new Set(choix)
-                if (c.has(i)) c.delete(i)
-                else c.add(i)
-                setChoix(c)
-              }}
-              aria-pressed={choix.has(i)}
-              aria-label={l === JOKER ? 'Joker' : l}
-            >
-              {l === JOKER ? '' : l}
-              {l !== JOKER && <span className="points">{valeur(l)}</span>}
-            </button>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        className="bouton principal"
-        disabled={!possible || choix.size === 0}
-        onClick={() => onChanger([...choix].map((i) => chevalet[i]))}
-      >
-        Changer {choix.size || ''} lettre{choix.size > 1 ? 's' : ''}
-      </button>
-    </Feuille>
-  )
-}
 
 function Retour({ droite }: { droite?: ReactNode }) {
   return (
