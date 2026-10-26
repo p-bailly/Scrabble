@@ -115,9 +115,9 @@ Fin de partie : le sac est vide et un joueur a vidé son chevalet (il gagne la v
 l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
 
 Dans tous les écrans de jeu (duplicate, contre l'IA, parties à deux), la pastille du sac, en haut, donne le nombre de
-jetons restants ; la toucher détaille les lettres une à une, avec leur nombre. Face à un adversaire, ce sont les lettres
-qui ne sont ni sur le plateau ni sur son chevalet : le sac et le chevalet adverse y sont mêlés, comme dans une vraie
-partie. **Abandonner** : menu ⋯ en haut à droite dans une partie à deux (l'adversaire gagne et en est prévenu), flèche de
+lettres qu'on ne voit pas ; la toucher les détaille une à une, avec leur nombre. Ce sont les lettres qui ne sont ni sur
+le plateau ni sur son chevalet : face à un adversaire, le sac et le chevalet adverse y sont mêlés, comme dans une vraie
+partie (la fenêtre dit combien sont dans le sac). **Abandonner** : menu ⋯ en haut à droite dans une partie à deux (l'adversaire gagne et en est prévenu), flèche de
 retour puis « Abandonner la partie » en duplicate et contre l'IA.
 
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :

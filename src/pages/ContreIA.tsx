@@ -270,7 +270,7 @@ function EcranIA({
         onRetour={() => setMenu(true)}
         libelleRetour="Menu de la partie"
         titre={`Contre ${profil.nom}`}
-        pastille={<BoutonSac sac={partie.sac.length} onClick={() => setFeuilleSac(true)} />}
+        pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
         droite={bouton}
       />
       <Plateau

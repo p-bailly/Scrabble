@@ -7,7 +7,7 @@ import { IconeSac } from './Icones'
 
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 
-/** Pastille « sac 87 » de la barre de jeu : la toucher ouvre la fenêtre du sac. */
+/** Pastille « sac 87 » de la barre de jeu (les lettres qu'on ne voit pas) : la toucher ouvre la fenêtre du sac. */
 export function BoutonSac({ sac, onClick }: { sac: number; onClick: () => void }) {
   return (
     <button type="button" className="puce-sac" onClick={onClick} aria-label={`Voir le sac, ${pluriel(sac, 'lettre')}`}>

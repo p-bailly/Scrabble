@@ -677,7 +677,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             onRetour={() => naviguer('parties')}
             libelleRetour="Mes parties"
             titre={p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}
-            pastille={<BoutonSac sac={p.sac.length} onClick={() => setFeuilleSac(true)} />}
+            pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
             droite={
               <>
                 {boutonHistorique}
