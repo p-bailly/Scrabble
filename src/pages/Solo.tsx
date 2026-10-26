@@ -2,6 +2,7 @@
 // (entraînement ou topping) ou une partie classique contre l'IA.
 
 import { useState, type ReactNode } from 'react'
+import { ConseilInstallation } from '../composants/ConseilInstallation'
 import { Entete } from '../composants/Entete'
 import type { PartieIA } from '../jeu/contreIA'
 import { PROFILS } from '../jeu/ia'
@@ -44,6 +45,7 @@ export function Solo() {
   return (
     <div className="contenu">
       <Entete droite={<span className="puce">Solo</span>} />
+      <ConseilInstallation />
       {enCours.length > 0 && (
         <>
           <h2>

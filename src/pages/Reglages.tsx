@@ -1,6 +1,6 @@
 // Réglages : apparence, jeu, notifications, compte des parties à deux, données gardées sur l'appareil, à propos.
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ChangeEvent } from 'react'
 import { Interrupteur, Rangee } from '../composants/Reglage'
 import { Entete } from '../composants/Entete'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
@@ -8,6 +8,7 @@ import { nbDefinitionsGardees, viderDefinitions } from '../lib/definitions'
 import { demanderPermission, natif, notificationsAutorisees, notifier } from '../lib/notifications'
 import { THEMES, lireReglages, modifierReglages, type Reglages as ReglagesAppli } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
+import { exporterDonnees, importerDonnees, nomFichier } from '../lib/sauvegardeAppareil'
 import { lire } from '../lib/stockage'
 import { chargerDico } from '../moteur/moteur'
 import { lireHistorique, viderHistorique } from '../solo/sauvegarde'
@@ -86,6 +87,9 @@ export function Reglages() {
       <h2>Données de cet appareil</h2>
       <div className="carte">
         <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
+      </div>
+      <div className="carte">
+        <Sauvegarde />
       </div>
 
       <h2>À propos</h2>
@@ -193,6 +197,96 @@ function Donnees({ rafraichir }: { rafraichir: () => void }) {
         texte={`${pluriel(nbDefinitions, 'mot')} gardé${nbDefinitions > 1 ? 's' : ''} pour les lire sans connexion.`}
         droite={bouton(nbDefinitions, effacer('Vider les définitions gardées sur l’appareil ?', viderDefinitions))}
       />
+    </>
+  )
+}
+
+/** Exporter les données de l'appareil dans un fichier, ou les restaurer (autre appareil, données effacées). */
+function Sauvegarde() {
+  const [message, setMessage] = useState('')
+  const [importer, setImporter] = useState(false)
+  const [texte, setTexte] = useState('')
+
+  const exporter = async () => {
+    const fichier = new File([exporterDonnees()], nomFichier(), { type: 'application/json' })
+    try {
+      if (navigator.canShare?.({ files: [fichier] })) {
+        await navigator.share({ files: [fichier], title: 'Sauvegarde Scrabble' })
+        return setMessage('Sauvegarde partagée.')
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return // partage annulé
+    }
+    try {
+      const url = URL.createObjectURL(fichier)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fichier.name
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setMessage(`Sauvegarde enregistrée : ${fichier.name}. Si rien ne se télécharge, utilise « Copier ».`)
+    } catch {
+      setMessage('Impossible de créer le fichier : utilise « Copier ».')
+    }
+  }
+
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(exporterDonnees())
+      setMessage('Sauvegarde copiée : colle-la dans une note ou un message pour la garder.')
+    } catch {
+      setMessage('Copie impossible sur cet appareil.')
+    }
+  }
+
+  const restaurer = (contenu: string) => {
+    if (!confirm('Remplacer les réglages, parties en cours et historiques de cet appareil par cette sauvegarde ?')) return
+    const r = importerDonnees(contenu)
+    if (!r.ok) return setMessage(r.erreur)
+    setMessage('Sauvegarde restaurée.')
+    setTimeout(() => location.reload(), 600)
+  }
+
+  const choisirFichier = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (f) restaurer(await f.text())
+  }
+
+  return (
+    <>
+      <Rangee
+        titre="Sauvegarde"
+        texte="Garde tes parties en cours, historiques et statistiques dans un fichier, ou retrouve-les sur un autre appareil. Les parties à deux sont déjà en ligne."
+      >
+        <div className="actions" style={{ flexWrap: 'wrap', marginTop: 6 }}>
+          <button type="button" className="bouton" onClick={() => void exporter()}>
+            Exporter
+          </button>
+          <button type="button" className="bouton" onClick={() => void copier()}>
+            Copier
+          </button>
+          <button type="button" className="bouton" aria-expanded={importer} onClick={() => setImporter(!importer)}>
+            Importer
+          </button>
+        </div>
+        {message && <span className="note">{message}</span>}
+      </Rangee>
+      {importer && (
+        <div className="champ" style={{ marginTop: 10 }}>
+          <label className="bouton" style={{ cursor: 'pointer', textAlign: 'center' }}>
+            Choisir un fichier…
+            <input type="file" accept=".json,application/json" onChange={(e) => void choisirFichier(e)} hidden />
+          </label>
+          <label className="champ">
+            …ou colle la sauvegarde copiée
+            <textarea value={texte} onChange={(e) => setTexte(e.target.value)} spellCheck={false} autoComplete="off" />
+          </label>
+          <button type="button" className="bouton principal" disabled={!texte.trim()} onClick={() => restaurer(texte)}>
+            Restaurer
+          </button>
+        </div>
+      )}
     </>
   )
 }

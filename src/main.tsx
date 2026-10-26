@@ -5,6 +5,7 @@ import { App } from './App'
 import { natif, surOuvertureNotification } from './lib/notifications'
 import { demarrerReglages } from './lib/reglages'
 import { naviguer } from './lib/routeur'
+import { demanderStockagePersistant } from './lib/sauvegardeAppareil'
 import { lire } from './lib/stockage'
 import { chargerDico } from './moteur/moteur'
 import './styles.css'
@@ -23,6 +24,9 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Version web : on demande au navigateur de ne pas purger les parties et statistiques gardées sur l'appareil.
+if (!natif) demanderStockagePersistant()
 
 // Le dictionnaire se charge dès l'ouverture, en arrière-plan (Web Worker).
 chargerDico().catch(() => {})
