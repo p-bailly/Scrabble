@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
+import { lire } from './lib/stockage'
 import { ContreIA } from './pages/ContreIA'
 import { Duplicate } from './pages/Duplicate'
 import { Solo } from './pages/Solo'
@@ -26,6 +27,8 @@ const Stats = lazy(() => chargeurs.stats().then((m) => ({ default: m.Stats })))
  */
 export function prechargerEcrans() {
   for (const charger of Object.values(chargeurs)) void charger().catch(() => {})
+  // Bilans face à face de l'onglet Stats : ils ne servent qu'avec un compte.
+  if (lire('multi.pseudo', null)) void import('./multi/FaceAFace').catch(() => {})
 }
 
 // Le multijoueur (et Firebase) n'est chargé que si on l'ouvre : le solo reste léger et marche hors ligne.
@@ -71,8 +74,8 @@ export function App() {
         <Suspense fallback={<div className="vide-etat">Chargement…</div>}>{contenu}</Suspense>
       </main>
       <nav className="onglets" hidden={ongletsMasques}>
-        <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
+        <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/dictionnaire" actif={onglet === 'dictionnaire'} icone={<IconeLoupe />} texte="Dictionnaire" />
         <Onglet href="#/stats" actif={onglet === 'stats'} icone={<IconeStats />} texte="Stats" />
         <Onglet href="#/reglages" actif={onglet === 'reglages'} icone={<IconeReglages />} texte="Réglages" />

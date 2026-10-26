@@ -139,9 +139,15 @@ partie (la fenêtre dit combien sont dans le sac). **Abandonner** : menu ⋯ en 
 retour puis « Abandonner la partie » en duplicate et contre l'IA, ou **Abandonner** directement dans la liste des
 parties en cours du menu Solo.
 
+Pendant ton tour, la loupe au bout de la ligne d'aperçu (sous le chevalet) ouvre **Vérifier un mot** : on tape
+n'importe quel mot et l'appli dit s'il est dans le dictionnaire (avec ses points sans case bonus et sa définition),
+sans toucher au plateau ni au chevalet. C'est le même outil que « Vérifier » du dictionnaire ; il n'existe pas de
+recherche de mots à partir de ses lettres, pour qu'on ne puisse pas tricher en partie.
+
 - **Mes parties** indique depuis combien de temps chaque partie n'a pas bougé (et le dit quand l'adversaire ne répond
   plus depuis deux semaines) ; le bouton **×** d'une ligne abandonne une partie en cours, supprime une invitation
-  envoyée ou retire une partie terminée de la liste. Un **face à face** donne le bilan contre chaque adversaire.
+  envoyée ou retire une partie terminée de la liste. Le bilan **face à face** contre chaque adversaire est dans
+  l'onglet **Stats**.
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
   - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà
     rencontré (« Joué récemment »). L'invité trouve l'invitation en tête de **Mes parties** (« Invitations reçues »),
@@ -310,7 +316,8 @@ La configuration web de Firebase n'est **pas un secret** : la sécurité repose 
 
 Au premier lancement, l'appli demande un **nom d'utilisateur** (écran « Mes parties » ; « Jouer en solo sans compte »
 saute cette étape). Saisir le même nom sur un autre téléphone ou sur le site ouvre le même compte : mêmes parties,
-même pseudo. Aucun mot de passe, aucun e-mail.
+même pseudo. Aucun mot de passe, aucun e-mail. **Mes parties** est le premier onglet et l'écran d'ouverture de
+l'appli ; seul celui qui a choisi de jouer sans compte arrive sur le menu Solo.
 
 - **Comment ça marche.** Firebase ne propose pas de connexion par simple nom. L'appli fabrique donc, à partir du nom,
   une adresse (`jean-luc@joueurs.scrabble.pbailly.fr`, qui n'existe pas et ne reçoit rien) et un mot de passe
@@ -496,7 +503,7 @@ src/
     contreIA.ts     partie contre l'IA : état sauvegardable et transitions (mot, échange, passe, fin)
     hasard.ts       générateur pseudo-aléatoire reproductible (graine)
   moteur/         Web Worker du moteur (analyse, coups, coup de l'IA) et son accès depuis l'interface
-  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, changement de lettres, icônes, lignes de réglage
+  composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, vérification d'un mot, changement de lettres, icônes, lignes de réglage
   pages/          Solo (menu), Duplicate, ContreIA, Correction, Analyse (parties classiques), Stats, Dictionnaire, Réglages
   solo/           sauvegarde du duplicate et de la partie contre l'IA, historiques
   multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore (dont invitations), écrans, section compte des réglages, veille des coups et des invitations

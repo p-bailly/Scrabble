@@ -1006,6 +1006,28 @@ a.bouton {
   text-align: center;
   padding: 8px 16px 0;
 }
+/* Bouton « Vérifier un mot » : collé au bord droit de la ligne d'aperçu, sur toute sa hauteur. */
+.ecran-jeu .apercu.avec-loupe:not(.jeton) {
+  padding-right: 0;
+  overflow: hidden;
+}
+.apercu .bouton-loupe {
+  flex: none;
+  align-self: stretch;
+  width: 52px;
+  margin: -10px 0 -10px auto;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.apercu .bouton-loupe:focus-visible {
+  outline-offset: -3px;
+}
 .panneau-bas {
   margin-top: auto;
   position: sticky;
