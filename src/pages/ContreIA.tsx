@@ -8,7 +8,7 @@ import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
-import { IconeHistorique, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
+import { IconeHistorique, IconeMelanger, IconeMenu, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
 import { FeuilleVerifier } from '../composants/VerifierMot'
@@ -286,20 +286,27 @@ function EcranIA({
   const { moi, ia } = partie.scores
   const profil = PROFILS[partie.niveau]
 
-  const bouton = (
-    <button type="button" className="bouton-icone" onClick={() => setHistorique(true)} aria-label="Historique des coups">
-      <IconeHistorique />
-    </button>
+  const boutons = (
+    <>
+      <button type="button" className="bouton-icone" onClick={() => setHistorique(true)} aria-label="Historique des coups">
+        <IconeHistorique />
+      </button>
+      {!partie.finie && (
+        <button type="button" className="bouton-icone" onClick={() => setMenu(true)} aria-label="Menu de la partie">
+          <IconeMenu />
+        </button>
+      )}
+    </>
   )
 
   return (
     <div className="ecran-jeu">
       <BarreJeu
-        onRetour={() => setMenu(true)}
-        libelleRetour="Menu de la partie"
+        onRetour={onQuitter}
+        libelleRetour="Retour"
         titre={`Contre ${profil.nom}`}
         pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
-        droite={bouton}
+        droite={boutons}
       />
       <Plateau
         pleine
