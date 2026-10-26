@@ -5,8 +5,8 @@
 import type { FirebaseOptions } from 'firebase/app'
 
 // Fichier facultatif : sans lui, l'appli marche en solo et l'onglet « Mes parties » explique quoi faire.
-// Avec « "emulateurs": true », l'appli utilise les émulateurs Firebase locaux (tests, voir le README).
-// Notifications appli fermée (voir le README, « Notifications push ») : « "push": true » les propose ; « "vapidKey" » les
+// Avec « "emulateurs": true », l'appli utilise les émulateurs Firebase locaux (tests, voir CLAUDE.md, « Commandes »).
+// Notifications appli fermée (voir CLAUDE.md, « Notifications push ») : « "push": true » les propose ; « "vapidKey" » les
 // active sur le web et l'iPhone, « "pushAndroid": true » dans l'APK (une fois google-services.json ajouté à android/app).
 export type Configuration = FirebaseOptions & { emulateurs?: boolean; push?: boolean; vapidKey?: string; pushAndroid?: boolean }
 

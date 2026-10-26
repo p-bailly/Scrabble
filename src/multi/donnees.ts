@@ -122,7 +122,7 @@ export const autre = (p: Partie, uid: string) => p.joueurs.find((j) => j !== uid
 export function messageErreur(e: unknown): string {
   const code = (e as { code?: string })?.code
   if (code === 'permission-denied')
-    return 'Refusé par le serveur. Si cela dure, les règles Firestore du projet ne sont peut-être pas à jour (voir le README).'
+    return 'Refusé par le serveur. Si cela dure, les règles Firestore du projet ne sont peut-être pas à jour (voir CLAUDE.md, « Firebase »).'
   if (code === 'unavailable') return 'Pas de connexion à Internet.'
   return e instanceof Error ? e.message : String(e)
 }

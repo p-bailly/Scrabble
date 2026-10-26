@@ -1,8 +1,8 @@
 # CLAUDE.md
 
 Scrabble français (PWA React + Vite, TypeScript, APK Android via Capacitor, multijoueur Firebase). Code et commentaires en
-français. Les commentaires du code qui renvoient au « README » (Firebase, notifications push, émulateurs) renvoient en fait
-aux sections ci-dessous. Le message de `Multi.tsx` cite la rubrique « Parties à deux : créer le projet Firebase » : garder ce titre.
+français. Les commentaires et messages du code qui renvoient à une rubrique de ce fichier (Firebase, notifications push, commandes)
+citent son titre : le garder en cas de renommage.
 
 ## Commandes
 - `npm run dev` (5173), `npm test` (Vitest), `npm run typecheck`, `npm run build` (tsc + vite) puis `npm run preview`. Node 22.

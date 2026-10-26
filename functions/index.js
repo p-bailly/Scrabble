@@ -1,5 +1,5 @@
 // Notifications push des parties à deux (Cloud Functions pour Firebase, offre Blaze) : quand une partie change dans
-// Firestore, on prévient les appareils du joueur concerné, appli fermée. Voir le README, « Notifications push ».
+// Firestore, on prévient les appareils du joueur concerné, appli fermée. Voir CLAUDE.md, « Notifications push ».
 
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'

@@ -67,8 +67,8 @@ function NonConfigure() {
         <b>Les parties à deux ne sont pas encore configurées.</b>
         <p>
           Elles passent par Firebase (offre gratuite). Il faut créer un projet Firebase puis ajouter le fichier
-          <code> firebase.config.json</code> au dépôt : la procédure pas à pas est dans le README, rubrique « Parties à
-          deux : créer le projet Firebase ».
+          <code> firebase.config.json</code> au dépôt : la procédure pas à pas est dans CLAUDE.md, rubrique « Firebase
+          (parties à deux) ».
         </p>
         <p className="note">Le duplicate en solo et le dictionnaire marchent sans rien configurer.</p>
       </div>

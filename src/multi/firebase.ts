@@ -80,7 +80,7 @@ export async function connexion(): Promise<User> {
 // Un nom d'utilisateur tient lieu de compte, sans mot de passe : Firebase n'offre pas ce mode, on le simule avec
 // une connexion « adresse + mot de passe » dont les deux dérivent du nom (l'adresse n'existe pas, aucun e-mail
 // n'est envoyé). Saisir le même nom sur un autre appareil ouvre donc le même compte. Revers : quiconque connaît le
-// nom peut s'y connecter. Pour l'éviter, il faudrait un secret que l'utilisateur seul connaît (voir le README).
+// nom peut s'y connecter. Pour l'éviter, il faudrait un secret que l'utilisateur seul connaît (voir CLAUDE.md, « Firebase »).
 const DOMAINE_JOUEURS = 'joueurs.scrabble.pbailly.fr'
 
 /** Forme normalisée d'un nom : sans accents ni majuscules, « Jean Luc » et « jean-luc » désignent le même compte. */
