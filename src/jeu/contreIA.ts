@@ -36,6 +36,8 @@ export interface PartieIA {
   id: string
   niveau: NiveauIA
   creeLe: number
+  /** Dernière sauvegarde de la partie en cours (la liste des parties en cours s'ordonne dessus). */
+  majLe?: number
   plateau: string
   sac: string[]
   chevalets: Record<Camp, string[]>

@@ -1,10 +1,13 @@
-// Sauvegarde du duplicate sur l'appareil : partie en cours (reprise à l'ouverture) et historique.
+// Sauvegarde du duplicate sur l'appareil : parties en cours (on peut en avoir plusieurs, chacune reprise là où elle
+// en était) et historique.
 
 import type { Coup } from '../jeu/coup'
 import { modeDe, totaux, type Essai, type Indice, type ModeDuplicate, type PartieDuplicate } from '../jeu/duplicate'
 import { ecrire, lire } from '../lib/stockage'
 
-const PARTIE = 'solo.partie'
+const PARTIES = 'solo.parties'
+/** Ancien emplacement de l'unique partie en cours et de son coup, repris dans PARTIES au premier accès. */
+const ANCIENNE_PARTIE = 'solo.partie'
 const COUP = 'solo.coup'
 const HISTORIQUE = 'solo.historique'
 const REGLAGES = 'solo.reglages'
@@ -39,16 +42,53 @@ export interface Reglages {
   mode: ModeDuplicate
 }
 
-export const lirePartie = (): PartieDuplicate | null => lire<PartieDuplicate | null>(PARTIE, null)
-export const ecrirePartie = (p: PartieDuplicate | null) => ecrire(PARTIE, p)
+/** État du coup en cours de chaque partie, sous une clé à part : le chrono l'écrit toutes les secondes. */
+const cleCoup = (id: string) => `${COUP}.${id}`
 
-export const lireCoup = (numero: number): EtatCoup => {
-  const c = lire<Partial<EtatCoup> | null>(COUP, null)
+/**
+ * Parties en cours, la dernière jouée en premier. Avant, l'appli n'en gardait qu'une : si l'appareil en a encore une à
+ * l'ancien emplacement, elle est reprise ici avec le chrono de son coup.
+ */
+export function lirePartiesEnCours(): PartieDuplicate[] {
+  const liste = lire<PartieDuplicate[]>(PARTIES, [])
+  const ancienne = lire<PartieDuplicate | null>(ANCIENNE_PARTIE, null)
+  if (!ancienne) return liste
+  const coup = lire<EtatCoup | null>(COUP, null)
+  ecrire(ANCIENNE_PARTIE, null)
+  ecrire(COUP, null)
+  if (ancienne.finie || liste.some((p) => p.id === ancienne.id)) return liste
+  if (coup) ecrire(cleCoup(ancienne.id), coup)
+  const suite = [ancienne, ...liste]
+  ecrire(PARTIES, suite)
+  return suite
+}
+
+export const trouverPartieEnCours = (id: string): PartieDuplicate | null => lirePartiesEnCours().find((p) => p.id === id) ?? null
+
+/** Enregistre une partie en cours, nouvelle ou mise à jour : elle passe en tête, c'est la dernière jouée. */
+export function enregistrerPartie(p: PartieDuplicate) {
+  ecrire(PARTIES, [{ ...p, majLe: Date.now() }, ...lirePartiesEnCours().filter((x) => x.id !== p.id)])
+}
+
+/** La partie n'est plus en cours (terminée ou abandonnée) : elle et son coup en cours sont oubliés. */
+export function retirerPartie(id: string) {
+  ecrire(PARTIES, lirePartiesEnCours().filter((p) => p.id !== id))
+  ecrire(cleCoup(id), null)
+}
+
+/** Abandon : si des coups ont été joués, la partie est rangée dans l'historique (avec sa correction) ; sinon elle disparaît. */
+export function abandonnerPartie(p: PartieDuplicate) {
+  if (p.coups.length) archiver({ ...p, finie: true, courant: null })
+  retirerPartie(p.id)
+}
+
+export const lireCoup = (id: string, numero: number): EtatCoup => {
+  const c = lire<Partial<EtatCoup> | null>(cleCoup(id), null)
   return c && c.numero === numero
     ? { numero, ecoule: c.ecoule ?? 0, bulletin: c.bulletin ?? null, indices: c.indices ?? [], essais: c.essais ?? [] }
     : { numero, ecoule: 0, bulletin: null, indices: [], essais: [] }
 }
-export const ecrireCoup = (c: EtatCoup | null) => ecrire(COUP, c)
+export const ecrireCoup = (id: string, c: EtatCoup | null) => ecrire(cleCoup(id), c)
 
 export const lireReglages = (): Reglages => ({ temps: 180, mode: 'entrainement', ...lire<Partial<Reglages>>(REGLAGES, {}) })
 export const ecrireReglages = (r: Reglages) => ecrire(REGLAGES, r)

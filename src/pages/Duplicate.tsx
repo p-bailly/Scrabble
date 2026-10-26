@@ -31,17 +31,19 @@ import { plateauDepuisTexte } from '../jeu/plateau'
 import { naviguer } from '../lib/routeur'
 import { chargerDico, chercherCoups } from '../moteur/moteur'
 import {
+  abandonnerPartie,
   archiver,
   ecrireCoup,
-  ecrirePartie,
   ecrireReglages,
+  enregistrerPartie,
   formatChrono,
   formatPct,
   formatTemps,
   lireCoup,
   lireHistorique,
-  lirePartie,
   lireReglages,
+  retirerPartie,
+  trouverPartieEnCours,
   type EtatCoup,
 } from '../solo/sauvegarde'
 
@@ -79,33 +81,26 @@ const NOM_INDICE: Record<Indice, string> = {
   position: 'Case de départ',
 }
 
-export function Duplicate() {
-  const [partie, setPartie] = useState<PartieDuplicate | null>(lirePartie)
+/** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
+export function Duplicate({ id }: { id?: string }) {
+  const [partie, setPartie] = useState<PartieDuplicate | null>(() => (id ? trouverPartieEnCours(id) : null))
   // Résultat affiché après un coup (coup null : la partie s'arrête sans coup possible).
   const [resultat, setResultat] = useState<{ coup: CoupDuplicate | null } | null>(null)
 
-  const changer = useCallback((p: PartieDuplicate | null) => {
+  // Une partie en cours est sauvegardée à chaque coup ; terminée, elle quitte les parties en cours (elle est archivée).
+  const changer = useCallback((p: PartieDuplicate) => {
     setPartie(p)
-    ecrirePartie(p)
+    if (p.finie) retirerPartie(p.id)
+    else enregistrerPartie(p)
   }, [])
 
-  // Partie mise en pause : on revient à l'accueil du duplicate, qui propose de la reprendre.
-  const [pause, setPause] = useState(false)
-
   const enJeu = partie && (!partie.finie || resultat)
-  if (!enJeu || pause)
-    return (
-      <AccueilDuplicate
-        onLancer={(p) => {
-          if (partie && !partie.finie && partie.coups.length) archiver({ ...partie, finie: true, courant: null })
-          changer(p)
-          setResultat(null)
-          setPause(false)
-        }}
-        derniere={partie}
-        onReprendre={enJeu ? () => setPause(false) : undefined}
-      />
-    )
+  // Partie introuvable (abandonnée depuis le menu Solo, par exemple) ou terminée et regardée : retour à l'accueil.
+  useEffect(() => {
+    if (id && !enJeu) naviguer('solo/duplicate', true)
+  }, [id, enJeu])
+
+  if (!partie || !enJeu) return <AccueilDuplicate />
   return (
     <EcranDuplicate
       partie={partie}
@@ -117,29 +112,21 @@ export function Duplicate() {
       }}
       onSuivant={() => setResultat(null)}
       onAbandon={() => {
-        if (partie.coups.length) archiver({ ...partie, finie: true, courant: null })
-        changer(null)
-        setResultat(null)
+        abandonnerPartie(partie)
+        naviguer('solo')
       }}
-      onPause={() => setPause(true)}
+      onPause={() => naviguer('solo')}
     />
   )
 }
 
-interface PropsAccueil {
-  onLancer: (p: PartieDuplicate) => void
-  derniere: PartieDuplicate | null
-  /** Présent quand une partie est en pause. */
-  onReprendre?: () => void
-}
-
-function AccueilDuplicate({ onLancer, derniere, onReprendre }: PropsAccueil) {
+function AccueilDuplicate() {
   const [reglages] = useState(lireReglages)
   const [temps, setTemps] = useState(reglages.temps)
   const [mode, setMode] = useState<ModeDuplicate>(reglages.mode)
   const [graine, setGraine] = useState('')
   const [dico, setDico] = useState<string>('')
-  const precedente = derniere?.finie ? derniere : lireHistorique()[0]
+  const precedente = lireHistorique()[0]
 
   useEffect(() => {
     chargerDico()
@@ -148,17 +135,16 @@ function AccueilDuplicate({ onLancer, derniere, onReprendre }: PropsAccueil) {
   }, [])
 
   const lancer = () => {
-    if (onReprendre && !confirm('Abandonner la partie en pause pour en commencer une autre ?')) return
     ecrireReglages({ temps, mode })
-    ecrireCoup(null)
     const g = graine.trim().toUpperCase() || nouvelleGraine()
-    onLancer(nouvellePartie(g, temps, `${g}-${Date.now()}`, mode))
+    const p = nouvellePartie(g, temps, `${g}-${Date.now()}`, mode)
+    enregistrerPartie(p)
+    naviguer('solo/duplicate/' + encodeURIComponent(p.id))
   }
 
   return (
     <div className="contenu">
       <EnteteRetour titre="Duplicate" vers="solo" />
-      {onReprendre && derniere && <EnPause partie={derniere} onReprendre={onReprendre} />}
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           À chaque coup, le même tirage de 7 lettres que pour tout le monde : trouve le meilleur mot avant la fin du temps.
@@ -206,27 +192,6 @@ function AccueilDuplicate({ onLancer, derniere, onReprendre }: PropsAccueil) {
         <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
       </div>
       {precedente && precedente.coups.length > 0 && <Bilan partie={precedente} />}
-    </div>
-  )
-}
-
-function EnPause({ partie, onReprendre }: { partie: PartieDuplicate; onReprendre: () => void }) {
-  const t = totaux(partie)
-  const topping = modeDe(partie) === 'topping'
-  return (
-    <div className="carte carte-accent">
-      <div className="note">
-        Partie en pause · {topping ? 'topping' : 'entraînement'} · coup {partie.courant?.numero ?? partie.coups.length}
-      </div>
-      <div style={{ fontSize: 30, fontWeight: 800 }}>
-        {topping ? `${t.trouves} / ${partie.coups.length} tops` : t.top ? formatPct(t.pourcentage) : '—'}
-      </div>
-      <div className="note">
-        {t.joueur} / {t.top} points · graine {partie.graine}
-      </div>
-      <button type="button" className="bouton" onClick={onReprendre}>
-        Reprendre
-      </button>
     </div>
   )
 }
@@ -281,7 +246,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const validerRef = useRef<() => void>(() => {})
   const edition = useEdition(plateau, tirage, () => validerRef.current())
   const analyse = useAnalyse(plateau, edition.poses)
-  const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(numero))
+  const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(partie.id, numero))
   const [menu, setMenu] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
@@ -296,7 +261,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   useEffect(() => {
     if (!courant) return
     fini.current = false
-    setCoup(lireCoup(courant.numero))
+    setCoup(lireCoup(partie.id, courant.numero))
     setMessage('')
     setTopConnu(null)
     const promesse = chercherCoups(plateau, courant.tirage, NB_SOLUTIONS).then((r) => r.coups)
@@ -307,7 +272,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
     }, () => {})
   }, [courant?.numero, partie.id])
 
-  useEffect(() => ecrireCoup(coup), [coup])
+  useEffect(() => ecrireCoup(partie.id, coup), [partie.id, coup])
   // Un message sur le coup précédent n'a plus de raison d'être dès qu'on bouge une lettre.
   useEffect(() => setMessage(''), [edition.poses])
 
@@ -326,7 +291,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
       if (analyse?.valide && analyse.coup && (!joueur || analyse.points > joueur.points)) joueur = analyse.coup
       const top = coups[0] ?? null
       const suite = terminerCoup(partie, top, joueur, coups.slice(0, NB_SOLUTIONS), coup.ecoule, coup.indices, coup.essais)
-      ecrireCoup(null)
+      ecrireCoup(partie.id, null)
       onFinCoup(suite, top ? suite.coups.at(-1)! : null)
     } catch {
       fini.current = false
@@ -581,7 +546,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
           className="bouton"
           onClick={() => {
             setMenu(false)
-            naviguer('correction/courante')
+            naviguer('correction/' + encodeURIComponent(partie.id))
           }}
         >
           Correction des coups joués

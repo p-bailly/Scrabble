@@ -75,16 +75,20 @@ de partie « Joker », « 7 sur 8 », « 7 et 8 » ne sont pas repris, faute de 
 - quand plusieurs coups font le même score, le top retenu est celui qui utilise le moins de jokers, puis le mot le
   plus long, puis le premier sur le plateau (de haut en bas, de gauche à droite).
 
-Partie en cours sauvegardée sur l'appareil et reprise à l'ouverture ; historique des parties et statistiques
-(moyenne en %, meilleure partie, tops trouvés). Une **graine** (facultative) redonne exactement les mêmes tirages :
+Les parties en cours sont sauvegardées sur l'appareil à chaque coup : on peut en avoir **plusieurs en même temps**
+(duplicate et contre l'IA mélangés), toutes listées en haut du menu **Solo** avec leur avancement, pour les
+**reprendre** ou les **abandonner** (une partie abandonnée où l'on a joué est rangée dans l'historique) ; commencer
+une partie n'en abandonne plus aucune. Historique des parties et statistiques (moyenne en %, meilleure partie, tops
+trouvés). Une **graine** (facultative) redonne exactement les mêmes tirages :
 pratique pour rejouer une partie ou défier quelqu'un sur la même. Le mode solo marche entièrement hors ligne.
 
 ### Contre l'IA (solo)
 
 Une partie classique à deux joueurs contre l'ordinateur, avec les mêmes règles que les parties à deux ci-dessous
 (chevalet de 7 lettres ; on pose un mot, on change des lettres s'il reste au moins 7 jetons dans le sac, ou on
-passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; la
-partie en cours est sauvegardée, les résultats contre chaque niveau sont gardés (menu Solo et onglet Stats).
+passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; les
+parties en cours sont sauvegardées (on peut en avoir plusieurs, voir ci-dessus), les résultats contre chaque niveau
+sont gardés (menu Solo et onglet Stats).
 
 À la fin de la partie, **Analyser la partie** montre, tour par tour, le coup joué et les meilleurs coups possibles
 (voir « Analyse d'une partie » plus bas). Les dix dernières parties terminées restent analysables depuis l'onglet Stats.
@@ -118,7 +122,8 @@ Dans tous les écrans de jeu (duplicate, contre l'IA, parties à deux), la pasti
 lettres qu'on ne voit pas ; la toucher les détaille une à une, avec leur nombre. Ce sont les lettres qui ne sont ni sur
 le plateau ni sur son chevalet : face à un adversaire, le sac et le chevalet adverse y sont mêlés, comme dans une vraie
 partie (la fenêtre dit combien sont dans le sac). **Abandonner** : menu ⋯ en haut à droite dans une partie à deux (l'adversaire gagne et en est prévenu), flèche de
-retour puis « Abandonner la partie » en duplicate et contre l'IA.
+retour puis « Abandonner la partie » en duplicate et contre l'IA, ou **Abandonner** directement dans la liste des
+parties en cours du menu Solo.
 
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
   - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà

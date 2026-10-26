@@ -42,9 +42,9 @@ export function App() {
         <Multi chemin={chemin} />
       </Suspense>
     )
-  else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate />
+  else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate key={chemin[2]} id={chemin[2] && decodeURIComponent(chemin[2])} />
   else if (page === 'solo' && chemin[1] === 'ia' && chemin[2] === 'analyse') contenu = <AnalyseIA id={decodeURIComponent(chemin[3] ?? 'courante')} />
-  else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA />
+  else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA key={chemin[2]} id={chemin[2] && decodeURIComponent(chemin[2])} />
   else contenu = <Solo />
 
   const onglet = page === 'correction' ? 'solo' : page === 'partie' || page === 'rejoindre' ? 'parties' : page

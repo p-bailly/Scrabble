@@ -32,10 +32,11 @@ import { chargerDico, decisionIA } from '../moteur/moteur'
 import {
   archiverIA,
   bilanParNiveau,
-  ecrirePartieIA,
   ecrireReglagesIA,
-  lirePartieIA,
+  enregistrerPartieIA,
   lireReglagesIA,
+  retirerPartieIA,
+  trouverPartieIAEnCours,
   type ReglagesIA,
 } from '../solo/sauvegardeIA'
 
@@ -44,43 +45,40 @@ const REFLEXION_MIN = 800
 
 const NOM_CAMP: Record<Camp, string> = { moi: 'Toi', ia: 'L’IA' }
 
-export function ContreIA() {
-  const [partie, setPartie] = useState<PartieIA | null>(lirePartieIA)
-  // Retour à l'accueil sans abandonner la partie en cours.
-  const [pause, setPause] = useState(false)
+/** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
+export function ContreIA({ id }: { id?: string }) {
+  const [partie, setPartie] = useState<PartieIA | null>(() => (id ? trouverPartieIAEnCours(id) : null))
 
-  const changer = useCallback((p: PartieIA | null) => {
+  // Une partie en cours est sauvegardée à chaque coup ; terminée, elle quitte les parties en cours pour l'historique.
+  const changer = useCallback((p: PartieIA) => {
     setPartie(p)
-    ecrirePartieIA(p)
-    if (p?.finie) archiverIA(p)
+    if (p.finie) {
+      retirerPartieIA(p.id)
+      archiverIA(p)
+    } else enregistrerPartieIA(p)
   }, [])
 
-  if (!partie || pause)
-    return (
-      <AccueilIA
-        enCours={partie && !partie.finie ? partie : null}
-        onReprendre={() => setPause(false)}
-        onLancer={(p) => {
-          if (partie && !partie.finie && partie.coups.length) changer(abandonnerIA(partie))
-          changer(p)
-          setPause(false)
-        }}
-      />
-    )
+  // Partie introuvable (abandonnée depuis le menu Solo, par exemple) : retour à l'accueil.
+  useEffect(() => {
+    if (id && !partie) naviguer('solo/ia', true)
+  }, [id, partie])
+
+  if (!partie) return <AccueilIA />
   return (
     <EcranIA
       partie={partie}
       onChange={changer}
-      onPause={() => setPause(true)}
-      onQuitter={() => {
-        changer(null)
-        naviguer('solo')
+      onRevanche={(p) => {
+        enregistrerPartieIA(p)
+        naviguer('solo/ia/' + encodeURIComponent(p.id), true)
       }}
+      onPause={() => naviguer('solo')}
+      onQuitter={() => naviguer('solo')}
     />
   )
 }
 
-function AccueilIA({ enCours, onReprendre, onLancer }: { enCours: PartieIA | null; onReprendre: () => void; onLancer: (p: PartieIA) => void }) {
+function AccueilIA() {
   const [reglages, setReglages] = useState<ReglagesIA>(lireReglagesIA)
   const [dico, setDico] = useState('')
   const bilan = useMemo(() => bilanParNiveau(), [])
@@ -92,29 +90,16 @@ function AccueilIA({ enCours, onReprendre, onLancer }: { enCours: PartieIA | nul
   }, [])
 
   const lancer = () => {
-    if (enCours && !confirm('Abandonner la partie en cours pour en commencer une autre ?')) return
     ecrireReglagesIA(reglages)
     const premier: Camp = reglages.premier === 'hasard' ? (Math.random() < 0.5 ? 'moi' : 'ia') : reglages.premier
-    onLancer(nouvellePartieIA(reglages.niveau, premier))
+    const p = nouvellePartieIA(reglages.niveau, premier)
+    enregistrerPartieIA(p)
+    naviguer('solo/ia/' + encodeURIComponent(p.id))
   }
 
   return (
     <div className="contenu">
       <EnteteRetour titre="Contre l’IA" vers="solo" />
-      {enCours && (
-        <div className="carte carte-accent">
-          <div className="note">Partie en cours · {PROFILS[enCours.niveau].nom}</div>
-          <div style={{ fontSize: 30, fontWeight: 800 }}>
-            {enCours.scores.moi} – {enCours.scores.ia}
-          </div>
-          <div className="note">
-            {enCours.coups.length} coup{enCours.coups.length > 1 ? 's' : ''} · sac {enCours.sac.length}
-          </div>
-          <button type="button" className="bouton" onClick={onReprendre}>
-            Reprendre
-          </button>
-        </div>
-      )}
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           Une vraie partie de Scrabble contre l’ordinateur : chacun son chevalet, on joue à tour de rôle. Choisis la force de
@@ -192,11 +177,14 @@ function decrire(c: CoupIA) {
 function EcranIA({
   partie,
   onChange,
+  onRevanche,
   onPause,
   onQuitter,
 }: {
   partie: PartieIA
-  onChange: (p: PartieIA | null) => void
+  onChange: (p: PartieIA) => void
+  /** Revanche : la nouvelle partie, déjà prête. */
+  onRevanche: (p: PartieIA) => void
   onPause: () => void
   onQuitter: () => void
 }) {
@@ -328,9 +316,7 @@ function EcranIA({
         {partie.finie ? (
           <FinDePartie
             partie={partie}
-            onRevanche={() => {
-              onChange(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))
-            }}
+            onRevanche={() => onRevanche(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))}
             onQuitter={onQuitter}
           />
         ) : aMoi ? (

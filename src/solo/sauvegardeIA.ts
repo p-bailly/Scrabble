@@ -1,10 +1,12 @@
-// Sauvegarde des parties contre l'IA sur l'appareil : partie en cours (reprise à l'ouverture), historique et réglages.
+// Sauvegarde des parties contre l'IA sur l'appareil : parties en cours (on peut en avoir plusieurs), historique et réglages.
 
-import { resumeIA, type PartieIA, type ResumeIA } from '../jeu/contreIA'
+import { abandonnerIA, resumeIA, type PartieIA, type ResumeIA } from '../jeu/contreIA'
 import { NIVEAUX, type NiveauIA } from '../jeu/ia'
 import { ecrire, lire } from '../lib/stockage'
 
-const PARTIE = 'ia.partie'
+const ENCOURS = 'ia.encours'
+/** Ancien emplacement de l'unique partie en cours, reprise dans ENCOURS au premier accès. */
+const ANCIENNE_PARTIE = 'ia.partie'
 const HISTORIQUE = 'ia.historique'
 const REGLAGES = 'ia.reglages'
 const PARTIES = 'ia.parties'
@@ -12,8 +14,38 @@ const MAX_HISTORIQUE = 100
 /** Parties terminées gardées en entier (avec leurs coups) pour pouvoir les analyser plus tard. */
 const MAX_PARTIES = 10
 
-export const lirePartieIA = (): PartieIA | null => lire<PartieIA | null>(PARTIE, null)
-export const ecrirePartieIA = (p: PartieIA | null) => ecrire(PARTIE, p)
+/**
+ * Parties en cours, la dernière jouée en premier. Avant, l'appli n'en gardait qu'une : si l'appareil en a encore une à
+ * l'ancien emplacement, elle est reprise ici.
+ */
+export function lirePartiesIAEnCours(): PartieIA[] {
+  const liste = lire<PartieIA[]>(ENCOURS, [])
+  const ancienne = lire<PartieIA | null>(ANCIENNE_PARTIE, null)
+  if (!ancienne) return liste
+  ecrire(ANCIENNE_PARTIE, null)
+  if (ancienne.finie || liste.some((p) => p.id === ancienne.id)) return liste
+  const suite = [ancienne, ...liste]
+  ecrire(ENCOURS, suite)
+  return suite
+}
+
+export const trouverPartieIAEnCours = (id: string): PartieIA | null => lirePartiesIAEnCours().find((p) => p.id === id) ?? null
+
+/** Enregistre une partie en cours, nouvelle ou mise à jour : elle passe en tête, c'est la dernière jouée. */
+export function enregistrerPartieIA(p: PartieIA) {
+  ecrire(ENCOURS, [{ ...p, majLe: Date.now() }, ...lirePartiesIAEnCours().filter((x) => x.id !== p.id)])
+}
+
+/** La partie n'est plus en cours (terminée ou abandonnée). */
+export function retirerPartieIA(id: string) {
+  ecrire(ENCOURS, lirePartiesIAEnCours().filter((p) => p.id !== id))
+}
+
+/** Abandon : si des coups ont été joués, l'IA gagne et la partie est rangée dans l'historique ; sinon elle disparaît. */
+export function abandonnerPartieIA(p: PartieIA) {
+  if (p.coups.length) archiverIA(abandonnerIA(p))
+  retirerPartieIA(p.id)
+}
 
 export interface ReglagesIA {
   niveau: NiveauIA
@@ -36,11 +68,11 @@ export function archiverIA(p: PartieIA) {
 /** Les dernières parties terminées, avec leurs coups, la plus récente en premier. */
 export const lirePartiesIA = (): PartieIA[] => lire<PartieIA[]>(PARTIES, [])
 
-/** Une partie à analyser : la partie en cours de l'appareil (si c'est elle) ou une partie terminée gardée. */
+/** Une partie à analyser : une partie en cours (« courante » : la dernière jouée) ou une partie terminée gardée. */
 export function trouverPartieIA(id: string): PartieIA | null {
-  const courante = lirePartieIA()
-  if (courante && (id === 'courante' || courante.id === id)) return courante
-  return lirePartiesIA().find((p) => p.id === id) ?? null
+  const enCours = lirePartiesIAEnCours()
+  const courante = id === 'courante' ? enCours[0] : enCours.find((p) => p.id === id)
+  return courante ?? lirePartiesIA().find((p) => p.id === id) ?? null
 }
 
 export function supprimerHistoriqueIA() {

@@ -71,6 +71,8 @@ export interface PartieDuplicate {
   /** Temps par coup en secondes (0 : sans limite). */
   temps: number
   creeLe: number
+  /** Dernière sauvegarde de la partie en cours (la liste des parties en cours s'ordonne dessus). */
+  majLe?: number
   plateau: string
   sac: string[]
   /** État du générateur aléatoire. */
