@@ -129,14 +129,19 @@ export function Calculateur() {
         <button
           type="button"
           className="chevalet"
-          style={{ flex: 1, border: cible === 'tirage' ? '2px solid var(--ring)' : '2px solid transparent', cursor: 'pointer' }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: cible === 'tirage' ? '2px solid var(--ring)' : '2px solid transparent',
+            cursor: 'pointer',
+          }}
           onClick={() => setCible('tirage')}
           aria-label="Saisir le tirage"
         >
           {Array.from({ length: 7 }, (_, i) => {
             const l = donnees.tirage[i]
             return (
-              <div key={i} className={'emplacement' + (l ? '' : ' vide')} style={{ width: 36, height: 38 }}>
+              <div key={i} className={'emplacement' + (l ? '' : ' vide')} style={{ flex: '1 1 0', minWidth: 0, width: 'auto', maxWidth: 40, height: 38 }}>
                 {l && (
                   <div className="tuile" style={{ fontSize: 19 }}>
                     {l === JOKER ? '' : l}

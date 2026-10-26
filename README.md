@@ -117,6 +117,17 @@ l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de se
 - Historique des coups de la partie (mot, position, points) ; chaque coup reçu est revérifié par le client de
   l'adversaire (mots du dictionnaire, score), un coup non conforme est signalé.
 
+## Apparence
+
+L'interface s'inspire de **DupliJeu**, l'appli officielle du duplicate de la Fédération Française de Scrabble
+(simple inspiration visuelle : aucun élément graphique n'en est repris) : fond bleu ciel, plateau vert quadrillé de
+blanc, cases « double » en étoiles à huit pointes (rose pour le mot, bleu clair pour la lettre) et cases « triple »
+en carrés pleins (rouge, bleu), jetons crème à lettres noires, bleues tant qu'ils ne sont pas validés, rouges pour
+un joker. Sur l'écran de jeu : le chevalet dans un bac bleu juste sous le plateau (il passe au rouge pendant les
+15 dernières secondes), la ligne du coup en cours, les boutons carrés, puis tout en bas le chrono encadré avec le
+score (`74 / 93 pts (−19 | 79,6 %)`) et sa jauge verte. Thème clair ou sombre selon le téléphone, police système.
+Les couleurs sont des variables CSS en tête de [`src/styles.css`](src/styles.css).
+
 ## Dictionnaire
 
 L'appli utilise la liste de l'**ODS8** (L'Officiel du jeu Scrabble, 8e édition, 2021 : 411 430 formes, dont
@@ -203,7 +214,7 @@ même pseudo. Aucun mot de passe, aucun e-mail.
   « Jean Luc » et « jean-luc » désignent le même compte. Le nom saisi devient le pseudo vu par l'adversaire.
 - **Revers : le nom n'est pas secret.** Ni mot de passe ni code de vérification : quiconque connaît un nom (ou le
   devine) peut s'y connecter et lire ses parties. C'est le prix de la simplicité, acceptable entre proches. Pour
-  durcir, il suffirait d'ajouter un code secret à quatre chiffres demandé en plus du nom et mêlangé au mot de passe
+  durcir, il suffirait d'ajouter un code secret à quatre chiffres demandé en plus du nom et mélangé au mot de passe
   fabriqué ci-dessus.
 - Se déconnecter (en bas de « Mes parties ») permet de changer de compte sur un même appareil.
 

@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App as AppNative } from '@capacitor/app'
-import '@fontsource-variable/outfit'
 import { App } from './App'
 import { natif, surOuvertureNotification } from './lib/notifications'
 import { naviguer } from './lib/routeur'

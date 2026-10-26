@@ -3,7 +3,7 @@
   "appName": "Scrabble",
   "webDir": "dist",
   "android": {
-    "backgroundColor": "#fafaf7"
+    "backgroundColor": "#a9d3f4"
   },
   "plugins": {
     "LocalNotifications": {

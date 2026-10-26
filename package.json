@@ -17,7 +17,6 @@
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
     "@capacitor/local-notifications": "^8.3.1",
-    "@fontsource-variable/outfit": "^5.3.0",
     "firebase": "^13.1.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
