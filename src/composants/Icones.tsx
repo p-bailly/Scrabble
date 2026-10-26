@@ -91,6 +91,17 @@ export const IconeCrayon = ({ taille = 18 }: P) => (
     <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
   </svg>
 )
+export const IconeSac = ({ taille = 18 }: P) => (
+  <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
+    <path d="M9 3h6l-1.4 3.2h-3.2L9 3Z" />
+    <path d="M10.4 6.2C6 8.2 4 12 4 15.6 4 19 7.2 21 12 21s8-2 8-5.4c0-3.6-2-7.4-6.4-9.4" />
+  </svg>
+)
+export const IconeMenu = ({ taille = 22 }: P) => (
+  <svg width={taille} height={taille} viewBox="0 0 24 24" {...base} strokeWidth={3.2}>
+    <path d="M12 5h.01M12 12h.01M12 19h.01" />
+  </svg>
+)
 export const IconeHistorique = ({ taille = 22 }: P) => (
   <svg width={taille} height={taille} viewBox="0 0 24 24" {...base}>
     <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />

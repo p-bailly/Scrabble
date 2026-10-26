@@ -7,8 +7,10 @@ import { Changement } from '../composants/Changement'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
-import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
+import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { BoutonSac, Sac } from '../composants/Sac'
+import { lettresNonVues } from '../jeu/classique'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
@@ -608,6 +610,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const [suspects, setSuspects] = useState<Set<number>>(new Set())
   const [historique, setHistorique] = useState(false)
   const [changement, setChangement] = useState(false)
+  const [feuilleSac, setFeuilleSac] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => ecouterPartie(code, setP), [code])
@@ -629,6 +633,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   useMasquerOnglets(!!p && p.etat !== 'attente')
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
+  const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
 
   if (p === undefined) return <div className="vide-etat">Chargement…</div>
   if (p === null)
@@ -671,13 +676,18 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           <BarreJeu
             onRetour={() => naviguer('parties')}
             libelleRetour="Mes parties"
-            titre={
+            titre={p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}
+            pastille={<BoutonSac sac={p.sac.length} onClick={() => setFeuilleSac(true)} />}
+            droite={
               <>
-                {p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}{' '}
-                <span className="sous">· sac {p.sac.length}</span>
+                {boutonHistorique}
+                {p.etat === 'encours' && (
+                  <button type="button" className="bouton-icone" onClick={() => setMenu(true)} aria-label="Menu de la partie">
+                    <IconeMenu />
+                  </button>
+                )}
               </>
             }
-            droite={boutonHistorique}
           />
           <Plateau
             pleine
@@ -759,6 +769,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       )}
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={p.sac.length} adversaire={nomAdv} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}
@@ -796,20 +807,25 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             </div>
           ))}
         </div>
-        {p.etat === 'encours' && (
-          <button
-            type="button"
-            className="bouton danger"
-            onClick={() => {
-              if (confirm('Abandonner la partie ? Ton adversaire gagne.')) {
-                abandonner(p, uid)
-                setHistorique(false)
-              }
-            }}
-          >
-            Abandonner la partie
-          </button>
-        )}
+      </Feuille>
+      <Feuille ouvert={menu && p.etat === 'encours'} onFermer={() => setMenu(false)}>
+        <h3>Partie en cours</h3>
+        <p style={{ margin: 0 }} className="note">
+          Contre <b>{nomAdv}</b> · toi {moi}, {nomAdv} {lui}
+        </p>
+        <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
+          Reprendre
+        </button>
+        <button
+          type="button"
+          className="bouton danger"
+          onClick={() => {
+            setMenu(false)
+            if (confirm(`Abandonner la partie ? ${nomAdv} gagne.`)) abandonner(p, uid)
+          }}
+        >
+          Abandonner la partie
+        </button>
       </Feuille>
     </>
   )
@@ -837,7 +853,9 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
       <b style={{ fontSize: 20 }}>{f?.gagnant ? (f.gagnant === uid ? 'Tu as gagné !' : `${nomAdv} a gagné`) : 'Égalité'}</b>
       <span className="note">
         {f?.raison === 'abandon'
-          ? 'Partie abandonnée.'
+          ? p.dernier?.uid === uid
+            ? 'Tu as abandonné la partie.'
+            : `${nomAdv} a abandonné la partie.`
           : f?.raison === 'passes'
             ? 'Six passes de suite : chacun perd la valeur de ses lettres restantes'
             : 'Le sac est vide et un chevalet aussi : les lettres restantes changent de camp'}

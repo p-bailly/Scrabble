@@ -9,6 +9,8 @@ import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { BoutonSac, Sac } from '../composants/Sac'
+import { lettresNonVues } from '../jeu/classique'
 import {
   abandonnerIA,
   appliquerDecision,
@@ -203,11 +205,13 @@ function EcranIA({
   const chevalet = partie.chevalets.moi
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
+  const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
   const aMoi = !partie.finie && partie.tour === 'moi'
   const [message, setMessage] = useState('')
   const [menu, setMenu] = useState(false)
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
+  const [feuilleSac, setFeuilleSac] = useState(false)
   // L'IA n'a pas pu jouer (dictionnaire introuvable…) ; `essai` relance sa réflexion.
   const [erreurIA, setErreurIA] = useState('')
   const [essai, setEssai] = useState(0)
@@ -265,14 +269,8 @@ function EcranIA({
       <BarreJeu
         onRetour={() => setMenu(true)}
         libelleRetour="Menu de la partie"
-        titre={
-          <>
-            Contre {profil.nom}{' '}
-            <span className="sous">
-              · sac {partie.sac.length} lettre{partie.sac.length > 1 ? 's' : ''}
-            </span>
-          </>
-        }
+        titre={`Contre ${profil.nom}`}
+        pastille={<BoutonSac sac={partie.sac.length} onClick={() => setFeuilleSac(true)} />}
         droite={bouton}
       />
       <Plateau
@@ -374,6 +372,7 @@ function EcranIA({
       </PanneauBas>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’IA" />
       <Changement
         ouvert={changement}
         chevalet={chevalet}

@@ -114,6 +114,12 @@ lettres (s'il en reste au moins 7 dans le sac) ou on passe. Un mot absent du dic
 Fin de partie : le sac est vide et un joueur a vidé son chevalet (il gagne la valeur des lettres restant à
 l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
 
+Dans tous les écrans de jeu (duplicate, contre l'IA, parties à deux), la pastille du sac, en haut, donne le nombre de
+jetons restants ; la toucher détaille les lettres une à une, avec leur nombre. Face à un adversaire, ce sont les lettres
+qui ne sont ni sur le plateau ni sur son chevalet : le sac et le chevalet adverse y sont mêlés, comme dans une vraie
+partie. **Abandonner** : menu ⋯ en haut à droite dans une partie à deux (l'adversaire gagne et en est prévenu), flèche de
+retour puis « Abandonner la partie » en duplicate et contre l'IA.
+
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
   - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà
     rencontré (« Joué récemment »). L'invité trouve l'invitation en tête de **Mes parties** (« Invitations reçues »),

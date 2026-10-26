@@ -59,20 +59,31 @@ export function changer(
   return { chevalet: [...reste, ...p.tires], sac: [...p.sac, ...rendues] }
 }
 
+/** Retire de `jetons` un exemplaire de chaque jeton de `ceux` (ceux qui n'y sont pas sont ignorés). */
+function retirerJetons(jetons: string[], ceux: Iterable<string>): string[] {
+  for (const j of ceux) {
+    const i = jetons.indexOf(j)
+    if (i >= 0) jetons.splice(i, 1)
+  }
+  return jetons
+}
+
+/**
+ * Lettres pas encore vues par un joueur : tout ce qui n'est ni sur le plateau, ni sur son chevalet. C'est le contenu du
+ * sac, plus le chevalet de l'adversaire quand il y en a un (on ne peut pas les distinguer en jouant). Un joker posé
+ * (minuscule) compte pour un joker.
+ */
+export function lettresNonVues(plateau: Plateau, monChevalet: readonly string[]): string[] {
+  const posees = plateau.filter(Boolean).map((t) => (t >= 'a' ? '?' : t))
+  return retirerJetons(retirerJetons(tousLesJetons(), posees), monChevalet)
+}
+
 /**
  * Lettres de l'adversaire, déduites du reste : tout ce qui n'est ni sur le plateau, ni dans le sac, ni sur mon
  * chevalet. (Sans serveur, rien n'est vraiment caché : c'est aussi ce qui permet de calculer la fin de partie.)
  */
 export function lettresAdversaire(plateau: Plateau, sac: readonly string[], monChevalet: readonly string[]): string[] {
-  const reste = tousLesJetons()
-  const enlever = (j: string) => {
-    const i = reste.indexOf(j)
-    if (i >= 0) reste.splice(i, 1)
-  }
-  for (const t of plateau) if (t) enlever(t >= 'a' ? '?' : t)
-  for (const j of sac) enlever(j)
-  for (const j of monChevalet) enlever(j)
-  return reste
+  return retirerJetons(lettresNonVues(plateau, monChevalet), sac)
 }
 
 export interface Fin {

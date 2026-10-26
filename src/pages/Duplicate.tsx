@@ -9,6 +9,7 @@ import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, Chrono, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { BoutonSac, Sac } from '../composants/Sac'
 import { reference, type Coup } from '../jeu/coup'
 import {
   INDICES,
@@ -282,6 +283,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const analyse = useAnalyse(plateau, edition.poses)
   const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(numero))
   const [menu, setMenu] = useState(false)
+  const [feuilleSac, setFeuilleSac] = useState(false)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
   const [calcul, setCalcul] = useState(false)
   const [message, setMessage] = useState('')
@@ -430,12 +432,10 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
         libelleRetour="Menu de la partie"
         titre={
           <>
-            Coup {resultat?.coup?.numero ?? numero}{' '}
-            <span className="sous">
-              · {topping ? 'topping · ' : ''}sac {partie.sac.length} lettre{partie.sac.length > 1 ? 's' : ''}
-            </span>
+            Coup {resultat?.coup?.numero ?? numero} {topping && <span className="sous">· topping</span>}
           </>
         }
+        pastille={<BoutonSac sac={partie.sac.length} onClick={() => setFeuilleSac(true)} />}
       />
       <Plateau
         pleine
@@ -522,6 +522,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
       )}
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={partie.sac} sac={partie.sac.length} />
 
       <Feuille ouvert={feuilleIndices && !resultat} onFermer={() => setFeuilleIndices(false)}>
         <h3>Indices</h3>
