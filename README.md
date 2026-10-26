@@ -280,6 +280,10 @@ oublient d'autres.
   indépendante, sur le dictionnaire complet.
 - Au **clavier**, on tape directement les lettres du mot (Retour arrière efface, Espace change le sens, Échap reprend
   tout, Entrée valide).
+- **Réarranger le chevalet** : en faisant glisser une lettre, les autres s'écartent pour lui laisser sa place, et elle
+  se pose en douceur (lâchée ailleurs, elle retourne où elle était). Toucher deux lettres les échange et
+  **Mélanger** les fait glisser à leur nouvelle place ; les lettres rendues par le plateau réapparaissent avec un petit
+  effet. Les animations se coupent avec le réglage « réduire les animations » du système.
 - **Mises à jour** : au lancement (et au retour au premier plan), la PWA cherche une nouvelle version et se recharge
   toute seule si elle en trouve une.
 
