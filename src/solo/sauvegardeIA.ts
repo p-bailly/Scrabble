@@ -3,6 +3,7 @@
 import { abandonnerIA, resumeIA, type PartieIA, type ResumeIA } from '../jeu/contreIA'
 import { NIVEAUX, type NiveauIA } from '../jeu/ia'
 import { ecrire, lire } from '../lib/stockage'
+import { ecrireEstampille, lireEstampille, signaler, type Adapteur } from '../lib/synchro'
 
 const ENCOURS = 'ia.encours'
 /** Ancien emplacement de l'unique partie en cours, reprise dans ENCOURS au premier accès. */
@@ -33,12 +34,15 @@ export const trouverPartieIAEnCours = (id: string): PartieIA | null => lireParti
 
 /** Enregistre une partie en cours, nouvelle ou mise à jour : elle passe en tête, c'est la dernière jouée. */
 export function enregistrerPartieIA(p: PartieIA) {
-  ecrire(ENCOURS, [{ ...p, majLe: Date.now() }, ...lirePartiesIAEnCours().filter((x) => x.id !== p.id)])
+  const enregistree = { ...p, majLe: Date.now() }
+  ecrire(ENCOURS, [enregistree, ...lirePartiesIAEnCours().filter((x) => x.id !== p.id)])
+  signaler('ia-encours', p.id, enregistree, enregistree.majLe)
 }
 
 /** La partie n'est plus en cours (terminée ou abandonnée). */
 export function retirerPartieIA(id: string) {
   ecrire(ENCOURS, lirePartiesIAEnCours().filter((p) => p.id !== id))
+  signaler('ia-encours', id, null)
 }
 
 /** Abandon : si des coups ont été joués, l'IA gagne et la partie est rangée dans l'historique ; sinon elle disparaît. */
@@ -54,15 +58,27 @@ export interface ReglagesIA {
 }
 
 export const lireReglagesIA = (): ReglagesIA => ({ niveau: 'amateur', premier: 'hasard', ...lire<Partial<ReglagesIA>>(REGLAGES, {}) })
-export const ecrireReglagesIA = (r: ReglagesIA) => ecrire(REGLAGES, r)
+export function ecrireReglagesIA(r: ReglagesIA) {
+  ecrire(REGLAGES, r)
+  signaler('reglages', 'ia', r)
+}
 
 /** Parties terminées, la plus récente en premier. */
 export const lireHistoriqueIA = (): ResumeIA[] => lire<ResumeIA[]>(HISTORIQUE, [])
 
 export function archiverIA(p: PartieIA) {
-  const h = lireHistoriqueIA().filter((x) => x.id !== p.id)
-  ecrire(HISTORIQUE, [resumeIA(p), ...h].slice(0, MAX_HISTORIQUE))
-  if (p.coups.length) ecrire(PARTIES, [p, ...lirePartiesIA().filter((x) => x.id !== p.id)].slice(0, MAX_PARTIES))
+  const resume = resumeIA(p)
+  const h = [resume, ...lireHistoriqueIA().filter((x) => x.id !== p.id)]
+  ecrire(HISTORIQUE, h.slice(0, MAX_HISTORIQUE))
+  signaler('ia-histo', p.id, resume, p.creeLe)
+  // Ce que les plafonds font partir est supprimé partout, pour que tous les appareils gardent les mêmes parties.
+  for (const x of h.slice(MAX_HISTORIQUE)) signaler('ia-histo', x.id, null)
+  if (p.coups.length) {
+    const gardees = [p, ...lirePartiesIA().filter((x) => x.id !== p.id)]
+    ecrire(PARTIES, gardees.slice(0, MAX_PARTIES))
+    signaler('ia-partie', p.id, p, p.creeLe)
+    for (const x of gardees.slice(MAX_PARTIES)) signaler('ia-partie', x.id, null)
+  }
 }
 
 /** Les dernières parties terminées, avec leurs coups, la plus récente en premier. */
@@ -76,8 +92,60 @@ export function trouverPartieIA(id: string): PartieIA | null {
 }
 
 export function supprimerHistoriqueIA() {
+  const resumes = lireHistoriqueIA()
+  const parties = lirePartiesIA()
   ecrire(HISTORIQUE, [])
   ecrire(PARTIES, [])
+  for (const r of resumes) signaler('ia-histo', r.id, null)
+  for (const p of parties) signaler('ia-partie', p.id, null)
+}
+
+// --- Synchronisation avec le compte (voir lib/synchro.ts) ---
+
+const parDate = (a: PartieIA, b: PartieIA) => (b.majLe ?? b.creeLe) - (a.majLe ?? a.creeLe)
+
+export const adapteursIA: Record<'encours' | 'histo' | 'partie' | 'reglages', Adapteur> = {
+  encours: {
+    lister: () => lirePartiesIAEnCours().map((p) => ({ id: p.id, majLe: p.majLe ?? p.creeLe, donnees: p })),
+    appliquer(id, donnees, majLe) {
+      const reste = lirePartiesIAEnCours().filter((p) => p.id !== id)
+      ecrire(ENCOURS, donnees ? [{ ...(donnees as PartieIA), majLe }, ...reste].sort(parDate) : reste)
+    },
+  },
+  histo: {
+    lister: () => lireHistoriqueIA().map((r) => ({ id: r.id, majLe: r.date, donnees: r })),
+    appliquer(id, donnees) {
+      const reste = lireHistoriqueIA().filter((r) => r.id !== id)
+      ecrire(HISTORIQUE, donnees ? [donnees as ResumeIA, ...reste].sort((a, b) => b.date - a.date) : reste)
+    },
+    elaguer() {
+      const liste = lireHistoriqueIA()
+      if (liste.length <= MAX_HISTORIQUE) return
+      ecrire(HISTORIQUE, liste.slice(0, MAX_HISTORIQUE))
+      for (const x of liste.slice(MAX_HISTORIQUE)) signaler('ia-histo', x.id, null)
+    },
+  },
+  partie: {
+    lister: () => lirePartiesIA().map((p) => ({ id: p.id, majLe: p.creeLe, donnees: p })),
+    appliquer(id, donnees) {
+      const reste = lirePartiesIA().filter((p) => p.id !== id)
+      ecrire(PARTIES, donnees ? [donnees as PartieIA, ...reste].sort((a, b) => b.creeLe - a.creeLe) : reste)
+    },
+    elaguer() {
+      const liste = lirePartiesIA()
+      if (liste.length <= MAX_PARTIES) return
+      ecrire(PARTIES, liste.slice(0, MAX_PARTIES))
+      for (const x of liste.slice(MAX_PARTIES)) signaler('ia-partie', x.id, null)
+    },
+  },
+  reglages: {
+    lister: () => (lireEstampille('ia') ? [{ id: 'ia', majLe: lireEstampille('ia'), donnees: lireReglagesIA() }] : []),
+    appliquer(_id, donnees, majLe) {
+      if (!donnees) return
+      ecrire(REGLAGES, donnees)
+      ecrireEstampille('ia', majLe)
+    },
+  },
 }
 
 export interface BilanNiveau {

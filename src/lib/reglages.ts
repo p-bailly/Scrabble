@@ -2,6 +2,7 @@
 // (attributs de <html> que lit styles.css) ; les autres sont lus au moment où ils servent.
 
 import { ecrire, lire } from './stockage'
+import { ecrireEstampille, lireEstampille, signaler, type Adapteur } from './synchro'
 
 export type Theme = 'auto' | 'clair' | 'sombre'
 export const THEMES: { theme: Theme; nom: string }[] = [
@@ -74,7 +75,22 @@ export function modifierReglages(modif: Partial<Reglages>): Reglages {
   const r = { ...lireReglages(), ...modif }
   ecrire(CLE, r)
   appliquer(r)
+  // Apparence et confirmation suivent le compte ; les notifications dépendent de l'appareil (autorisation, appli installée).
+  if ('theme' in modif || 'etiquettes' in modif || 'confirmerPasse' in modif) signaler('reglages', 'app', reglagesDuCompte(r))
   return r
+}
+
+type ReglagesDuCompte = Pick<Reglages, 'theme' | 'etiquettes' | 'confirmerPasse'>
+const reglagesDuCompte = (r: Reglages): ReglagesDuCompte => ({ theme: r.theme, etiquettes: r.etiquettes, confirmerPasse: r.confirmerPasse })
+
+/** Synchronisation avec le compte (voir synchro.ts) : l'apparence et la confirmation avant de passer. */
+export const adapteurReglages: Adapteur = {
+  lister: () => (lireEstampille('app') ? [{ id: 'app', majLe: lireEstampille('app'), donnees: reglagesDuCompte(lireReglages()) }] : []),
+  appliquer(_id, donnees, majLe) {
+    if (!donnees) return
+    modifierReglages(donnees as Partial<Reglages>)
+    ecrireEstampille('app', majLe)
+  },
 }
 
 const SOMBRE = '(prefers-color-scheme: dark)'

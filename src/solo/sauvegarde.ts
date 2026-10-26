@@ -4,6 +4,7 @@
 import type { Coup } from '../jeu/coup'
 import { modeDe, totaux, type Essai, type Indice, type ModeDuplicate, type PartieDuplicate } from '../jeu/duplicate'
 import { ecrire, lire } from '../lib/stockage'
+import { ecrireEstampille, lireEstampille, signaler, type Adapteur } from '../lib/synchro'
 
 const PARTIES = 'solo.parties'
 /** Ancien emplacement de l'unique partie en cours et de son coup, repris dans PARTIES au premier accès. */
@@ -67,13 +68,16 @@ export const trouverPartieEnCours = (id: string): PartieDuplicate | null => lire
 
 /** Enregistre une partie en cours, nouvelle ou mise à jour : elle passe en tête, c'est la dernière jouée. */
 export function enregistrerPartie(p: PartieDuplicate) {
-  ecrire(PARTIES, [{ ...p, majLe: Date.now() }, ...lirePartiesEnCours().filter((x) => x.id !== p.id)])
+  const enregistree = { ...p, majLe: Date.now() }
+  ecrire(PARTIES, [enregistree, ...lirePartiesEnCours().filter((x) => x.id !== p.id)])
+  signaler('duplicate-encours', p.id, enregistree, enregistree.majLe)
 }
 
 /** La partie n'est plus en cours (terminée ou abandonnée) : elle et son coup en cours sont oubliés. */
 export function retirerPartie(id: string) {
   ecrire(PARTIES, lirePartiesEnCours().filter((p) => p.id !== id))
   ecrire(cleCoup(id), null)
+  signaler('duplicate-encours', id, null)
 }
 
 /** Abandon : si des coups ont été joués, la partie est rangée dans l'historique (avec sa correction) ; sinon elle disparaît. */
@@ -91,7 +95,10 @@ export const lireCoup = (id: string, numero: number): EtatCoup => {
 export const ecrireCoup = (id: string, c: EtatCoup | null) => ecrire(cleCoup(id), c)
 
 export const lireReglages = (): Reglages => ({ temps: 180, mode: 'entrainement', ...lire<Partial<Reglages>>(REGLAGES, {}) })
-export const ecrireReglages = (r: Reglages) => ecrire(REGLAGES, r)
+export function ecrireReglages(r: Reglages) {
+  ecrire(REGLAGES, r)
+  signaler('reglages', 'duplicate', r)
+}
 
 /** Parties terminées, la plus récente en premier (avec leurs coups, pour la correction). */
 export const lireHistorique = (): PartieDuplicate[] => lire<PartieDuplicate[]>(HISTORIQUE, [])
@@ -100,15 +107,58 @@ export function archiver(p: PartieDuplicate) {
   // On allège les « autres coups » pour garder de la place.
   const allegee: PartieDuplicate = { ...p, coups: p.coups.map((c) => ({ ...c, autres: c.autres.slice(0, 8) })) }
   const h = lireHistorique().filter((x) => x.id !== p.id)
-  ecrire(HISTORIQUE, [allegee, ...h].slice(0, MAX_HISTORIQUE))
+  const liste = [allegee, ...h]
+  ecrire(HISTORIQUE, liste.slice(0, MAX_HISTORIQUE))
+  signaler('duplicate-histo', p.id, allegee, p.creeLe)
+  // Ce que le plafond fait partir est supprimé partout, pour que tous les appareils gardent les mêmes parties.
+  for (const x of liste.slice(MAX_HISTORIQUE)) signaler('duplicate-histo', x.id, null)
 }
 
 export function supprimerDeHistorique(id: string) {
   ecrire(HISTORIQUE, lireHistorique().filter((x) => x.id !== id))
+  signaler('duplicate-histo', id, null)
 }
 
 export function viderHistorique() {
+  const ids = lireHistorique().map((p) => p.id)
   ecrire(HISTORIQUE, [])
+  for (const id of ids) signaler('duplicate-histo', id, null)
+}
+
+// --- Synchronisation avec le compte (voir lib/synchro.ts) ---
+
+const parDate = (a: PartieDuplicate, b: PartieDuplicate) => (b.majLe ?? b.creeLe) - (a.majLe ?? a.creeLe)
+
+export const adapteursDuplicate: Record<'encours' | 'histo' | 'reglages', Adapteur> = {
+  encours: {
+    lister: () => lirePartiesEnCours().map((p) => ({ id: p.id, majLe: p.majLe ?? p.creeLe, donnees: p })),
+    appliquer(id, donnees, majLe) {
+      const reste = lirePartiesEnCours().filter((p) => p.id !== id)
+      ecrire(PARTIES, donnees ? [{ ...(donnees as PartieDuplicate), majLe }, ...reste].sort(parDate) : reste)
+      if (!donnees) ecrire(cleCoup(id), null)
+    },
+  },
+  histo: {
+    lister: () => lireHistorique().map((p) => ({ id: p.id, majLe: p.creeLe, donnees: p })),
+    appliquer(id, donnees) {
+      const reste = lireHistorique().filter((p) => p.id !== id)
+      ecrire(HISTORIQUE, donnees ? [donnees as PartieDuplicate, ...reste].sort((a, b) => b.creeLe - a.creeLe) : reste)
+    },
+    elaguer() {
+      const liste = lireHistorique()
+      if (liste.length <= MAX_HISTORIQUE) return
+      ecrire(HISTORIQUE, liste.slice(0, MAX_HISTORIQUE))
+      for (const x of liste.slice(MAX_HISTORIQUE)) signaler('duplicate-histo', x.id, null)
+    },
+  },
+  reglages: {
+    lister: () => (lireEstampille('duplicate') ? [{ id: 'duplicate', majLe: lireEstampille('duplicate'), donnees: lireReglages() }] : []),
+    appliquer(_id, donnees, majLe) {
+      if (!donnees) return
+      ecrire(REGLAGES, donnees)
+      ecrireEstampille('duplicate', majLe)
+    },
+  },
 }
 
 export const resume = (p: PartieDuplicate): ResumePartie => {
