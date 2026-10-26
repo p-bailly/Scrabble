@@ -398,7 +398,7 @@ function APropos() {
 
   return (
     <>
-      <Rangee titre="Version" texte={`Construite le ${new Date(__BUILD__).toLocaleDateString('fr-FR')}`} />
+      <Rangee titre="Version" texte={`${__VERSION__} · construite le ${new Date(__BUILD__).toLocaleDateString('fr-FR')}`} />
       <Rangee titre="Dictionnaire" texte={dico} />
       {natif ? (
         <Rangee

@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// Numéro de version : « majeur.mineur » vient de package.json, la fin est le numéro de build de la CI (GITHUB_RUN_NUMBER,
+// qui monte à chaque construction). C'est ce nom que « Mes applis » et les réglages du téléphone affichent ; le versionCode,
+// lui, sert à Android pour savoir qu'un APK est plus récent.
+def versionDuPaquet = new groovy.json.JsonSlurper().parse(file('../../package.json')).version.tokenize('.')
+def nomDeVersion = "${versionDuPaquet[0]}.${versionDuPaquet[1]}.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+
 android {
     namespace = "fr.perso.scrabble"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -9,7 +15,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // La CI passe un numéro croissant (github.run_number) pour que chaque APK s'installe par-dessus le précédent.
         versionCode((System.getenv("VERSION_CODE") ?: "1") as int)
-        versionName "1.0"
+        versionName nomDeVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

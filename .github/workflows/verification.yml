@@ -59,3 +59,11 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+      # Le nom de version de l'APK doit suivre le numéro de build (« Mes applis » l'affiche) et non rester figé.
+      - name: Vérifier le numéro de version de l'APK
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | tail -1)
+          INFOS=$("$AAPT" dump badging android/app/build/outputs/apk/release/app-release.apk | grep -o "versionName='[^']*'")
+          echo "$INFOS"
+          ATTENDU="versionName='$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')").${GITHUB_RUN_NUMBER}'"
+          test "$INFOS" = "$ATTENDU" || { echo "Attendu : $ATTENDU"; exit 1; }
