@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { Analyse, Pose } from '../jeu/coup'
 import type { Plateau } from '../jeu/plateau'
 import { analyser } from '../moteur/moteur'
-import { IconeCroix, IconeOk } from './Icones'
+import { IconeCroix, IconeLoupe, IconeOk } from './Icones'
 
 /** Analyse (par le worker) du coup en cours de pose ; null tant qu'aucune lettre n'est posée. */
 export function useAnalyse(plateau: Plateau, poses: Pose[]): Analyse | null {
@@ -42,25 +42,39 @@ export function Mot({ mot }: { mot: string }) {
   )
 }
 
-export function Apercu({ analyse, indice }: { analyse: Analyse | null; indice: string }) {
+/** Bouton « Vérifier un mot » au bout de la ligne d'aperçu. */
+function Loupe({ onVerifier }: { onVerifier?: () => void }) {
+  if (!onVerifier) return null
+  return (
+    <button type="button" className="bouton-loupe" onClick={onVerifier} aria-label="Vérifier un mot">
+      <IconeLoupe />
+    </button>
+  )
+}
+
+/** `onVerifier` : ajoute au bout de la ligne le bouton qui ouvre la vérification d'un mot (FeuilleVerifier). */
+export function Apercu({ analyse, indice, onVerifier }: { analyse: Analyse | null; indice: string; onVerifier?: () => void }) {
+  const avec = onVerifier ? ' avec-loupe' : ''
   if (!analyse) {
     return (
-      <div className="apercu">
+      <div className={'apercu' + avec}>
         <span className="indice">{indice}</span>
+        <Loupe onVerifier={onVerifier} />
       </div>
     )
   }
   if (analyse.erreur) {
     return (
-      <div className="apercu erreur">
+      <div className={'apercu erreur' + avec}>
         <IconeCroix />
         <span className="mots">{analyse.erreur}</span>
+        <Loupe onVerifier={onVerifier} />
       </div>
     )
   }
   const inconnus = new Set(analyse.motsInconnus)
   return (
-    <div className={'apercu' + (analyse.valide ? '' : ' erreur')}>
+    <div className={'apercu' + (analyse.valide ? '' : ' erreur') + avec}>
       {analyse.valide ? (
         <span style={{ color: 'var(--ok)', display: 'flex' }}>
           <IconeOk />
@@ -85,6 +99,7 @@ export function Apercu({ analyse, indice }: { analyse: Analyse | null; indice: s
       <span className="total" style={{ color: analyse.valide ? 'var(--text)' : 'var(--muted)' }}>
         {analyse.points} pts
       </span>
+      <Loupe onVerifier={onVerifier} />
     </div>
   )
 }

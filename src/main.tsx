@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App as AppNative } from '@capacitor/app'
 import { App, prechargerEcrans } from './App'
+import { configuration } from './lib/configFirebase'
 import { natif, surOuvertureNotification } from './lib/notifications'
 import { demarrerReglages } from './lib/reglages'
 import { naviguer } from './lib/routeur'
@@ -13,9 +14,10 @@ import './styles.css'
 // Thème, étiquettes du plateau : appliqués avant le premier rendu.
 demarrerReglages()
 
-// Premier lancement sur cet appareil : on commence par le nom d'utilisateur (écran « Mes parties », multi/Compte.tsx).
-// Le solo reste à un toucher (« Jouer en solo sans compte ») et marche sans compte ni réseau.
-if (!location.hash && !lire('multi.pseudo', null) && !lire('multi.sansCompte', false)) {
+// L'appli s'ouvre sur « Mes parties », le premier onglet (au premier lancement, c'est là qu'on choisit son nom
+// d'utilisateur, multi/Compte.tsx). Seul celui qui a choisi « Jouer en solo sans compte » et n'a pas de compte arrive
+// sur le menu Solo, qui marche sans compte ni réseau ; de même quand le projet n'a pas de Firebase.
+if (!location.hash && configuration && (lire('multi.pseudo', null) || !lire('multi.sansCompte', false))) {
   history.replaceState(null, '', '#/parties')
 }
 

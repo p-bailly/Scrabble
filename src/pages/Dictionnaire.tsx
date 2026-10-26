@@ -5,8 +5,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DefinitionMot } from '../composants/Definition'
 import { Entete } from '../composants/Entete'
+import { VerifierMot } from '../composants/VerifierMot'
 import { Dawg } from '../jeu/dawg'
-import { sommeValeurs } from '../jeu/lettres'
 import { URL_DICO } from '../moteur/moteur'
 
 type Outil = 'chercher' | 'verifier'
@@ -79,10 +79,15 @@ export function Dictionnaire() {
           </button>
         ))}
       </div>
-      {erreur && <div className="apercu erreur">{erreur}</div>}
-      {!d && !erreur && <div className="vide-etat">Chargement du dictionnaire…</div>}
-      {d && outil === 'chercher' && <Chercher d={d} />}
-      {d && outil === 'verifier' && <Verifier d={d} />}
+      {outil === 'verifier' ? (
+        <VerifierMot />
+      ) : (
+        <>
+          {erreur && <div className="apercu erreur">{erreur}</div>}
+          {!d && !erreur && <div className="vide-etat">Chargement du dictionnaire…</div>}
+          {d && <Chercher d={d} />}
+        </>
+      )}
     </div>
   )
 }
@@ -135,41 +140,6 @@ function Chercher({ d }: { d: Dawg }) {
           Voir la suite
         </button>
       )}
-    </>
-  )
-}
-
-/** Lettres A à Z d'une saisie (accents et casse ignorés). */
-const nettoyer = (saisie: string) => saisie.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '')
-
-/** Un mot est-il valable ? La réponse de l'arbitre, avec ses points sans case bonus et sa définition. */
-function Verifier({ d }: { d: Dawg }) {
-  const [saisie, setSaisie] = useState('')
-  const mot = nettoyer(saisie)
-  const valable = mot.length > 0 && d.contient(mot)
-  return (
-    <>
-      <input
-        value={saisie}
-        onChange={(e) => setSaisie(e.target.value)}
-        placeholder="Un mot à vérifier"
-        autoCapitalize="characters"
-        autoComplete="off"
-        autoCorrect="off"
-        spellCheck={false}
-        aria-label="Mot à vérifier"
-      />
-      {mot ? (
-        <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 6 }} role="status">
-          <b style={{ fontSize: 22 }} className={valable ? 'ecart-ok' : 'ecart-neg'}>
-            {mot} {valable ? 'est valable ✓' : 'n’est pas valable ✗'}
-          </b>
-          {valable && <span className="note">{sommeValeurs([...mot])} points sans case bonus · {mot.length} lettre{mot.length > 1 ? 's' : ''}</span>}
-        </div>
-      ) : (
-        <div className="vide-etat">Tape un mot : l’appli te dit s’il est dans le dictionnaire.</div>
-      )}
-      {valable && <DefinitionMot mot={mot} />}
     </>
   )
 }
