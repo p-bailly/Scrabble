@@ -733,7 +733,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           <BarreJeu
             onRetour={() => naviguer('parties')}
             libelleRetour="Mes parties"
-            titre={p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}
+            titre={p.etat === 'finie' ? 'Terminée' : aMoi ? 'À toi de jouer' : `Tour de ${nomAdv}`}
             pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
             droite={
               <>

@@ -945,6 +945,20 @@ a.bouton {
   background: var(--muted);
   opacity: 0.7;
 }
+/* Petits téléphones : la barre de jeu se resserre pour laisser sa place au titre (pseudo de l'adversaire). */
+@media (max-width: 380px) {
+  .barre-jeu {
+    gap: 6px;
+    padding: 8px;
+  }
+  .barre-jeu .bouton-icone {
+    width: 40px;
+    height: 40px;
+  }
+  .puce-sac {
+    padding: 0 8px;
+  }
+}
 .zone-plateau.pleine {
   border-radius: 0;
   border-left: 0;

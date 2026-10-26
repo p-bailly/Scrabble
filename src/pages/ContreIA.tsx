@@ -43,6 +43,7 @@ import {
   ecrireReglagesIA,
   enregistrerPartieIA,
   lireReglagesIA,
+  abandonnerPartieIA,
   retirerPartieIA,
   trouverPartieIAEnCours,
   type ReglagesIA,
@@ -512,7 +513,13 @@ function EcranIA({
           className="bouton danger"
           onClick={() => {
             setMenu(false)
-            if (confirm('Abandonner la partie ? L’IA gagne.')) onChange(abandonnerIA(partie))
+            // Une partie où personne n'a joué disparaît ; sinon l'IA gagne et la partie reste dans l'historique.
+            if (!partie.coups.length) {
+              if (confirm('Abandonner cette partie qui n’a pas commencé ?')) {
+                abandonnerPartieIA(partie)
+                onQuitter()
+              }
+            } else if (confirm('Abandonner la partie ? L’IA gagne.')) onChange(abandonnerIA(partie))
           }}
         >
           Abandonner la partie
