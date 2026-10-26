@@ -322,17 +322,45 @@ chevalet de l'autre, etc.).
 
 ## Limites
 
-- **Pas de notification appli fermée.** La notification « À toi de jouer » est locale : elle part quand l'appli est
-  ouverte ou revient au premier plan et voit que l'adversaire a joué (ou qu'on a reçu une invitation). De vraies notifications push, appli fermée,
-  demanderaient Firebase Cloud Messaging *et* une Cloud Function déclenchée à chaque coup (écriture dans
-  `parties/{code}`) qui envoie le message au joueur dont c'est le tour, avec les jetons FCM des appareils enregistrés
-  dans Firestore. Les Cloud Functions exigent l'offre payante **Blaze** (paiement à l'usage, quasi gratuit à cette
-  échelle mais carte bancaire obligatoire) ; côté appli il faudrait `@capacitor/push-notifications` et un fichier
-  `google-services.json`.
+- **Notifications appli fermée : à activer.** Par défaut, la notification « À toi de jouer » est locale : elle part
+  quand l'appli est ouverte ou revient au premier plan et voit que l'adversaire a joué (ou qu'on a reçu une
+  invitation). Le code des vraies notifications push, appli fermée, est dans le dépôt mais éteint : il demande l'offre
+  payante **Blaze** de Firebase et quelques réglages, voir « Notifications push » ci-dessous.
 - **La triche n'est pas impossible.** Sans serveur, c'est le téléphone du joueur qui tire les lettres et calcule le
   score, et le contenu du sac est lisible (les lettres de l'adversaire s'en déduisent). Chaque coup est revérifié
   par l'adversaire (mots, score, plateau), mais un joueur malin peut choisir ses lettres. C'est accepté pour un usage
   entre amis.
+
+## Notifications push (appli fermée)
+
+Tout le code est dans le dépôt ; il reste éteint tant que `firebase.config.json` ne contient pas `"push": true`. Le
+principe : chaque appareil dépose son jeton Firebase Cloud Messaging dans Firestore (`joueurs/{uid}/appareils/{jeton}`,
+avec les genres de notification qu'il veut) ; une Cloud Function ([`functions/`](functions/index.js)) se déclenche à
+chaque écriture d'une partie et envoie le message au bon joueur ([`functions/messages.js`](functions/messages.js) :
+coup joué, adversaire arrivé, fin ou abandon, invitation, refus ; mêmes règles que `src/multi/veille.ts`, testées dans
+`src/multi/messages.test.ts`). Quand l'appli est ouverte, les notifications locales continuent ; cachée, c'est le serveur
+qui prévient (une notification de même identifiant remplace l'autre, pas de doublon sur le web).
+
+À faire une fois, dans l'ordre :
+
+1. **Passer le projet Firebase à l'offre Blaze** (console → Utilisation et facturation). Carte bancaire obligatoire ;
+   à cette échelle le quota gratuit suffit (2 millions d'appels par mois), mais on peut fixer une alerte de budget.
+2. **Régler la région** de la fonction dans `functions/index.js` (`setGlobalOptions`) : la même que la base Firestore
+   (console → Firestore → Paramètres).
+3. **Déployer la fonction et les règles** : `cd functions && npm install`, puis
+   `npx firebase-tools login` et `npx firebase-tools deploy --only functions,firestore:rules --project <projectId>`
+   (les règles ajoutent la sous-collection `appareils`).
+4. **Web et iPhone** : console → Paramètres du projet → Cloud Messaging → Certificats Web Push → *Générer une paire de
+   clés*, puis dans `firebase.config.json` : `"push": true` et `"vapidKey": "<la clé publique>"`. Sur iPhone (iOS 16.4
+   ou plus), l'appli doit être ajoutée à l'écran d'accueil.
+5. **Android (APK)** : console → ajouter une appli Android de nom de paquet `fr.perso.scrabble`, télécharger
+   `google-services.json` et le placer dans `android/app/` (le fichier ne contient pas de secret), puis ajouter
+   `"pushAndroid": true` à `firebase.config.json`. Le workflow reconstruit l'APK.
+6. Dans l'appli : *Réglages → Notifications → Aussi quand l'appli est fermée*.
+
+Ce que je n'ai pas pu vérifier de bout en bout depuis le dépôt (pas de projet Blaze ni d'appareil sous la main) : l'envoi
+réel par Firebase, l'affichage sur iPhone et sur Android. Les messages construits, les réglages et l'enregistrement des
+appareils sont testés ; le reste se vérifie à la première activation (journaux : console → Functions → Journaux).
 
 ## Liens d'invitation
 

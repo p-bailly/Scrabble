@@ -11,6 +11,12 @@ service cloud.firestore {
 
     // Fiche de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
     match /joueurs/{uid} {
+      // Appareils qui reçoivent les notifications appli fermée (jeton FCM) : lui seul les lit et les écrit ; la Cloud
+      // Function (functions/) les lit avec ses droits d'administration.
+      match /appareils/{appareil} {
+        allow read, write: if connecte() && request.auth.uid == uid;
+      }
+
       allow get: if connecte();
       // Chercher un joueur à inviter (par sa clé de recherche) : 10 fiches au plus par requête, et une requête sans
       // `limit` est refusée, pour qu'on ne puisse pas tout lister d'un coup.

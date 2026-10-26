@@ -3,7 +3,7 @@
 // La configuration est lue dans firebase.config.json, à la racine du dépôt (modèle : firebase.config.example.json).
 // Elle n'a rien de secret : la sécurité repose sur les règles Firestore (firestore.rules).
 
-import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
+import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   connectAuthEmulator,
   createUserWithEmailAndPassword,
@@ -21,13 +21,10 @@ import {
   persistentMultipleTabManager,
   type Firestore,
 } from 'firebase/firestore'
+import { configuration } from '../lib/configFirebase'
 import { ecrire } from '../lib/stockage'
 
-// Fichier facultatif : sans lui, l'appli marche en solo et l'onglet « Mes parties » explique quoi faire.
-// Avec « "emulateurs": true », l'appli utilise les émulateurs Firebase locaux (tests, voir le README).
-type Configuration = FirebaseOptions & { emulateurs?: boolean }
-const fichiers = import.meta.glob<Configuration>('/firebase.config.json', { eager: true, import: 'default' })
-export const configuration: Configuration | null = Object.values(fichiers)[0] ?? null
+export { configuration }
 
 let app: FirebaseApp | null = null
 let auth: Auth | null = null
@@ -36,7 +33,7 @@ let db: Firestore | null = null
 function initialiser() {
   if (!configuration) throw new Error('Firebase n’est pas configuré')
   if (!app) {
-    const { emulateurs, ...options } = configuration
+    const { emulateurs, push: _push, vapidKey: _vapidKey, pushAndroid: _pushAndroid, ...options } = configuration
     app = initializeApp(options)
     auth = getAuth(app)
     // Cache local persistant : les parties s'affichent hors ligne et les coups joués sans réseau sont mis en
@@ -51,6 +48,9 @@ function initialiser() {
 }
 
 export const base = (): Firestore => initialiser().db
+
+/** L'application Firebase (pour les services chargés à part, comme la messagerie des notifications). */
+export const application = (): FirebaseApp => (initialiser(), app!)
 
 /** Utilisateur connecté, ou null s'il ne l'est pas (la session est gardée sur l'appareil, Firebase la relit). */
 export function utilisateur(): Promise<User | null> {

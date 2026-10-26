@@ -56,6 +56,13 @@ export function lireReglages(): Reglages {
   }
 }
 
+/** Les genres de notification que je veux recevoir (aucun si les notifications sont coupées). */
+export function genresVoulus(): GenreNotification[] {
+  const r = lireReglages()
+  if (!r.notifications) return []
+  return (Object.keys(CLE_GENRE) as GenreNotification[]).filter((g) => r[CLE_GENRE[g]])
+}
+
 /** Faut-il afficher cette notification ? Sans genre : seul l'interrupteur général compte (notification d'essai). */
 export function notificationVoulue(genre?: GenreNotification): boolean {
   const r = lireReglages()

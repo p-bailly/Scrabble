@@ -5,10 +5,11 @@ import { Interrupteur, Rangee } from '../composants/Reglage'
 import { Entete } from '../composants/Entete'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { nbDefinitionsGardees, viderDefinitions } from '../lib/definitions'
-import { demanderPermission, natif, notificationsAutorisees, notifier } from '../lib/notifications'
+import { demanderPermission, natif, notificationsAutorisees, notifier, pushActif } from '../lib/notifications'
 import { THEMES, lireReglages, modifierReglages, type Reglages as ReglagesAppli } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { exporterDonnees, importerDonnees, nomFichier } from '../lib/sauvegardeAppareil'
+import { pushConfigure } from '../lib/configFirebase'
 import { lire } from '../lib/stockage'
 import { chargerDico } from '../moteur/moteur'
 import { lireHistorique, viderHistorique } from '../solo/sauvegarde'
@@ -112,6 +113,38 @@ function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<Regl
     setAutorisees(await notificationsAutorisees())
   }
 
+  // Notifications appli fermée : proposées quand le projet les a configurées (voir le README).
+  const [pushOn, setPushOn] = useState(pushActif)
+  const [pushMessage, setPushMessage] = useState('')
+  const avecCompte = async (action: (uid: string) => Promise<void>) => {
+    const { utilisateur } = await import('../multi/firebase')
+    const u = await utilisateur()
+    if (!u) return setPushMessage('Connecte-toi d’abord dans « Parties à deux ».')
+    await action(u.uid)
+  }
+  const basculerPush = async (voulu: boolean) => {
+    setPushMessage('')
+    try {
+      await avecCompte(async (uid) => {
+        const push = await import('../lib/push')
+        if (!voulu) await push.desactiverPush(uid)
+        else {
+          const r = await push.activerPush(uid)
+          if (r === 'refuse') setPushMessage('Le système refuse les notifications : autorise-les dans les réglages du téléphone.')
+          if (r === 'indisponible') setPushMessage('Pas disponible ici (sur iPhone, ajoute d’abord l’appli à l’écran d’accueil).')
+        }
+        setPushOn(pushActif())
+      })
+    } catch (e) {
+      setPushMessage(e instanceof Error ? e.message : String(e))
+    }
+  }
+  // Le serveur n'envoie que les genres de notification voulus : on lui répète les réglages quand ils changent.
+  useEffect(() => {
+    if (!pushOn) return
+    void avecCompte(async (uid) => (await import('../lib/push')).synchroniserPush(uid)).catch(() => {})
+  }, [pushOn, r.notifications, r.notifTour, r.notifInvitations, r.notifFin])
+
   return (
     <>
       <Interrupteur
@@ -145,6 +178,16 @@ function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<Regl
           </div>
         )}
       </Interrupteur>
+      {r.notifications && pushConfigure && (
+        <Interrupteur
+          titre="Aussi quand l’appli est fermée"
+          texte="Le serveur te prévient dès que ton adversaire joue, même si l’appli n’est pas ouverte."
+          actif={pushOn}
+          onChange={(voulu) => void basculerPush(voulu)}
+        >
+          {pushMessage && <span className="note ecart-neg">{pushMessage}</span>}
+        </Interrupteur>
+      )}
       {r.notifications && (
         <>
           <Interrupteur

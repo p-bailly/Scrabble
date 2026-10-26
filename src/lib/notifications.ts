@@ -1,11 +1,19 @@
 // Notifications locales : plugin natif dans l'appli Android, API du navigateur (via le service worker) en web.
-// Pas de push quand l'appli est fermée : il faudrait Cloud Functions (offre payante Blaze), voir le README.
+// Elles partent quand l'appli est ouverte ou revient au premier plan. Appli fermée, ce sont les notifications push du
+// serveur (lib/push.ts, functions/), si le projet Firebase les a configurées : voir le README.
 
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { notificationVoulue, type GenreNotification } from './reglages'
+import { lire } from './stockage'
 
 export const natif = Capacitor.isNativePlatform()
+
+/** Clé du jeton d'enregistrement aux notifications appli fermée (lib/push.ts) ; présent tant que cet appareil les reçoit. */
+export const CLE_JETON = 'push.jeton'
+
+/** Cet appareil reçoit-il les notifications appli fermée ? (Le système les affiche alors quand l'appli est en arrière-plan.) */
+export const pushActif = (): boolean => lire<string | null>(CLE_JETON, null) !== null
 
 /** Le système autorise-t-il les notifications ? `null` si cet appareil ne les propose pas. */
 export async function notificationsAutorisees(): Promise<boolean | null> {
@@ -38,6 +46,8 @@ function idNumerique(cle: string): number {
 /** Affiche une notification qui, touchée, ouvre `hash` (ex. « #/partie/K7P2QX »), si les réglages la permettent. */
 export async function notifier(cle: string, titre: string, texte: string, hash: string, genre?: GenreNotification) {
   if (!notificationVoulue(genre)) return
+  // Appli cachée et notifications appli fermée actives : c'est le serveur qui prévient, pas la peine de doubler.
+  if (pushActif() && typeof document !== 'undefined' && document.visibilityState === 'hidden') return
   try {
     if (natif) {
       await LocalNotifications.schedule({ notifications: [{ id: idNumerique(cle), title: titre, body: texte, extra: { hash } }] })
@@ -60,7 +70,17 @@ export function surOuvertureNotification(ouvrir: (hash: string) => void): () => 
       const hash = a.notification.extra?.hash
       if (typeof hash === 'string') ouvrir(hash)
     })
-    return () => void h.then((x) => x.remove())
+    // Une notification appli fermée (envoyée par le serveur) touchée : elle porte le même lien.
+    const p = import('@capacitor/push-notifications').then(({ PushNotifications }) =>
+      PushNotifications.addListener('pushNotificationActionPerformed', (a) => {
+        const hash = a.notification.data?.hash
+        if (typeof hash === 'string') ouvrir(hash)
+      }),
+    )
+    return () => {
+      void h.then((x) => x.remove())
+      void p.then((x) => x.remove()).catch(() => {})
+    }
   }
   const surMessage = (e: MessageEvent) => {
     if (e.data?.type === 'ouvrir' && typeof e.data.hash === 'string') ouvrir(e.data.hash)
