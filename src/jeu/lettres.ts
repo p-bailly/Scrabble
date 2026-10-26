@@ -29,6 +29,23 @@ export const VALEUR_CODE: readonly number[] = [...ALPHABET].map((l) => VALEURS[l
 /** Voyelles pour la validation des tirages. Convention de l'appli : le Y est une voyelle. */
 export const VOYELLES = new Set(['A', 'E', 'I', 'O', 'U', 'Y'])
 
+/**
+ * Un mot proposé doit compter au moins 2 voyelles ou au moins 2 consonnes. Le Y et l'apostrophe comptent à la
+ * fois comme voyelle et comme consonne ; un joker posé (minuscule) compte pour la lettre qu'il représente.
+ */
+export function motConforme(mot: string): boolean {
+  let voyelles = 0
+  let consonnes = 0
+  for (const c of mot.toUpperCase()) {
+    if (c === 'Y' || c === "'" || c === '’') {
+      voyelles++
+      consonnes++
+    } else if (VOYELLES.has(c)) voyelles++
+    else if (c >= 'A' && c <= 'Z') consonnes++
+  }
+  return voyelles >= 2 || consonnes >= 2
+}
+
 export const estJoker = (t: string): boolean => t === JOKER || (t >= 'a' && t <= 'z')
 
 /** Valeur d'un jeton : 0 pour un joker (sur le chevalet ou posé), sinon la valeur de la lettre. */

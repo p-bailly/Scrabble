@@ -1,7 +1,7 @@
 // Sauvegarde du duplicate sur l'appareil : partie en cours (reprise à l'ouverture) et historique.
 
 import type { Coup } from '../jeu/coup'
-import { modeDe, totaux, type Indice, type ModeDuplicate, type PartieDuplicate } from '../jeu/duplicate'
+import { modeDe, totaux, type Essai, type Indice, type ModeDuplicate, type PartieDuplicate } from '../jeu/duplicate'
 import { ecrire, lire } from '../lib/stockage'
 
 const PARTIE = 'solo.partie'
@@ -16,6 +16,8 @@ export interface EtatCoup {
   ecoule: number
   bulletin: Coup | null
   indices: Indice[]
+  /** Mots proposés (topping). */
+  essais: Essai[]
 }
 
 export interface ResumePartie {
@@ -43,8 +45,8 @@ export const ecrirePartie = (p: PartieDuplicate | null) => ecrire(PARTIE, p)
 export const lireCoup = (numero: number): EtatCoup => {
   const c = lire<Partial<EtatCoup> | null>(COUP, null)
   return c && c.numero === numero
-    ? { numero, ecoule: c.ecoule ?? 0, bulletin: c.bulletin ?? null, indices: c.indices ?? [] }
-    : { numero, ecoule: 0, bulletin: null, indices: [] }
+    ? { numero, ecoule: c.ecoule ?? 0, bulletin: c.bulletin ?? null, indices: c.indices ?? [], essais: c.essais ?? [] }
+    : { numero, ecoule: 0, bulletin: null, indices: [], essais: [] }
 }
 export const ecrireCoup = (c: EtatCoup | null) => ecrire(COUP, c)
 

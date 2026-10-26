@@ -412,9 +412,25 @@ select {
   font-size: 3.6cqw;
 }
 .case.curseur {
-  outline: 0.6cqw solid var(--ring);
-  outline-offset: -0.3cqw;
+  outline: 0.8cqw solid var(--ring);
+  outline-offset: -0.4cqw;
+  background: color-mix(in srgb, var(--ring) 30%, var(--surface, #fff));
   z-index: 4;
+}
+.case .fleche {
+  position: absolute;
+  inset: 4%;
+  width: 92%;
+  height: 92%;
+  color: var(--ring);
+  z-index: 5;
+  filter: drop-shadow(0 0 0.3cqw #fff) drop-shadow(0 0 0.5cqw #fff);
+  animation: fleche-pouls 1s ease-in-out infinite;
+}
+@keyframes fleche-pouls {
+  50% {
+    opacity: 0.55;
+  }
 }
 .case.cible {
   outline: 0.6cqw dashed var(--ring);
@@ -1004,4 +1020,18 @@ a.bouton {
 .panneau-bas > .actions.dense .bouton {
   padding: 0 6px;
   font-size: 14px;
+}
+
+/* Topping : mots essayés pendant le coup. */
+.historique-essais {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 0 14px;
+  max-height: 14dvh;
+  overflow-y: auto;
+}
+.historique-essais .essai {
+  white-space: nowrap;
 }

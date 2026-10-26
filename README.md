@@ -6,8 +6,8 @@ Appli perso de **Scrabble en français**, en quatre parties :
   le top qui est posé ; en « entraînement » (partie entière) ou en « topping » (il faut trouver le top, avec indices) ;
 - **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
-- **Calculateur de meilleur coup** : on recopie un plateau et un tirage (par exemple d'une vraie partie), l'appli
-  donne le top et la liste des meilleurs coups.
+- **Dictionnaire** : tous les mots valables, avec recherche (commence par, finit par, contient ; `?` = une lettre) ;
+  toucher un mot affiche sa définition (Wiktionnaire, connexion nécessaire, gardée ensuite sur l'appareil).
 
 C'est une web app installable (PWA), aussi livrée en **APK Android**, reconstruite automatiquement par GitHub
 Actions et suivie par « Mes applis » ([p-bailly/Managing-Apps](https://github.com/p-bailly/Managing-Apps)).
@@ -169,10 +169,11 @@ oublient d'autres.
   tourne dans un Web Worker. En milieu de partie avec deux jokers (le cas le plus lourd) : environ 59 000 coups en
   moins de 0,3 s sur un ordinateur ; bien moins sans joker. Les tests le comparent à une recherche par force brute
   indépendante, sur le dictionnaire complet.
-- Le **calculateur** : toucher une case puis taper les lettres (toucher à nouveau la case change le sens, bouton
-  « Joker » pour une lettre jouée par un joker), saisir le tirage, **Chercher**. Toucher un coup le montre sur le
-  plateau ; « Poser ce coup » l'ajoute au plateau et retire ses lettres du tirage. Le plateau et le tirage sont gardés
-  sur l'appareil.
+- Au **clavier**, on tape directement les lettres du mot (Retour arrière efface, Espace change le sens, Échap reprend
+  tout, Entrée valide). Un mot proposé en duplicate doit avoir au moins 2 voyelles ou 2 consonnes (Y et apostrophe
+  comptent pour les deux).
+- **Mises à jour** : au lancement (et au retour au premier plan), la PWA cherche une nouvelle version et se recharge
+  toute seule si elle en trouve une.
 
 ## Parties à deux : créer le projet Firebase
 

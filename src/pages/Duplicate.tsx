@@ -9,6 +9,7 @@ import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, Chrono, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { motConforme } from '../jeu/lettres'
 import { reference, type Coup } from '../jeu/coup'
 import {
   INDICES,
@@ -20,6 +21,7 @@ import {
   topTrouve,
   totaux,
   type CoupDuplicate,
+  type Essai,
   type Indice,
   type ModeDuplicate,
   type PartieDuplicate,
@@ -69,6 +71,8 @@ const MODES: { mode: ModeDuplicate; nom: string; texte: string }[] = [
 
 /** Combien d'autres bons coups on garde pour la correction. */
 const NB_SOLUTIONS = 15
+
+const REGLE_MOT = 'Le mot doit avoir au moins 2 voyelles ou 2 consonnes (le Y et l’apostrophe comptent pour les deux).'
 
 const NOM_INDICE: Record<Indice, string> = {
   valeur: 'Valeur du top',
@@ -275,7 +279,9 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const courant = partie.courant
   const numero = courant?.numero ?? partie.coups.length
   const tirage = useMemo(() => courant?.tirage ?? [], [courant])
-  const edition = useEdition(plateau, tirage)
+  // Entrée au clavier = Valider ; la fonction est donnée au hook par une référence, définie plus bas.
+  const validerRef = useRef<() => void>(() => {})
+  const edition = useEdition(plateau, tirage, () => validerRef.current())
   const analyse = useAnalyse(plateau, edition.poses)
   const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(numero))
   const [menu, setMenu] = useState(false)
@@ -318,9 +324,9 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
     try {
       const coups = await recherche.current.promesse
       let joueur = coup.bulletin
-      if (analyse?.valide && analyse.coup && (!joueur || analyse.points > joueur.points)) joueur = analyse.coup
+      if (analyse?.valide && analyse.coup && motConforme(analyse.coup.mot) && (!joueur || analyse.points > joueur.points)) joueur = analyse.coup
       const top = coups[0] ?? null
-      const suite = terminerCoup(partie, top, joueur, coups.slice(0, NB_SOLUTIONS), coup.ecoule, coup.indices)
+      const suite = terminerCoup(partie, top, joueur, coups.slice(0, NB_SOLUTIONS), coup.ecoule, coup.indices, coup.essais)
       ecrireCoup(null)
       onFinCoup(suite, top ? suite.coups.at(-1)! : null)
     } catch {
@@ -347,7 +353,9 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
 
   const t = totaux(partie)
   const noter = () => {
-    if (analyse?.valide && analyse.coup) setCoup((c) => ({ ...c, bulletin: analyse.coup! }))
+    if (!analyse?.valide || !analyse.coup) return
+    if (!motConforme(analyse.coup.mot)) return void setMessage(REGLE_MOT)
+    setCoup((c) => ({ ...c, bulletin: analyse.coup! }))
   }
 
   // Entraînement : on valide, le coup est terminé. Topping : le coup ne se termine que si c'est le top.
@@ -355,6 +363,10 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
     if (!topping) return void terminer()
     if (!analyse?.valide || !analyse.coup) {
       setMessage('Pose d’abord un mot valable.')
+      return
+    }
+    if (!motConforme(analyse.coup.mot)) {
+      setMessage(REGLE_MOT)
       return
     }
     setCalcul(true)
@@ -366,11 +378,18 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
         return
       }
       noter()
+      const mot = analyse.coup.mot
+      const points = analyse.points
+      setCoup((c) => (c.essais.some((x) => x.mot === mot && x.points === points) ? c : { ...c, essais: [...c.essais, { mot, points, a: c.ecoule }] }))
       setMessage(`${analyse.points} points : ce n’est pas le top. Cherche encore !`)
     } catch {
       setMessage('Calcul impossible, réessaie.')
     }
     setCalcul(false)
+  }
+
+  validerRef.current = () => {
+    if (!calcul && !resultat && !menu && !feuilleIndices) void valider()
   }
 
   const demanderIndice = (i: Indice) => {
@@ -472,8 +491,9 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
       ) : (
         <>
           <Chevalet edition={edition} />
-          <Apercu analyse={analyse} indice="Touche une case puis tes lettres, ou glisse-les." />
+          <Apercu analyse={analyse} indice="" />
           {message && <div className="note note-centree ecart-neg">{message}</div>}
+          {topping && coup.essais.length > 0 && <HistoriqueEssais essais={coup.essais} />}
           {topping && coup.indices.length > 0 && topConnu && (
             <div className="note note-centree">
               Indices : {coup.indices.map((i) => texteIndice(i, topConnu)).join(' · ')}
@@ -632,6 +652,7 @@ function ResultatCoup({ coup, topping, montre, onMontrer }: PropsResultat) {
               : `${ecart} points par rapport au top`}
         </b>
       </div>
+      {topping && coup.essais && coup.essais.length > 0 && <HistoriqueEssais essais={coup.essais} />}
       {topping && coup.indices && coup.indices.length > 0 && (
         <span className="note">
           {coup.indices.length} indice{coup.indices.length > 1 ? 's' : ''} demandé{coup.indices.length > 1 ? 's' : ''}
@@ -654,6 +675,20 @@ function ResultatCoup({ coup, topping, montre, onMontrer }: PropsResultat) {
         {coup.autres.slice(1).map((c) => ligne(c, 'apercu'))}
       </div>
     </>
+  )
+}
+
+/** Mots proposés pendant le coup (topping), le plus récent en premier. */
+function HistoriqueEssais({ essais }: { essais: Essai[] }) {
+  return (
+    <div className="historique-essais">
+      <span className="note">Mots essayés ({essais.length})</span>
+      {[...essais].reverse().map((e, i) => (
+        <span key={i} className="essai">
+          <Mot mot={e.mot} /> <b>{e.points}</b> <span className="note">· {formatChrono(e.a)}</span>
+        </span>
+      ))}
+    </div>
   )
 }
 

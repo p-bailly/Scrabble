@@ -42,5 +42,24 @@ if (natif) {
 // Service worker (installation sur l'écran d'accueil, ouverture hors ligne).
 // Inutile dans l'appli Android, qui embarque déjà les fichiers.
 if ('serviceWorker' in navigator && import.meta.env.PROD && !natif) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'))
+  // Mise à jour : au lancement (et à chaque retour au premier plan) on cherche un nouveau service worker ; s'il
+  // en existe un, il prend la main tout de suite (skipWaiting) et la page se recharge pour passer à la nouvelle version.
+  const avaitUnControleur = !!navigator.serviceWorker.controller
+  let recharge = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!avaitUnControleur || recharge) return
+    recharge = true
+    location.reload()
+  })
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        void reg.update()
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') void reg.update()
+        })
+      })
+      .catch(() => {})
+  })
 }

@@ -53,7 +53,7 @@ function NonConfigure() {
           <code> firebase.config.json</code> au dépôt : la procédure pas à pas est dans le README, rubrique « Parties à
           deux : créer le projet Firebase ».
         </p>
-        <p className="note">Le duplicate en solo et le calculateur marchent sans rien configurer.</p>
+        <p className="note">Le duplicate en solo et le dictionnaire marchent sans rien configurer.</p>
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 // Service worker : l'app et le dictionnaire s'ouvrent hors ligne.
 // Les données des parties à deux (Firestore, Firebase) ne passent jamais par ce cache.
 // Incrémenter VERSION quand l'icône, la coque de l'app ou le dictionnaire change.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const COQUE = `coque-${VERSION}`
 const DICO = `dico-${VERSION}`
 

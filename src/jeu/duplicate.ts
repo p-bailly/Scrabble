@@ -43,6 +43,16 @@ export interface CoupDuplicate {
   duree: number
   /** Indices demandés (topping). */
   indices?: Indice[]
+  /** Mots proposés pendant le coup (topping), dans l'ordre. */
+  essais?: Essai[]
+}
+
+/** Un mot proposé pendant un coup de topping. */
+export interface Essai {
+  mot: string
+  points: number
+  /** Temps écoulé (secondes) au moment de la proposition. */
+  a: number
 }
 
 export interface TirageCourant {
@@ -159,13 +169,14 @@ export function terminerCoup(
   autres: Coup[],
   duree: number,
   indices: Indice[] = [],
+  essais: Essai[] = [],
 ): PartieDuplicate {
   const c = partie.courant
   if (!c || partie.finie) return partie
   if (!top) return { ...partie, courant: null, finie: true }
   const reste = retirerDuChevalet(c.tirage, jetonsUtilises(top.poses))
   if (!reste) throw new Error('Le top utilise des lettres absentes du tirage')
-  const coup: CoupDuplicate = { ...c, top, joueur, autres, duree, ...(indices.length ? { indices } : {}) }
+  const coup: CoupDuplicate = { ...c, top, joueur, autres, duree, ...(indices.length ? { indices } : {}), ...(essais.length ? { essais } : {}) }
   const plateau = poserCoup(plateauDepuisTexte(partie.plateau), top.poses)
   const t = tirer(partie.sac, reste, c.numero + 1, partie.hasard)
   return {

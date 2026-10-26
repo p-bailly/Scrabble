@@ -8,7 +8,7 @@ export interface PropsPlateau {
   plateau: TPlateau
   /** Jetons en cours de pose : case → lettre (minuscule pour un joker). */
   poses?: Map<number, string>
-  /** Coup montré sans être posé (calculateur, correction). */
+  /** Coup montré sans être posé (correction). */
   apercu?: { lettres: Map<number, string>; style: 'apercu' | 'mien' }
   /** Jetons du dernier coup joué. */
   derniers?: Set<number>
@@ -184,15 +184,16 @@ function Fleche({ dir }: { dir: 'H' | 'V' }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      style={{ position: 'absolute', inset: '15%', color: 'var(--ring)', transform: dir === 'V' ? 'rotate(90deg)' : undefined }}
+      className="fleche"
+      style={{ transform: dir === 'V' ? 'rotate(90deg)' : undefined }}
       fill="none"
       stroke="currentColor"
-      strokeWidth={3}
+      strokeWidth={4.5}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M5 12h14M13 6l6 6-6 6" />
+      <path d="M4 12h15M12 4l8 8-8 8" />
     </svg>
   )
 }

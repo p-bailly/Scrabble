@@ -3,13 +3,14 @@
 // Deux façons de poser :
 //  - toucher une lettre du chevalet puis une case (ou glisser la lettre sur la case) ;
 //  - toucher une case (un curseur apparaît, toucher à nouveau la case change le sens), puis toucher les lettres
-//    l'une après l'autre : elles se posent à la suite, comme si on tapait le mot.
+//    l'une après l'autre : elles se posent à la suite, comme si on tapait le mot ;
+//  - au clavier : taper les lettres (Retour arrière efface, Espace change le sens, Échap reprend tout, Entrée valide).
 // Toucher un jeton en cours de pose le renvoie sur le chevalet.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as PE } from 'react'
 import type { Pose } from '../jeu/coup'
 import { ALPHABET, JOKER, valeur } from '../jeu/lettres'
-import { TAILLE, colonneDe, ligneDe, type Plateau } from '../jeu/plateau'
+import { CENTRE, TAILLE, colonneDe, ligneDe, type Plateau } from '../jeu/plateau'
 
 export interface Tuile {
   id: number
@@ -39,13 +40,15 @@ export interface Glisse {
 }
 
 /** État de la pose en cours, pour un plateau et un chevalet donnés. */
-export function useEdition(plateau: Plateau, chevalet: readonly string[]) {
+export function useEdition(plateau: Plateau, chevalet: readonly string[], surEntree?: () => void) {
   const cle = chevalet.join('')
   const [etat, setEtat] = useState<EtatEdition>(() => vide(versTuiles(chevalet)))
   const [glisse, setGlisse] = useState<Glisse | null>(null)
   const [cible, setCible] = useState<number | null>(null)
   const plateauRef = useRef(plateau)
   plateauRef.current = plateau
+  const entreeRef = useRef(surEntree)
+  entreeRef.current = surEntree
 
   // Nouveau chevalet (coup suivant, lettres changées) : on repart de zéro.
   useEffect(() => {
@@ -199,6 +202,63 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[]) {
     },
     [etat, placer, retirer],
   )
+
+  /** Clavier : une lettre tapée se pose sur la case du curseur (avec la tuile, ou à défaut un joker). */
+  const taper = useCallback(
+    (lettre: string) => {
+      setEtat((e) => {
+        let c = e.curseur
+        // Plateau vide : on commence au centre.
+        if (!c && !plateauRef.current.some(Boolean) && Object.keys(e.poses).length === 0) c = { pos: CENTRE, dir: 'H' }
+        if (!c || occupee(c.pos, e)) return e
+        const libres = e.tuiles.filter((t) => !e.poses[t.id])
+        const t = libres.find((x) => x.lettre === lettre)
+        const avecCurseur = { ...e, curseur: c }
+        if (t) return placerDans(avecCurseur, t.id, c.pos, lettre)
+        const j = libres.find((x) => x.lettre === JOKER)
+        return j ? placerDans(avecCurseur, j.id, c.pos, lettre.toLowerCase()) : e
+      })
+    },
+    [occupee],
+  )
+
+  /** Clavier : Retour arrière renvoie sur le chevalet le dernier jeton posé avant le curseur. */
+  const effacerDernier = useCallback(() => {
+    setEtat((e) => {
+      const posees = Object.entries(e.poses)
+      if (posees.length === 0) return e
+      const avant = e.curseur ? posees.filter(([, p]) => p.pos < e.curseur!.pos) : posees
+      const [id, p] = (avant.length ? avant : posees).reduce((a, b) => (b[1].pos > a[1].pos ? b : a))
+      const autres = { ...e.poses }
+      delete autres[Number(id)]
+      return { ...e, poses: autres, curseur: { pos: p.pos, dir: e.curseur?.dir ?? 'H' } }
+    })
+  }, [])
+
+  const basculerSens = useCallback(() => {
+    setEtat((e) => (e.curseur ? { ...e, curseur: { ...e.curseur, dir: e.curseur.dir === 'H' ? 'V' : 'H' } } : e))
+  }, [])
+
+  useEffect(() => {
+    const touche = (ev: KeyboardEvent) => {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return
+      const cible = ev.target as HTMLElement | null
+      if (cible && (cible.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(cible.tagName))) return
+      if (etatRef.current.joker) return
+      if (ev.key === 'Backspace' || ev.key === 'Delete') effacerDernier()
+      else if (ev.key === ' ' || ev.key === 'Tab') basculerSens()
+      else if (ev.key === 'Escape') rappeler()
+      else if (ev.key === 'Enter') entreeRef.current?.()
+      else {
+        const l = ev.key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+        if (!/^[A-Z]$/.test(l)) return
+        taper(l)
+      }
+      ev.preventDefault()
+    }
+    window.addEventListener('keydown', touche)
+    return () => window.removeEventListener('keydown', touche)
+  }, [taper, effacerDernier, basculerSens, rappeler])
 
   // Glisser-déposer : appui sur une tuile du chevalet ou un jeton posé, suivi au doigt, dépôt sur une case ou
   // un emplacement du chevalet. Un appui sans mouvement est un simple toucher.

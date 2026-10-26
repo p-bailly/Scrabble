@@ -2,9 +2,9 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
-import { Calculateur } from './pages/Calculateur'
 import { ContreIA } from './pages/ContreIA'
 import { Correction } from './pages/Correction'
+import { Dictionnaire } from './pages/Dictionnaire'
 import { Duplicate } from './pages/Duplicate'
 import { Solo } from './pages/Solo'
 import { Stats } from './pages/Stats'
@@ -31,7 +31,7 @@ export function App() {
   const page = chemin[0] ?? 'solo'
   let contenu: ReactNode
   if (page === 'correction') contenu = <Correction id={decodeURIComponent(chemin[1] ?? 'courante')} />
-  else if (page === 'calculateur') contenu = <Calculateur />
+  else if (page === 'dictionnaire') contenu = <Dictionnaire />
   else if (page === 'stats') contenu = <Stats />
   else if (page === 'parties' || page === 'partie' || page === 'rejoindre')
     contenu = (
@@ -50,7 +50,7 @@ export function App() {
       <nav className="onglets" hidden={ongletsMasques}>
         <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
-        <Onglet href="#/calculateur" actif={onglet === 'calculateur'} icone={<IconeLoupe />} texte="Calculateur" />
+        <Onglet href="#/dictionnaire" actif={onglet === 'dictionnaire'} icone={<IconeLoupe />} texte="Dictionnaire" />
         <Onglet href="#/stats" actif={onglet === 'stats'} icone={<IconeStats />} texte="Stats" />
       </nav>
     </div>
