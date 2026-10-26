@@ -5,6 +5,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from 'firebase/auth'
 import { Entete } from '../composants/Entete'
 import { naviguer } from '../lib/routeur'
+import { demanderPermission } from '../lib/notifications'
+import { notificationVoulue } from '../lib/reglages'
 import { ecrire } from '../lib/stockage'
 import { enregistrerJoueur, lireJoueur } from './donnees'
 import { configuration, connecterNom, utilisateur } from './firebase'
@@ -60,6 +62,9 @@ function Connexion({ onConnecte }: { onConnecte: (u: User) => void }) {
     e.preventDefault()
     const n = nom.trim().slice(0, 20)
     if (!n) return
+    // Tout de suite, dans le geste de l'utilisateur (les navigateurs l'exigent) : un joueur invité doit pouvoir être
+    // prévenu dès sa première invitation, avant d'avoir créé ni rejoint une partie.
+    if (notificationVoulue()) void demanderPermission()
     setOccupe(true)
     setErreur('')
     try {

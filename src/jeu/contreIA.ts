@@ -20,6 +20,8 @@ export interface CoupIA {
   coup?: Coup
   nbChanges?: number
   points: number
+  /** Chevalet du joueur avant ce tour, gardé pour l'analyse de la partie (absent des parties d'avant l'analyse). */
+  chevalet?: string[]
 }
 
 export interface FinIA {
@@ -99,7 +101,7 @@ export function jouerMotIA(p: PartieIA, camp: Camp, coup: Coup, hasard?: () => n
     scores: { ...p.scores, [camp]: p.scores[camp] + coup.points },
     tour: autreCamp(camp),
     passes: 0,
-    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'mot', coup, points: coup.points }],
+    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'mot', coup, points: coup.points, chevalet: p.chevalets[camp] }],
   }
   return conclure(suite)
 }
@@ -116,7 +118,7 @@ export function changerIA(p: PartieIA, camp: Camp, rendues: readonly string[], h
     chevalets: { ...p.chevalets, [camp]: r.chevalet },
     tour: autreCamp(camp),
     passes: 0,
-    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'change', nbChanges: rendues.length, points: 0 }],
+    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'change', nbChanges: rendues.length, points: 0, chevalet: p.chevalets[camp] }],
   })
 }
 
@@ -127,7 +129,7 @@ export function passerIA(p: PartieIA, camp: Camp): PartieIA | { erreur: string }
     ...p,
     tour: autreCamp(camp),
     passes: p.passes + 1,
-    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'passe', points: 0 }],
+    coups: [...p.coups, { numero: p.coups.length + 1, camp, type: 'passe', points: 0, chevalet: p.chevalets[camp] }],
   })
 }
 

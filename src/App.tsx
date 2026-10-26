@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
+import { AnalyseIA } from './pages/Analyse'
 import { ContreIA } from './pages/ContreIA'
 import { Correction } from './pages/Correction'
 import { Dictionnaire } from './pages/Dictionnaire'
@@ -42,6 +43,7 @@ export function App() {
       </Suspense>
     )
   else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate />
+  else if (page === 'solo' && chemin[1] === 'ia' && chemin[2] === 'analyse') contenu = <AnalyseIA id={decodeURIComponent(chemin[3] ?? 'courante')} />
   else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA />
   else contenu = <Solo />
 

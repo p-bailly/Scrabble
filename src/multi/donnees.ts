@@ -34,7 +34,8 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { changer, finDePartie, lettresAdversaire, piocher } from '../jeu/classique'
-import { jetonsUtilises, jouer, reference, retirerDuChevalet, type Analyse, type Pose } from '../jeu/coup'
+import type { TourAnalysable } from '../jeu/analyse'
+import { jetonsUtilises, jouer, lireReference, reference, retirerDuChevalet, type Analyse, type Pose } from '../jeu/coup'
 import { tousLesJetons } from '../jeu/lettres'
 import { plateauDepuisTexte, plateauEnTexte, plateauVide } from '../jeu/plateau'
 import { base, identifiant } from './firebase'
@@ -98,6 +99,11 @@ export interface CoupMulti {
   mots?: string[]
   points: number
   nbChanges?: number
+  /**
+   * Chevalet de celui qui joue, avant son coup (analyse de fin de partie). L'adversaire pouvait déjà le déduire du sac.
+   * Absent des coups joués avant l'analyse.
+   */
+  chevalet?: string
 }
 
 const ALPHABET_CODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -316,6 +322,22 @@ export function ecouterCoups(code: string, rappel: (coups: CoupMulti[]) => void)
   )
 }
 
+/** L'historique d'une partie à deux, tel que l'analyse de fin de partie le lit (le joueur est son identifiant). */
+export function toursDeMulti(coups: readonly CoupMulti[]): TourAnalysable[] {
+  return coups.map((c) => {
+    const lieu = c.ref ? lireReference(c.ref) : null
+    return {
+      numero: c.n,
+      joueur: c.uid,
+      type: c.type,
+      chevalet: c.chevalet ? [...c.chevalet] : undefined,
+      coup: c.type === 'mot' && c.poses && c.mot && lieu ? { poses: c.poses, mot: c.mot, dir: lieu.dir, debut: lieu.debut, points: c.points } : undefined,
+      nbChanges: c.nbChanges,
+      points: c.points,
+    }
+  })
+}
+
 /** Un mot est joué avec son analyse (faite par le worker, qui détient le dictionnaire). */
 type Action = { type: 'mot'; analyse: Analyse } | { type: 'change'; lettres: string[] } | { type: 'passe' }
 
@@ -360,6 +382,8 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
     passes += 1
     coup = { n, uid, type: 'passe', points: 0 }
   }
+
+  coup.chevalet = chevalet.join('')
 
   const scores = { ...p.scores, [uid]: (p.scores[uid] ?? 0) + points }
   // Les lettres de l'adversaire se déduisent du reste (utile pour les points de fin de partie).

@@ -14,14 +14,31 @@ export interface Reglages {
   theme: Theme
   /** Libellés des cases bonus sur le plateau (MT, MD, LT, LD). */
   etiquettes: boolean
-  /** Notifications « À toi de jouer » et invitations (en plus de l'autorisation du système). */
+  /** Notifications (en plus de l'autorisation du système) ; les trois suivants choisissent lesquelles. */
   notifications: boolean
+  /** « À toi de jouer » : l'adversaire a joué ou rejoint ta partie. */
+  notifTour: boolean
+  /** Invitation reçue, ou refusée. */
+  notifInvitations: boolean
+  /** Partie terminée par l'adversaire. */
+  notifFin: boolean
   /** Demander confirmation avant de passer son tour. */
   confirmerPasse: boolean
 }
 
+export type GenreNotification = 'tour' | 'invitation' | 'fin'
+const CLE_GENRE = { tour: 'notifTour', invitation: 'notifInvitations', fin: 'notifFin' } as const
+
 const CLE = 'reglages'
-const DEFAUT: Reglages = { theme: 'auto', etiquettes: true, notifications: true, confirmerPasse: true }
+const DEFAUT: Reglages = {
+  theme: 'auto',
+  etiquettes: true,
+  notifications: true,
+  notifTour: true,
+  notifInvitations: true,
+  notifFin: true,
+  confirmerPasse: true,
+}
 
 const booleen = (v: unknown, defaut: boolean) => (typeof v === 'boolean' ? v : defaut)
 
@@ -32,8 +49,17 @@ export function lireReglages(): Reglages {
     theme: THEMES.some((t) => t.theme === r.theme) ? (r.theme as Theme) : DEFAUT.theme,
     etiquettes: booleen(r.etiquettes, DEFAUT.etiquettes),
     notifications: booleen(r.notifications, DEFAUT.notifications),
+    notifTour: booleen(r.notifTour, DEFAUT.notifTour),
+    notifInvitations: booleen(r.notifInvitations, DEFAUT.notifInvitations),
+    notifFin: booleen(r.notifFin, DEFAUT.notifFin),
     confirmerPasse: booleen(r.confirmerPasse, DEFAUT.confirmerPasse),
   }
+}
+
+/** Faut-il afficher cette notification ? Sans genre : seul l'interrupteur général compte (notification d'essai). */
+export function notificationVoulue(genre?: GenreNotification): boolean {
+  const r = lireReglages()
+  return r.notifications && (!genre || r[CLE_GENRE[genre]])
 }
 
 /** Change un ou plusieurs réglages, les enregistre et les applique à la page. Renvoie les réglages à jour. */

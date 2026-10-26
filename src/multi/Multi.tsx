@@ -11,7 +11,7 @@ import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler
 import { Plateau } from '../composants/Plateau'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
-import { demanderPermission, natif } from '../lib/notifications'
+import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
 import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
@@ -45,6 +45,7 @@ import {
   type Partie,
 } from './donnees'
 import { configuration, connexion } from './firebase'
+import AnalyseMulti from './AnalyseMulti'
 import { demarrerVeille } from './veille'
 
 export default function Multi({ chemin }: { chemin: string[] }) {
@@ -101,6 +102,7 @@ function AvecSession({ chemin }: { chemin: string[] }) {
   if (!moi) return <div className="vide-etat">Connexion…</div>
   if (!pseudo) return <ChoixPseudo uid={moi.uid} onFini={setPseudo} />
 
+  if (chemin[0] === 'partie' && chemin[1] && chemin[2] === 'analyse') return <AnalyseMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'partie' && chemin[1]) return <PartieMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'rejoindre' && chemin[1]) return <Rejoindre code={normaliserCode(chemin[1])} uid={moi.uid} pseudo={pseudo} />
   return <ListeParties uid={moi.uid} pseudo={pseudo} onPseudo={() => setPseudo(null)} />
@@ -207,6 +209,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
         </button>
       </form>
       {erreur && <div className="apercu erreur">{erreur}</div>}
+      <RappelNotifications />
       {parties === null && <div className="vide-etat">Chargement…</div>}
       {parties && liste.length === 0 && recues.length === 0 && (
         <div className="vide-etat">Aucune partie. Crée-en une, puis invite un joueur de l’appli ou envoie le lien à un ami par SMS ou WhatsApp.</div>
@@ -225,6 +228,52 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
       <Section titre="En attente de l’adversaire" parties={attente} uid={uid} />
       <Section titre="Invitations envoyées" parties={invitations} uid={uid} />
       <Section titre="Terminées" parties={finies.slice(0, 20)} uid={uid} />
+    </div>
+  )
+}
+
+/**
+ * Rappel tant que les notifications sont voulues mais pas autorisées par le système. Sans lui, un joueur qui n'a jamais
+ * créé ni rejoint de partie ne les aurait pas encore demandées quand arrive sa première invitation.
+ */
+function RappelNotifications() {
+  // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
+  const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)
+  const [ecarte, setEcarte] = useState(() => lire('multi.rappelNotifications', false))
+  const [refuse, setRefuse] = useState(false)
+  useEffect(() => {
+    void notificationsAutorisees().then(setAutorisees)
+  }, [])
+  if (ecarte || autorisees !== false || !lireReglages().notifications) return null
+
+  const autoriser = async () => {
+    await demanderPermission()
+    const ok = await notificationsAutorisees()
+    setAutorisees(ok)
+    setRefuse(!ok)
+  }
+  return (
+    <div className="carte carte-accent">
+      <b>Être prévenu quand c’est ton tour</b>
+      <span className="note">Autorise les notifications pour recevoir les invitations et les coups de tes adversaires.</span>
+      {refuse && (
+        <span className="note">Le système a refusé : ouvre les réglages du téléphone (ou du navigateur), rubrique Notifications de Scrabble, et autorise-les.</span>
+      )}
+      <div className="actions">
+        <button
+          type="button"
+          className="bouton large"
+          onClick={() => {
+            ecrire('multi.rappelNotifications', true)
+            setEcarte(true)
+          }}
+        >
+          Masquer
+        </button>
+        <button type="button" className="bouton large" onClick={() => void autoriser()}>
+          Autoriser
+        </button>
+      </div>
     </div>
   )
 }
@@ -794,6 +843,11 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
             : 'Le sac est vide et un chevalet aussi : les lettres restantes changent de camp'}
         {f && f.raison !== 'abandon' && adv && ` (toi ${signe(f.ajustements[uid] ?? 0)}, ${nomAdv} ${signe(f.ajustements[adv] ?? 0)}).`}
       </span>
+      {p.nbCoups > 0 && (
+        <button type="button" className="bouton" onClick={() => naviguer('partie/' + p.code + '/analyse')}>
+          Analyser la partie
+        </button>
+      )}
       {adv && (
         <button type="button" className="bouton principal" disabled={occupe} onClick={() => void revanche()}>
           Proposer une revanche à {nomAdv}

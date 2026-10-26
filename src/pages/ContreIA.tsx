@@ -461,6 +461,13 @@ function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRe
           Score final : toi {partie.scores.moi}, IA {partie.scores.ia}
         </span>
       </ContenuPanneau>
+      {partie.coups.length > 0 && (
+        <div className="actions">
+          <button type="button" className="bouton large" onClick={() => naviguer('solo/ia/analyse/' + encodeURIComponent(partie.id))}>
+            Analyser la partie
+          </button>
+        </div>
+      )}
       <div className="actions">
         <button type="button" className="bouton large" onClick={onQuitter}>
           Terminer

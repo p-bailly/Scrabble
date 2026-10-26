@@ -9,7 +9,6 @@ import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, Chrono, ContenuPanneau, estUrgent, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeCrayon, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
-import { motConforme } from '../jeu/lettres'
 import { reference, type Coup } from '../jeu/coup'
 import {
   INDICES,
@@ -71,8 +70,6 @@ const MODES: { mode: ModeDuplicate; nom: string; texte: string }[] = [
 
 /** Combien d'autres bons coups on garde pour la correction. */
 const NB_SOLUTIONS = 15
-
-const REGLE_MOT = 'Le mot doit avoir au moins 2 voyelles ou 2 consonnes (le Y et l’apostrophe comptent pour les deux).'
 
 const NOM_INDICE: Record<Indice, string> = {
   valeur: 'Valeur du top',
@@ -324,7 +321,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
     try {
       const coups = await recherche.current.promesse
       let joueur = coup.bulletin
-      if (analyse?.valide && analyse.coup && motConforme(analyse.coup.mot) && (!joueur || analyse.points > joueur.points)) joueur = analyse.coup
+      if (analyse?.valide && analyse.coup && (!joueur || analyse.points > joueur.points)) joueur = analyse.coup
       const top = coups[0] ?? null
       const suite = terminerCoup(partie, top, joueur, coups.slice(0, NB_SOLUTIONS), coup.ecoule, coup.indices, coup.essais)
       ecrireCoup(null)
@@ -354,7 +351,6 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const t = totaux(partie)
   const noter = () => {
     if (!analyse?.valide || !analyse.coup) return
-    if (!motConforme(analyse.coup.mot)) return void setMessage(REGLE_MOT)
     setCoup((c) => ({ ...c, bulletin: analyse.coup! }))
   }
 
@@ -363,10 +359,6 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
     if (!topping) return void terminer()
     if (!analyse?.valide || !analyse.coup) {
       setMessage('Pose d’abord un mot valable.')
-      return
-    }
-    if (!motConforme(analyse.coup.mot)) {
-      setMessage(REGLE_MOT)
       return
     }
     setCalcul(true)

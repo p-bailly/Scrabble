@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { estSombre, lireReglages } from './reglages'
+import { estSombre, lireReglages, notificationVoulue } from './reglages'
 
 /** localStorage factice : les tests tournent sous Node, sans navigateur. */
 function stockage(contenu: Record<string, string>) {
@@ -15,22 +15,53 @@ afterEach(() => vi.unstubAllGlobals())
 describe('réglages', () => {
   it('valeurs par défaut quand rien n’est enregistré', () => {
     stockage({})
-    expect(lireReglages()).toEqual({ theme: 'auto', etiquettes: true, notifications: true, confirmerPasse: true })
+    expect(lireReglages()).toEqual({
+      theme: 'auto',
+      etiquettes: true,
+      notifications: true,
+      notifTour: true,
+      notifInvitations: true,
+      notifFin: true,
+      confirmerPasse: true,
+    })
   })
 
   it('relit ce qui est enregistré et complète le reste', () => {
     stockage({ 'scrabble.reglages': JSON.stringify({ theme: 'sombre', etiquettes: false }) })
-    expect(lireReglages()).toEqual({ theme: 'sombre', etiquettes: false, notifications: true, confirmerPasse: true })
+    expect(lireReglages()).toMatchObject({ theme: 'sombre', etiquettes: false, notifications: true, confirmerPasse: true })
   })
 
   it('ignore les valeurs abîmées', () => {
     stockage({ 'scrabble.reglages': JSON.stringify({ theme: 'violet', etiquettes: 'oui', notifications: 0, confirmerPasse: false }) })
-    expect(lireReglages()).toEqual({ theme: 'auto', etiquettes: true, notifications: true, confirmerPasse: false })
+    expect(lireReglages()).toMatchObject({ theme: 'auto', etiquettes: true, notifications: true, confirmerPasse: false })
   })
 
   it('ignore un contenu qui n’est pas du JSON', () => {
     stockage({ 'scrabble.reglages': '{pas du json' })
     expect(lireReglages().theme).toBe('auto')
+  })
+})
+
+describe('notifications voulues', () => {
+  it('tout est voulu par défaut', () => {
+    stockage({})
+    expect(notificationVoulue()).toBe(true)
+    expect(notificationVoulue('tour')).toBe(true)
+    expect(notificationVoulue('invitation')).toBe(true)
+    expect(notificationVoulue('fin')).toBe(true)
+  })
+
+  it('chaque genre se coupe séparément', () => {
+    stockage({ 'scrabble.reglages': JSON.stringify({ notifInvitations: false }) })
+    expect(notificationVoulue('invitation')).toBe(false)
+    expect(notificationVoulue('tour')).toBe(true)
+    expect(notificationVoulue('fin')).toBe(true)
+  })
+
+  it('l’interrupteur général coupe tout, essai compris', () => {
+    stockage({ 'scrabble.reglages': JSON.stringify({ notifications: false }) })
+    expect(notificationVoulue()).toBe(false)
+    expect(notificationVoulue('tour')).toBe(false)
   })
 })
 

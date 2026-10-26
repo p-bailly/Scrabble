@@ -61,7 +61,7 @@ export function Reglages() {
 
       <h2>Notifications</h2>
       <div className="carte">
-        <Notifications actif={r.notifications} onChange={(notifications) => maj({ notifications })} />
+        <Notifications r={r} maj={maj} />
       </div>
 
       <h2>Parties à deux</h2>
@@ -96,7 +96,7 @@ export function Reglages() {
   )
 }
 
-function Notifications({ actif, onChange }: { actif: boolean; onChange: (actif: boolean) => void }) {
+function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<ReglagesAppli>) => void }) {
   // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
   const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)
   useEffect(() => {
@@ -109,34 +109,56 @@ function Notifications({ actif, onChange }: { actif: boolean; onChange: (actif: 
   }
 
   return (
-    <Interrupteur
-      titre="Prévenir quand c’est mon tour"
-      texte="Notification quand l’adversaire a joué, ou qu’on t’invite à une partie. Elle arrive quand l’appli est ouverte ou revient au premier plan."
-      actif={actif}
-      onChange={(v) => {
-        onChange(v)
-        if (v) void demander()
-      }}
-    >
-      {actif && autorisees === null && <span className="note">Cet appareil ne propose pas les notifications.</span>}
-      {actif && autorisees === false && (
-        <>
-          <span className="note ecart-neg">Le système bloque les notifications de Scrabble : autorise-les dans ses réglages.</span>
+    <>
+      <Interrupteur
+        titre="Notifications"
+        texte="Une alerte quand il se passe quelque chose dans tes parties à deux. Elle arrive quand l’appli est ouverte ou revient au premier plan."
+        actif={r.notifications}
+        onChange={(notifications) => {
+          maj({ notifications })
+          if (notifications) void demander()
+        }}
+      >
+        {r.notifications && autorisees === null && <span className="note">Cet appareil ne propose pas les notifications.</span>}
+        {r.notifications && autorisees === false && (
+          <>
+            <span className="note ecart-neg">
+              Le système ne les autorise pas encore. Si le bouton ne fait rien, ouvre les réglages du téléphone (ou du navigateur), rubrique
+              Notifications de Scrabble, et autorise-les.
+            </span>
+            <div>
+              <button type="button" className="bouton" onClick={() => void demander()}>
+                Autoriser
+              </button>
+            </div>
+          </>
+        )}
+        {r.notifications && autorisees && (
           <div>
-            <button type="button" className="bouton" onClick={() => void demander()}>
-              Autoriser
+            <button type="button" className="bouton" onClick={() => void notifier('test', 'Scrabble', 'Les notifications fonctionnent.', '#/reglages')}>
+              Envoyer un essai
             </button>
           </div>
+        )}
+      </Interrupteur>
+      {r.notifications && (
+        <>
+          <Interrupteur
+            titre="C’est mon tour"
+            texte="Ton adversaire a joué, ou a rejoint ta partie."
+            actif={r.notifTour}
+            onChange={(notifTour) => maj({ notifTour })}
+          />
+          <Interrupteur
+            titre="Invitations"
+            texte="On t’invite à une partie, ou ton invité refuse."
+            actif={r.notifInvitations}
+            onChange={(notifInvitations) => maj({ notifInvitations })}
+          />
+          <Interrupteur titre="Fin de partie" texte="Ton adversaire a terminé la partie." actif={r.notifFin} onChange={(notifFin) => maj({ notifFin })} />
         </>
       )}
-      {actif && autorisees && (
-        <div>
-          <button type="button" className="bouton" onClick={() => void notifier('test', 'Scrabble', 'Les notifications fonctionnent.', '#/reglages')}>
-            Envoyer un essai
-          </button>
-        </div>
-      )}
-    </Interrupteur>
+    </>
   )
 }
 
@@ -163,8 +185,8 @@ function Donnees({ rafraichir }: { rafraichir: () => void }) {
       />
       <Rangee
         titre="Contre l’IA"
-        texte={`${pluriel(nbIA, 'partie')} terminée${nbIA > 1 ? 's' : ''}, d’où viennent les victoires par niveau.`}
-        droite={bouton(nbIA, effacer('Effacer les résultats contre l’IA ?', supprimerHistoriqueIA))}
+        texte={`${pluriel(nbIA, 'partie')} terminée${nbIA > 1 ? 's' : ''}, d’où viennent les victoires par niveau, avec les dernières parties gardées pour l’analyse.`}
+        droite={bouton(nbIA, effacer('Effacer les résultats contre l’IA et les parties gardées pour l’analyse ?', supprimerHistoriqueIA))}
       />
       <Rangee
         titre="Définitions du dictionnaire"

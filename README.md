@@ -63,7 +63,8 @@ de partie « Joker », « 7 sur 8 », « 7 et 8 » ne sont pas repris, faute de 
 - le score cumulé est comparé au total des tops (en points et en %). La **correction** montre à chaque coup mon mot,
   le top et les autres bons coups, sur le plateau ;
 - validation du tirage selon le règlement FISF : au moins 2 voyelles et 2 consonnes jusqu'au 15e coup, puis au
-  moins 1 voyelle et 1 consonne ; sinon toutes les lettres retournent dans le sac et on retire. La partie s'arrête
+  moins 1 voyelle et 1 consonne ; sinon toutes les lettres retournent dans le sac et on retire. La règle porte sur le
+  **tirage**, jamais sur le mot posé : un mot n'a aucune contrainte de voyelles ou de consonnes. La partie s'arrête
   quand on ne peut plus former de tirage valable ou qu'aucun coup n'est possible.
 
 **Conventions de l'appli** (le règlement ne les fixe pas) :
@@ -84,6 +85,9 @@ Une partie classique à deux joueurs contre l'ordinateur, avec les mêmes règle
 (chevalet de 7 lettres ; on pose un mot, on change des lettres s'il reste au moins 7 jetons dans le sac, ou on
 passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; la
 partie en cours est sauvegardée, les résultats contre chaque niveau sont gardés (menu Solo et onglet Stats).
+
+À la fin de la partie, **Analyser la partie** montre, tour par tour, le coup joué et les meilleurs coups possibles
+(voir « Analyse d'une partie » plus bas). Les dix dernières parties terminées restent analysables depuis l'onglet Stats.
 
 L'IA calcule tous les coups légaux (le générateur du calculateur) ; c'est le **niveau** qui règle ce qu'elle en
 fait :
@@ -127,6 +131,7 @@ l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de se
   réseau.
 - Notification « À toi de jouer » quand l'appli détecte le coup de l'adversaire (au premier plan ou à la reprise),
   de même pour une invitation reçue, un refus ou la fin d'une partie.
+- À la fin de la partie, **Analyser la partie** (voir « Analyse d'une partie » plus bas).
 - Historique des coups de la partie (mot, position, points) ; chaque coup reçu est revérifié par le client de
   l'adversaire (mots du dictionnaire, score), un coup non conforme est signalé.
 
@@ -150,15 +155,44 @@ L'onglet **Réglages** ([`src/pages/Reglages.tsx`](src/pages/Reglages.tsx)). Tou
 | --- | --- |
 | Apparence | **Thème** : automatique (suit le téléphone), clair ou sombre ; **étiquettes des cases bonus** (MT, MD, LT, LD) affichées ou non sur le plateau |
 | Jeu | **Confirmer avant de passer** son tour (parties à deux et contre l'IA) |
-| Notifications | Activer ou non « À toi de jouer » et les invitations ; état de l'autorisation du système, bouton pour la demander et pour envoyer un essai |
+| Notifications | Activer ou non les notifications, et choisir lesquelles : « C'est mon tour », invitations (reçues ou refusées), fin de partie ; état de l'autorisation du système, bouton pour la demander et pour envoyer un essai |
 | Parties à deux | **Pseudo** ; **être trouvé par les autres joueurs** (désactivé, on ne peut te faire jouer que par code ou lien) ; **se déconnecter** |
 | Données de cet appareil | Effacer l'historique du duplicate (et ses statistiques), les résultats contre l'IA, les définitions gardées |
 | À propos | Date de construction, dictionnaire, recherche d'une mise à jour (ou lien de l'APK dans l'appli Android), partage de l'appli |
+
+L'autorisation du système est demandée à la création du compte et à chaque partie créée ou rejointe ; tant qu'elle manque,
+« Mes parties » affiche un rappel (qu'on peut masquer) : sans lui, un joueur invité n'aurait pas pu la donner avant sa
+première invitation. Sur Android, le plugin déclare lui-même `POST_NOTIFICATIONS` ; si le système refuse définitivement,
+il faut l'accorder dans les réglages du téléphone (Applis → Scrabble → Notifications).
 
 Le thème est posé avant le premier affichage par un petit script d'[`index.html`](index.html) (pas d'éclair clair sur un
 téléphone en mode sombre), puis suivi par `reglages.ts` ; les couleurs sombres sont sous `:root[data-theme='dark']`
 dans [`src/styles.css`](src/styles.css). La rubrique « Parties à deux » ne se charge (avec Firebase) que si un compte
 existe sur l'appareil.
+
+## Analyse d'une partie
+
+Une partie classique terminée (contre l'IA ou à deux) peut être analysée : **Analyser la partie** sur l'écran de fin
+(ou, pour l'IA, depuis Stats → « Dernières parties contre l'IA »). L'écran
+([`src/pages/Analyse.tsx`](src/pages/Analyse.tsx)) donne :
+
+- pour chaque joueur, les points marqués en % du meilleur possible, le nombre de **meilleurs coups** joués et le tour où
+  il a laissé le plus de points (qu'on ouvre d'un toucher) ;
+- la liste des tours (filtrable sur « Mes coups ») : le chevalet, le coup joué (ou l'échange, ou la passe), le meilleur
+  coup possible et l'écart ;
+- en touchant un tour : le plateau **tel qu'il était alors**, le nombre de coups possibles avec ce chevalet et les dix
+  meilleurs, à regarder un par un sur la grille (le coup joué est repris en tête pour comparer).
+
+Le « meilleur » coup est celui qui rapporte le plus de points : l'analyse ne juge pas les lettres gardées pour la suite
+(un échange ou un coup plus faible peut être le bon choix). Les points de fin de partie (lettres restantes) ne comptent pas.
+Les coups sont cherchés tour après tour par le générateur, dans le Web Worker (quelques secondes pour une partie entière,
+avec une barre de progression).
+
+Il faut le **chevalet de chaque tour**, gardé à partir de cette version : dans `PartieIA.coups[].chevalet` pour l'IA et
+dans le champ `chevalet` de chaque document `parties/{code}/coups/{n}` pour les parties à deux. Les parties jouées
+avant ne sont pas analysables (l'écran le dit). À deux, l'analyse n'est ouverte qu'une fois la partie terminée : ces
+chevalets montrent le jeu de l'adversaire. Le chevalet de celui qui vient de jouer est lisible par l'adversaire dans
+l'historique dès son coup ; il se déduisait déjà du contenu du sac, lisible lui aussi (voir « Limites »).
 
 ## Dictionnaire
 
@@ -202,8 +236,7 @@ oublient d'autres.
   moins de 0,3 s sur un ordinateur ; bien moins sans joker. Les tests le comparent à une recherche par force brute
   indépendante, sur le dictionnaire complet.
 - Au **clavier**, on tape directement les lettres du mot (Retour arrière efface, Espace change le sens, Échap reprend
-  tout, Entrée valide). Un mot proposé en duplicate doit avoir au moins 2 voyelles ou 2 consonnes (Y et apostrophe
-  comptent pour les deux).
+  tout, Entrée valide).
 - **Mises à jour** : au lancement (et au retour au premier plan), la PWA cherche une nouvelle version et se recharge
   toute seule si elle en trouve une.
 
@@ -360,12 +393,13 @@ src/
     generateur.ts   tous les coups légaux (Appel-Jacobson)
     duplicate.ts    tirages FISF, déroulement d'une partie de duplicate (entraînement, topping, indices)
     classique.ts    partie à deux : pioche, échange, fin de partie
+    analyse.ts      analyse d'une partie terminée : plateau avant chaque tour, écart avec le meilleur coup, bilan par joueur
     ia.ts           l'adversaire artificiel : cinq niveaux, valeur des lettres gardées, choix du coup
     contreIA.ts     partie contre l'IA : état sauvegardable et transitions (mot, échange, passe, fin)
     hasard.ts       générateur pseudo-aléatoire reproductible (graine)
   moteur/         Web Worker du moteur (analyse, coups, coup de l'IA) et son accès depuis l'interface
   composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, changement de lettres, icônes, lignes de réglage
-  pages/          Solo (menu), Duplicate, ContreIA, Correction, Stats, Dictionnaire, Réglages
+  pages/          Solo (menu), Duplicate, ContreIA, Correction, Analyse (parties classiques), Stats, Dictionnaire, Réglages
   solo/           sauvegarde du duplicate et de la partie contre l'IA, historiques
   multi/          parties à deux : Firebase, nom d'utilisateur, données Firestore (dont invitations), écrans, section compte des réglages, veille des coups et des invitations
   lib/            routage par hash, stockage local, réglages, notifications, adresses à partager

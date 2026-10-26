@@ -66,7 +66,7 @@ function signaler(p: Partie, uid: string) {
   if (p.etat === 'attente') {
     const refuse = p.refus?.[p.refus.length - 1]
     if (refuse && p.createur === uid)
-      notifier(p.code, 'Invitation refusée', `${p.pseudos[refuse] ?? 'Le joueur invité'} a refusé ton invitation.`, '#/partie/' + p.code)
+      notifier(p.code, 'Invitation refusée', `${p.pseudos[refuse] ?? 'Le joueur invité'} a refusé ton invitation.`, '#/partie/' + p.code, 'invitation')
     return
   }
   const adversaire = p.joueurs.find((j) => j !== uid)
@@ -74,7 +74,7 @@ function signaler(p: Partie, uid: string) {
   const nom = p.pseudos[adversaire] ?? 'Ton adversaire'
   const hash = '#/partie/' + p.code
   if (p.etat === 'finie' && p.dernier?.uid !== uid) {
-    notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash)
+    notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash, 'fin')
   } else if (p.etat === 'encours' && p.tour === uid) {
     const d = p.dernier
     const texte =
@@ -85,7 +85,7 @@ function signaler(p: Partie, uid: string) {
           : d.type === 'change'
             ? `${nom} a changé des lettres.`
             : `${nom} a passé son tour.`
-    notifier(p.code, 'À toi de jouer', texte, hash)
+    notifier(p.code, 'À toi de jouer', texte, hash, 'tour')
   }
 }
 
@@ -95,5 +95,5 @@ function signalerInvitation(p: Partie) {
   if (lire(cle, false)) return
   ecrire(cle, true)
   const nom = p.pseudos[p.createur] ?? 'Un joueur'
-  notifier('invitation.' + p.code, 'Invitation à jouer', `${nom} t’invite à une partie de Scrabble.`, '#/parties')
+  notifier('invitation.' + p.code, 'Invitation à jouer', `${nom} t’invite à une partie de Scrabble.`, '#/parties', 'invitation')
 }

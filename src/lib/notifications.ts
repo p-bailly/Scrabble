@@ -3,7 +3,7 @@
 
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
-import { lireReglages } from './reglages'
+import { notificationVoulue, type GenreNotification } from './reglages'
 
 export const natif = Capacitor.isNativePlatform()
 
@@ -35,9 +35,9 @@ function idNumerique(cle: string): number {
   return Math.abs(h)
 }
 
-/** Affiche une notification qui, touchée, ouvre `hash` (ex. « #/partie/K7P2QX »). */
-export async function notifier(cle: string, titre: string, texte: string, hash: string) {
-  if (!lireReglages().notifications) return
+/** Affiche une notification qui, touchée, ouvre `hash` (ex. « #/partie/K7P2QX »), si les réglages la permettent. */
+export async function notifier(cle: string, titre: string, texte: string, hash: string, genre?: GenreNotification) {
+  if (!notificationVoulue(genre)) return
   try {
     if (natif) {
       await LocalNotifications.schedule({ notifications: [{ id: idNumerique(cle), title: titre, body: texte, extra: { hash } }] })

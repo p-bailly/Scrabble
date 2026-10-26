@@ -5,12 +5,13 @@ import { Entete } from '../composants/Entete'
 import { PROFILS } from '../jeu/ia'
 import { naviguer } from '../lib/routeur'
 import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
-import { bilanParNiveau } from '../solo/sauvegardeIA'
+import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
 
 export function Stats() {
   const [, rafraichir] = useState(0)
   const s = statistiques()
   const contreIA = bilanParNiveau().filter((b) => b.parties > 0)
+  const partiesIA = lirePartiesIA().slice(0, 5)
   return (
     <div className="contenu">
       <Entete titre="Statistiques" />
@@ -60,6 +61,26 @@ export function Stats() {
             </div>
           ))}
         </div>
+      )}
+      {partiesIA.length > 0 && (
+        <>
+          <h2>Dernières parties contre l’IA</h2>
+          <div className="liste">
+            {partiesIA.map((p) => (
+              <button type="button" className="ligne" key={p.id} onClick={() => naviguer('solo/ia/analyse/' + encodeURIComponent(p.id))}>
+                <div className="principal">
+                  <div style={{ fontWeight: 700 }}>
+                    {new Date(p.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {PROFILS[p.niveau].nom}
+                  </div>
+                  <div className="note">
+                    {p.fin?.raison === 'abandon' ? 'Abandonnée' : p.fin?.gagnant === 'moi' ? 'Gagnée' : p.fin?.gagnant === 'ia' ? 'Perdue' : 'Égalité'} ·{' '}
+                    {p.scores.moi} – {p.scores.ia} · toucher pour l’analyser
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
       <h2>Historique du duplicate</h2>
       {s.parties.length === 0 ? (
