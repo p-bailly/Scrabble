@@ -1,0 +1,29 @@
+# Vérifie chaque pull request avant sa fusion : types, tests et construction de l'appli.
+# (Le déploiement web et l'APK ne tournent que sur la branche par défaut, voir deploy.yml et android.yml.)
+name: Vérification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
