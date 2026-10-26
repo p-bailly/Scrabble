@@ -1,6 +1,7 @@
 // Agencement des écrans de jeu, à la manière de DupliJeu : barre du haut avec retour et titre, plateau d'un bord
 // à l'autre, chevalet dessous, puis les boutons et, tout en bas, le chrono encadré avec le score et sa jauge.
-// Pas d'onglets pendant le jeu.
+// Pas d'onglets pendant le jeu. Sur grand écran (ordinateur, tablette à l'horizontale), le plateau passe à gauche, le
+// plus grand possible, et la barre du haut et la colonne de jeu forment le côté droit (voir styles.css).
 
 import { useEffect, type ReactNode } from 'react'
 import { IconeRetour } from './Icones'
@@ -101,7 +102,15 @@ export function BarreStatut({ chrono, texte, part }: PropsStatut) {
 
 /** Texte placé dans le panneau du bas (avec les mêmes marges que la ligne de boutons). */
 export function ContenuPanneau({ children }: { children: ReactNode }) {
-  return <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>{children}</div>
+  return <div className="contenu-panneau">{children}</div>
+}
+
+/**
+ * Tout ce qui suit le plateau (chevalet, aperçu, notes, boutons, chrono). Sur téléphone, ces éléments se rangent
+ * directement sous le plateau ; sur grand écran, c'est la colonne de droite, sous la barre du haut.
+ */
+export function ColonneJeu({ children }: { children: ReactNode }) {
+  return <div className="colonne-jeu">{children}</div>
 }
 
 /** Boutons d'action, collés en bas de l'écran avec la barre de statut dessous. */

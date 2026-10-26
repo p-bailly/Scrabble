@@ -7,7 +7,7 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -758,72 +758,74 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             onCase={aMoi ? edition.toucherCase : () => false}
             onAppuiPose={edition.appuiPose}
           />
-          {p.etat === 'finie' && (
-            <div style={{ padding: '12px 16px 0' }}>
-              <Fin p={p} uid={uid} nomAdv={nomAdv} />
-            </div>
-          )}
-          <Chevalet edition={edition} />
-          {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
-          {p.etat === 'encours' && !aMoi && (
-            <div className="apercu">
-              <span className="indice">{nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.</span>
-            </div>
-          )}
-          {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
-          {message && <div className="apercu erreur">{message}</div>}
-          <PanneauBas
-            statut={
-              <BarreStatut
-                texte={
-                  <>
-                    Moi <b>{moi}</b> · <b>{lui}</b> {nomAdv}
-                  </>
-                }
-                part={moi + lui ? moi / (moi + lui) : 0.5}
-              />
-            }
-          >
-            {aMoi ? (
-              <div className="actions dense">
-                <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-                  <IconeMelanger />
-                </button>
-                <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
-                  <IconeRappeler />
-                </button>
-                <button type="button" className="bouton large" onClick={() => setChangement(true)}>
-                  Changer
-                </button>
-                <button
-                  type="button"
-                  className="bouton large"
-                  onClick={() => {
-                    if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) jouer({ type: 'passe' })
-                  }}
-                >
-                  Passer
-                </button>
-                <button
-                  type="button"
-                  className="bouton principal large"
-                  disabled={!analyse?.valide}
-                  onClick={() => analyse && jouer({ type: 'mot', analyse })}
-                >
-                  Jouer
-                </button>
-              </div>
-            ) : (
-              <div className="actions">
-                <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-                  <IconeMelanger />
-                </button>
-                <button type="button" className="bouton large" onClick={() => naviguer('parties')}>
-                  Mes parties
-                </button>
+          <ColonneJeu>
+            {p.etat === 'finie' && (
+              <div className="encart-jeu">
+                <Fin p={p} uid={uid} nomAdv={nomAdv} />
               </div>
             )}
-          </PanneauBas>
+            <Chevalet edition={edition} />
+            {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
+            {p.etat === 'encours' && !aMoi && (
+              <div className="apercu">
+                <span className="indice">{nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.</span>
+              </div>
+            )}
+            {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
+            {message && <div className="apercu erreur">{message}</div>}
+            <PanneauBas
+              statut={
+                <BarreStatut
+                  texte={
+                    <>
+                      Moi <b>{moi}</b> · <b>{lui}</b> {nomAdv}
+                    </>
+                  }
+                  part={moi + lui ? moi / (moi + lui) : 0.5}
+                />
+              }
+            >
+              {aMoi ? (
+                <div className="actions dense">
+                  <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                    <IconeMelanger />
+                  </button>
+                  <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+                    <IconeRappeler />
+                  </button>
+                  <button type="button" className="bouton large" onClick={() => setChangement(true)}>
+                    Changer
+                  </button>
+                  <button
+                    type="button"
+                    className="bouton large"
+                    onClick={() => {
+                      if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) jouer({ type: 'passe' })
+                    }}
+                  >
+                    Passer
+                  </button>
+                  <button
+                    type="button"
+                    className="bouton principal large"
+                    disabled={!analyse?.valide}
+                    onClick={() => analyse && jouer({ type: 'mot', analyse })}
+                  >
+                    Jouer
+                  </button>
+                </div>
+              ) : (
+                <div className="actions">
+                  <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                    <IconeMelanger />
+                  </button>
+                  <button type="button" className="bouton large" onClick={() => naviguer('parties')}>
+                    Mes parties
+                  </button>
+                </div>
+              )}
+            </PanneauBas>
+          </ColonneJeu>
         </div>
       )}
       <TuileVolante glisse={edition.glisse} />

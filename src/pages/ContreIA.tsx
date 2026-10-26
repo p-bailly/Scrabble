@@ -7,7 +7,7 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -309,91 +309,93 @@ function EcranIA({
         onCase={aMoi ? edition.toucherCase : () => false}
         onAppuiPose={edition.appuiPose}
       />
-      <Chevalet edition={edition} />
-      {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
-      {!partie.finie && !aMoi && (
-        <div className="apercu">
-          <span className="indice">{erreurIA ? '' : 'L’IA réfléchit…'}</span>
-          {erreurIA && (
-            <>
-              <span className="mots ecart-neg">L’IA ne peut pas jouer : {erreurIA}</span>
-              <button type="button" className="bouton" onClick={() => setEssai((n) => n + 1)}>
-                Réessayer
-              </button>
-            </>
-          )}
-        </div>
-      )}
-      {dernier && !partie.finie && (
-        <div className="note note-centree">
-          {(() => {
-            const d = decrire(dernier)
-            return d.coup ? (
+      <ColonneJeu>
+        <Chevalet edition={edition} />
+        {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." />}
+        {!partie.finie && !aMoi && (
+          <div className="apercu">
+            <span className="indice">{erreurIA ? '' : 'L’IA réfléchit…'}</span>
+            {erreurIA && (
               <>
-                {d.texte} <Mot mot={d.coup.mot} /> {reference(d.coup.debut, d.coup.dir)} · {dernier.points} pts
+                <span className="mots ecart-neg">L’IA ne peut pas jouer : {erreurIA}</span>
+                <button type="button" className="bouton" onClick={() => setEssai((n) => n + 1)}>
+                  Réessayer
+                </button>
               </>
-            ) : (
-              d.texte
-            )
-          })()}
-        </div>
-      )}
-      {message && <div className="note note-centree ecart-neg">{message}</div>}
-      <PanneauBas
-        statut={
-          <BarreStatut
-            texte={
-              <>
-                Toi <b>{moi}</b> · <b>{ia}</b> IA
-              </>
-            }
-            part={moi + ia ? moi / (moi + ia) : 0.5}
-          />
-        }
-      >
-        {partie.finie ? (
-          <FinDePartie
-            partie={partie}
-            onRevanche={() => onRevanche(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))}
-            onQuitter={onQuitter}
-          />
-        ) : aMoi ? (
-          <div className="actions dense">
-            <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-              <IconeMelanger />
-            </button>
-            <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
-              <IconeRappeler />
-            </button>
-            <button type="button" className="bouton large" onClick={() => setChangement(true)}>
-              Changer
-            </button>
-            <button
-              type="button"
-              className="bouton large"
-              onClick={() => {
-                if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
-              }}
-            >
-              Passer
-            </button>
-            <button
-              type="button"
-              className="bouton principal large"
-              disabled={!analyse?.valide}
-              onClick={() => analyse?.coup && appliquer(jouerMotIA(partie, 'moi', analyse.coup))}
-            >
-              <IconeOk /> Jouer
-            </button>
-          </div>
-        ) : (
-          <div className="actions">
-            <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
-              <IconeMelanger />
-            </button>
+            )}
           </div>
         )}
-      </PanneauBas>
+        {dernier && !partie.finie && (
+          <div className="note note-centree">
+            {(() => {
+              const d = decrire(dernier)
+              return d.coup ? (
+                <>
+                  {d.texte} <Mot mot={d.coup.mot} /> {reference(d.coup.debut, d.coup.dir)} · {dernier.points} pts
+                </>
+              ) : (
+                d.texte
+              )
+            })()}
+          </div>
+        )}
+        {message && <div className="note note-centree ecart-neg">{message}</div>}
+        <PanneauBas
+          statut={
+            <BarreStatut
+              texte={
+                <>
+                  Toi <b>{moi}</b> · <b>{ia}</b> IA
+                </>
+              }
+              part={moi + ia ? moi / (moi + ia) : 0.5}
+            />
+          }
+        >
+          {partie.finie ? (
+            <FinDePartie
+              partie={partie}
+              onRevanche={() => onRevanche(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))}
+              onQuitter={onQuitter}
+            />
+          ) : aMoi ? (
+            <div className="actions dense">
+              <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                <IconeMelanger />
+              </button>
+              <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+                <IconeRappeler />
+              </button>
+              <button type="button" className="bouton large" onClick={() => setChangement(true)}>
+                Changer
+              </button>
+              <button
+                type="button"
+                className="bouton large"
+                onClick={() => {
+                  if (!lireReglages().confirmerPasse || confirm('Passer ton tour ?')) appliquer(passerIA(partie, 'moi'))
+                }}
+              >
+                Passer
+              </button>
+              <button
+                type="button"
+                className="bouton principal large"
+                disabled={!analyse?.valide}
+                onClick={() => analyse?.coup && appliquer(jouerMotIA(partie, 'moi', analyse.coup))}
+              >
+                <IconeOk /> Jouer
+              </button>
+            </div>
+          ) : (
+            <div className="actions">
+              <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
+                <IconeMelanger />
+              </button>
+            </div>
+          )}
+        </PanneauBas>
+      </ColonneJeu>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’IA" />

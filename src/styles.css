@@ -856,7 +856,12 @@ a.bouton {
 }
 
 /* Écrans de jeu : plateau en haut d'un bord à l'autre, chevalet dessous, ligne du coup, boutons, puis en bas
-   le chrono encadré avec le score et sa jauge, comme dans DupliJeu. */
+   le chrono encadré avec le score et sa jauge, comme dans DupliJeu. Le bloc « colonne-jeu » regroupe tout ce qui suit
+   le plateau : sur téléphone il disparaît de la mise en page (display: contents), sur grand écran il devient la colonne
+   de droite (voir la fin du fichier). */
+.colonne-jeu {
+  display: contents;
+}
 .ecran-jeu {
   flex: 1;
   display: flex;
@@ -1014,6 +1019,15 @@ a.bouton {
 }
 .panneau-bas > .actions {
   padding: 0 12px;
+}
+.contenu-panneau {
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.encart-jeu {
+  padding: 12px 16px 0;
 }
 .panneau-bas .bouton-icone {
   width: 52px;
@@ -1196,4 +1210,107 @@ a.bouton {
 }
 .historique-essais .essai {
   white-space: nowrap;
+}
+
+/* Grand écran (ordinateur, tablette à l'horizontale), comme DupliJeu : le plateau à gauche, aussi grand que la hauteur
+   de la fenêtre le permet, et à droite une colonne avec la barre du haut, le chevalet, l'aperçu du coup, les boutons
+   et le chrono. Sans défilement de la page : si la colonne est plus haute que la fenêtre, c'est elle qui défile.
+   Les autres écrans (menus, réglages, dictionnaire…) gardent leur colonne centrée. */
+@media (min-width: 900px) {
+  .appli:has(.ecran-jeu) {
+    max-width: none;
+  }
+  .ecran-jeu {
+    --cote: clamp(340px, 30vw, 460px);
+    --ecart: 24px;
+    --marge: 16px;
+    /* Côté du plateau : toute la hauteur disponible, sans déborder de la largeur. */
+    --jeu: min(calc(100dvh - 2 * var(--marge) - env(safe-area-inset-top)), calc(100vw - var(--cote) - var(--ecart) - 2 * var(--marge)));
+    display: grid;
+    grid-template-columns: var(--jeu) var(--cote);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: var(--ecart);
+    justify-content: center;
+    /* Aussi haut que le plateau, centré dans la fenêtre : la colonne de droite finit au bas du plateau. */
+    flex: none;
+    margin-block: auto;
+    height: calc(var(--jeu) + 2 * var(--marge));
+    min-height: 0;
+    padding: var(--marge);
+  }
+  .ecran-jeu > .zone-plateau {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .ecran-jeu > .barre-jeu {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0 0 12px;
+  }
+  .ecran-jeu > .colonne-jeu {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .zone-plateau.pleine {
+    border: 2px solid var(--cadre);
+    border-radius: 4px;
+  }
+  .ecran-jeu .chevalet {
+    flex: none;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border-bottom: 0;
+    /* Les lettres suivent la largeur de la colonne, pas celle de la fenêtre. */
+    container-type: inline-size;
+  }
+  .ecran-jeu .chevalet .tuile {
+    font-size: 7cqw;
+  }
+  .ecran-jeu .chevalet .tuile .points {
+    font-size: max(10px, 2.9cqw);
+  }
+  .ecran-jeu .apercu:not(.jeton) {
+    flex: none;
+    border: 1px solid var(--line);
+    border-radius: var(--rayon);
+    padding: 10px 14px;
+  }
+  .ecran-jeu .note-centree {
+    padding: 0;
+  }
+  .encart-jeu,
+  .contenu-panneau,
+  .panneau-bas > .actions,
+  .historique-essais {
+    padding: 0;
+  }
+  /* Boutons et chrono restent en bas de la colonne, visibles même si la colonne défile. */
+  .ecran-jeu .panneau-bas {
+    padding-top: 0;
+    gap: 12px;
+  }
+  .ecran-jeu .statut {
+    padding: 10px 12px;
+    border: 1.5px solid var(--bord);
+    border-radius: var(--rayon);
+    background: var(--surface);
+  }
+  /* Fenêtres : au centre de l'écran plutôt qu'en bas. */
+  .voile {
+    align-items: center;
+  }
+  .feuille {
+    max-width: 480px;
+    border: 2px solid var(--bord);
+    border-radius: 14px;
+    padding-bottom: 18px;
+  }
 }
