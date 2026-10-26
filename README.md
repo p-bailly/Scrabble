@@ -7,10 +7,14 @@ Appli perso de **Scrabble en français**, en quatre parties :
 - **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
   on invite directement un joueur de l'appli (par son pseudo), ou on envoie un lien à qui ne l'a pas ;
-- **Dictionnaire** : tous les mots valables, avec recherche (commence par, finit par, contient ; `?` = une lettre) ;
-  toucher un mot affiche sa définition (Wiktionnaire, connexion nécessaire, gardée ensuite sur l'appareil).
+- **Dictionnaire** : tous les mots valables, avec trois outils : *Chercher* (commence par, finit par, contient ;
+  `?` = une lettre), *Vérifier* (un mot est-il valable, et combien vaut-il ?) et *Mes lettres* (les mots qu'on écrit
+  avec un chevalet, joker `?` compris, ou seulement les anagrammes). Toucher un mot affiche sa définition (Wiktionnaire,
+  connexion nécessaire, gardée ensuite sur l'appareil) ; on la retrouve aussi depuis les historiques, l'analyse et la
+  correction des parties.
 
-Un onglet **Réglages** regroupe le thème, les notifications, le compte et les données de l'appareil.
+Un onglet **Réglages** regroupe le thème, les notifications, le compte et les données de l'appareil (avec leur
+sauvegarde dans un fichier, à importer sur un autre appareil).
 
 C'est une web app installable (PWA), aussi livrée en **APK Android**, reconstruite automatiquement par GitHub
 Actions et suivie par « Mes applis » ([p-bailly/Managing-Apps](https://github.com/p-bailly/Managing-Apps)).
@@ -75,6 +79,7 @@ de partie « Joker », « 7 sur 8 », « 7 et 8 » ne sont pas repris, faute de 
 - quand plusieurs coups font le même score, le top retenu est celui qui utilise le moins de jokers, puis le mot le
   plus long, puis le premier sur le plateau (de haut en bas, de gauche à droite).
 
+Le **défi du jour** donne à tous la même graine (la date) : les mêmes tirages pour comparer son score avec ses amis.
 Les parties en cours sont sauvegardées sur l'appareil à chaque coup : on peut en avoir **plusieurs en même temps**
 (duplicate et contre l'IA mélangés), toutes listées en haut du menu **Solo** avec leur avancement, pour les
 **reprendre** ou les **abandonner** (une partie abandonnée où l'on a joué est rangée dans l'historique) ; commencer
@@ -89,6 +94,10 @@ Une partie classique à deux joueurs contre l'ordinateur, avec les mêmes règle
 passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; les
 parties en cours sont sauvegardées (on peut en avoir plusieurs, voir ci-dessus), les résultats contre chaque niveau
 sont gardés (menu Solo et onglet Stats).
+
+Le menu de la partie (flèche de retour) propose deux aides, comptées dans le résumé de la fin de partie : un **Indice**
+(valeur, longueur, direction ou case de départ du meilleur coup) et **Annuler mon dernier coup** (la réponse de l'IA
+est annulée avec lui, un coup à la fois).
 
 À la fin de la partie, **Analyser la partie** montre, tour par tour, le coup joué et les meilleurs coups possibles
 (voir « Analyse d'une partie » plus bas). Les dix dernières parties terminées restent analysables depuis l'onglet Stats.
@@ -125,6 +134,9 @@ partie (la fenêtre dit combien sont dans le sac). **Abandonner** : menu ⋯ en 
 retour puis « Abandonner la partie » en duplicate et contre l'IA, ou **Abandonner** directement dans la liste des
 parties en cours du menu Solo.
 
+- **Mes parties** indique depuis combien de temps chaque partie n'a pas bougé (et le dit quand l'adversaire ne répond
+  plus depuis deux semaines) ; le bouton **×** d'une ligne abandonne une partie en cours, supprime une invitation
+  envoyée ou retire une partie terminée de la liste. Un **face à face** donne le bilan contre chaque adversaire.
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
   - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà
     rencontré (« Joué récemment »). L'invité trouve l'invitation en tête de **Mes parties** (« Invitations reçues »),
@@ -400,7 +412,8 @@ npm test                # tests Vitest du moteur
 npm run typecheck
 ```
 
-Version de production : `npm run build` puis `npm run preview`.
+Version de production : `npm run build` puis `npm run preview`. Chaque pull request passe par le workflow
+[`verification.yml`](.github/workflows/verification.yml) : types, tests, construction de l'appli web et de l'APK.
 
 Tester le multijoueur sans projet Firebase : lancer les émulateurs
 (`npx firebase-tools emulators:start --only auth,firestore --project demo-scrabble`, avec un `firebase.json` qui
