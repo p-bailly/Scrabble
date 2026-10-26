@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { changer, finDePartie, jouerMot, lettresAdversaire } from './classique'
+import { changer, finDePartie, jouerMot, lettresAdversaire, lettresNonVues } from './classique'
 import { analyserCoup, type Coup } from './coup'
 import {
   INDICES,
   compter,
+  graineDuJour,
   modeDe,
   nouvellePartie,
   plateauAvantCoup,
@@ -127,6 +128,25 @@ describe('partie classique', () => {
     for (const j of [...'MAISN?', ...moi, ...adversaire]) sac.splice(sac.indexOf(j), 1)
     expect(lettresAdversaire(plateau, sac, moi).sort()).toEqual(adversaire.sort())
   })
+
+  it('les lettres non vues : ni sur le plateau, ni sur mon chevalet (sac et chevalet adverse)', () => {
+    const moi = [...'EEARTS?']
+    // Au départ : les 102 jetons moins mon chevalet.
+    expect(lettresNonVues(vide(), moi)).toHaveLength(102 - 7)
+    // Un joker posé (minuscule) retire un joker, pas la lettre qu'il représente.
+    const plateau = ecrire(vide(), 7, 7, 'H', 'MAISoN')
+    const nonVues = lettresNonVues(plateau, moi)
+    const nb = (l: string) => nonVues.filter((x) => x === l).length
+    expect(nonVues).toHaveLength(102 - 6 - 7)
+    expect(nb('?')).toBe(0) // les deux jokers : un posé, un sur mon chevalet
+    expect(nb('O')).toBe(6) // le « o » posé est un joker : aucun O de moins
+    expect(nb('E')).toBe(15 - 2)
+    // Ce que contient le sac, plus les lettres de l'adversaire, c'est exactement ce qu'on n'a pas vu.
+    const adversaire = [...'KWLLUEE']
+    const sac = tousLesJetons()
+    for (const j of [...'MAISN?', ...moi, ...adversaire]) sac.splice(sac.indexOf(j), 1)
+    expect([...sac, ...adversaire].sort()).toEqual(nonVues.sort())
+  })
 })
 
 describe('topping du duplicate', () => {
@@ -136,6 +156,15 @@ describe('topping du duplicate', () => {
     dir,
     debut,
     points,
+  })
+
+  it('le défi du jour a pour graine la date, avec des zéros devant', () => {
+    expect(graineDuJour(new Date(2026, 0, 5))).toBe('DEFI-2026-01-05')
+    expect(graineDuJour(new Date(2026, 9, 26))).toBe('DEFI-2026-10-26')
+    // Même jour, mêmes tirages ; un autre jour, d'autres tirages.
+    const t = (g: string) => nouvellePartie(g, 180).courant!.tirage.join('')
+    expect(t(graineDuJour(new Date(2026, 9, 26)))).toBe(t('DEFI-2026-10-26'))
+    expect(t('DEFI-2026-10-26')).not.toBe(t('DEFI-2026-10-27'))
   })
 
   it('une partie ancienne, sans mode, est un entraînement', () => {

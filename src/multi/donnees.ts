@@ -186,6 +186,36 @@ export function adversairesRecents(parties: readonly Partie[], uid: string): Jou
   return [...vus.values()]
 }
 
+/** Résultats contre un adversaire, sur les parties terminées. */
+export interface Bilan {
+  uid: string
+  pseudo: string
+  victoires: number
+  defaites: number
+  egalites: number
+}
+
+/**
+ * Bilan face à face avec chaque adversaire, sur les parties terminées (abandons compris : l'abandon donne la victoire à
+ * l'autre). Le plus joué d'abord, puis par ordre alphabétique du pseudo ; le pseudo est celui de la partie la plus récente.
+ */
+export function bilansFaceAFace(parties: readonly Partie[], uid: string): Bilan[] {
+  const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
+  const bilans = new Map<string, Bilan>()
+  for (const p of [...parties].sort((a, b) => date(b) - date(a))) {
+    const adv = autre(p, uid)
+    if (p.etat !== 'finie' || !adv) continue
+    const b = bilans.get(adv) ?? { uid: adv, pseudo: p.pseudos[adv] ?? '?', victoires: 0, defaites: 0, egalites: 0 }
+    const gagnant = p.fin?.gagnant ?? null
+    if (gagnant === null) b.egalites++
+    else if (gagnant === uid) b.victoires++
+    else b.defaites++
+    bilans.set(adv, b)
+  }
+  const total = (b: Bilan) => b.victoires + b.defaites + b.egalites
+  return [...bilans.values()].sort((a, b) => total(b) - total(a) || a.pseudo.localeCompare(b.pseudo))
+}
+
 /** Crée une partie et renvoie son code ; `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli). */
 export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTrouve): Promise<string> {
   const code = nouveauCode()
@@ -343,9 +373,10 @@ type Action = { type: 'mot'; analyse: Analyse } | { type: 'change'; lettres: str
 
 /**
  * Joue un coup. Le lot d'écritures est envoyé sans attendre la réponse du serveur : hors ligne, il part au retour
- * du réseau. Renvoie un message d'erreur si le coup n'est pas permis.
+ * du réseau. Renvoie un message d'erreur si le coup n'est pas permis ; si le serveur le refuse ensuite (règles de
+ * sécurité, par exemple), `surRefus` en reçoit la raison, car l'écran revient alors à l'état d'avant le coup.
  */
-export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Action): string | null {
+export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Action, surRefus?: (message: string) => void): string | null {
   if (p.etat !== 'encours' || p.tour !== uid) return 'Ce n’est pas ton tour'
   const adversaire = autre(p, uid)!
   const plateau = plateauDepuisTexte(p.plateau)
@@ -414,12 +445,15 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   })
   b.set(doc(base(), 'parties', p.code, 'chevalets', uid), { lettres: nouveauChevalet.join('') })
   b.set(doc(base(), 'parties', p.code, 'coups', String(n)), { ...coup, le: serverTimestamp() })
-  b.commit().catch((e) => console.error('Coup refusé par le serveur', e))
+  b.commit().catch((e) => {
+    console.error('Coup refusé par le serveur', e)
+    surRefus?.('Coup non enregistré : ' + messageErreur(e))
+  })
   return null
 }
 
-/** Abandon : la partie s'arrête, l'adversaire gagne. */
-export function abandonner(p: Partie, uid: string) {
+/** Abandon : la partie s'arrête, l'adversaire gagne. `surRefus` : voir `jouerCoup`. */
+export function abandonner(p: Partie, uid: string, surRefus?: (message: string) => void) {
   const adversaire = autre(p, uid)
   const b = writeBatch(base())
   b.update(doc(base(), 'parties', p.code), {
@@ -429,7 +463,10 @@ export function abandonner(p: Partie, uid: string) {
     dernier: { uid, type: 'abandon', points: 0 },
     majLe: serverTimestamp(),
   })
-  b.commit().catch((e) => console.error('Abandon refusé', e))
+  b.commit().catch((e) => {
+    console.error('Abandon refusé', e)
+    surRefus?.('Abandon non enregistré : ' + messageErreur(e))
+  })
 }
 
 /**

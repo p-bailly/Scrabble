@@ -7,10 +7,14 @@ Appli perso de **Scrabble en français**, en quatre parties :
 - **Partie solo contre l'IA** : une partie classique tour par tour contre l'ordinateur, en cinq niveaux ;
 - **Parties à deux en différé** : chacun joue son coup quand il veut, sans être connecté en même temps que l'autre ;
   on invite directement un joueur de l'appli (par son pseudo), ou on envoie un lien à qui ne l'a pas ;
-- **Dictionnaire** : tous les mots valables, avec recherche (commence par, finit par, contient ; `?` = une lettre) ;
-  toucher un mot affiche sa définition (Wiktionnaire, connexion nécessaire, gardée ensuite sur l'appareil).
+- **Dictionnaire** : tous les mots valables, avec trois outils : *Chercher* (commence par, finit par, contient ;
+  `?` = une lettre), *Vérifier* (un mot est-il valable, et combien vaut-il ?) et *Mes lettres* (les mots qu'on écrit
+  avec un chevalet, joker `?` compris, ou seulement les anagrammes). Toucher un mot affiche sa définition (Wiktionnaire,
+  connexion nécessaire, gardée ensuite sur l'appareil) ; on la retrouve aussi depuis les historiques, l'analyse et la
+  correction des parties.
 
-Un onglet **Réglages** regroupe le thème, les notifications, le compte et les données de l'appareil.
+Un onglet **Réglages** regroupe le thème, les notifications, le compte et les données de l'appareil (avec leur
+sauvegarde dans un fichier, à importer sur un autre appareil).
 
 C'est une web app installable (PWA), aussi livrée en **APK Android**, reconstruite automatiquement par GitHub
 Actions et suivie par « Mes applis » ([p-bailly/Managing-Apps](https://github.com/p-bailly/Managing-Apps)).
@@ -75,16 +79,25 @@ de partie « Joker », « 7 sur 8 », « 7 et 8 » ne sont pas repris, faute de 
 - quand plusieurs coups font le même score, le top retenu est celui qui utilise le moins de jokers, puis le mot le
   plus long, puis le premier sur le plateau (de haut en bas, de gauche à droite).
 
-Partie en cours sauvegardée sur l'appareil et reprise à l'ouverture ; historique des parties et statistiques
-(moyenne en %, meilleure partie, tops trouvés). Une **graine** (facultative) redonne exactement les mêmes tirages :
+Le **défi du jour** donne à tous la même graine (la date) : les mêmes tirages pour comparer son score avec ses amis.
+Les parties en cours sont sauvegardées sur l'appareil à chaque coup : on peut en avoir **plusieurs en même temps**
+(duplicate et contre l'IA mélangés), toutes listées en haut du menu **Solo** avec leur avancement, pour les
+**reprendre** ou les **abandonner** (une partie abandonnée où l'on a joué est rangée dans l'historique) ; commencer
+une partie n'en abandonne plus aucune. Historique des parties et statistiques (moyenne en %, meilleure partie, tops
+trouvés). Une **graine** (facultative) redonne exactement les mêmes tirages :
 pratique pour rejouer une partie ou défier quelqu'un sur la même. Le mode solo marche entièrement hors ligne.
 
 ### Contre l'IA (solo)
 
 Une partie classique à deux joueurs contre l'ordinateur, avec les mêmes règles que les parties à deux ci-dessous
 (chevalet de 7 lettres ; on pose un mot, on change des lettres s'il reste au moins 7 jetons dans le sac, ou on
-passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; la
-partie en cours est sauvegardée, les résultats contre chaque niveau sont gardés (menu Solo et onglet Stats).
+passe ; mêmes fins de partie). Tout se passe sur l'appareil, hors ligne. On choisit le niveau et qui commence ; les
+parties en cours sont sauvegardées (on peut en avoir plusieurs, voir ci-dessus), les résultats contre chaque niveau
+sont gardés (menu Solo et onglet Stats).
+
+Le menu de la partie (flèche de retour) propose deux aides, comptées dans le résumé de la fin de partie : un **Indice**
+(valeur, longueur, direction ou case de départ du meilleur coup) et **Annuler mon dernier coup** (la réponse de l'IA
+est annulée avec lui, un coup à la fois).
 
 À la fin de la partie, **Analyser la partie** montre, tour par tour, le coup joué et les meilleurs coups possibles
 (voir « Analyse d'une partie » plus bas). Les dix dernières parties terminées restent analysables depuis l'onglet Stats.
@@ -114,6 +127,16 @@ lettres (s'il en reste au moins 7 dans le sac) ou on passe. Un mot absent du dic
 Fin de partie : le sac est vide et un joueur a vidé son chevalet (il gagne la valeur des lettres restant à
 l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
 
+Dans tous les écrans de jeu (duplicate, contre l'IA, parties à deux), la pastille du sac, en haut, donne le nombre de
+lettres qu'on ne voit pas ; la toucher les détaille une à une, avec leur nombre. Ce sont les lettres qui ne sont ni sur
+le plateau ni sur son chevalet : face à un adversaire, le sac et le chevalet adverse y sont mêlés, comme dans une vraie
+partie (la fenêtre dit combien sont dans le sac). **Abandonner** : menu ⋯ en haut à droite dans une partie à deux (l'adversaire gagne et en est prévenu), flèche de
+retour puis « Abandonner la partie » en duplicate et contre l'IA, ou **Abandonner** directement dans la liste des
+parties en cours du menu Solo.
+
+- **Mes parties** indique depuis combien de temps chaque partie n'a pas bougé (et le dit quand l'adversaire ne répond
+  plus depuis deux semaines) ; le bouton **×** d'une ligne abandonne une partie en cours, supprime une invitation
+  envoyée ou retire une partie terminée de la liste. Un **face à face** donne le bilan contre chaque adversaire.
 - **Nouvelle partie** ouvre l'écran d'invitation, de deux façons :
   - **Inviter un joueur de l'appli** : on tape son pseudo (deux lettres suffisent) ou on touche un adversaire déjà
     rencontré (« Joué récemment »). L'invité trouve l'invitation en tête de **Mes parties** (« Invitations reçues »),
@@ -311,17 +334,75 @@ chevalet de l'autre, etc.).
 
 ## Limites
 
-- **Pas de notification appli fermée.** La notification « À toi de jouer » est locale : elle part quand l'appli est
-  ouverte ou revient au premier plan et voit que l'adversaire a joué (ou qu'on a reçu une invitation). De vraies notifications push, appli fermée,
-  demanderaient Firebase Cloud Messaging *et* une Cloud Function déclenchée à chaque coup (écriture dans
-  `parties/{code}`) qui envoie le message au joueur dont c'est le tour, avec les jetons FCM des appareils enregistrés
-  dans Firestore. Les Cloud Functions exigent l'offre payante **Blaze** (paiement à l'usage, quasi gratuit à cette
-  échelle mais carte bancaire obligatoire) ; côté appli il faudrait `@capacitor/push-notifications` et un fichier
-  `google-services.json`.
+- **Notifications appli fermée : à activer.** Par défaut, la notification « À toi de jouer » est locale : elle part
+  quand l'appli est ouverte ou revient au premier plan et voit que l'adversaire a joué (ou qu'on a reçu une
+  invitation). Le code des vraies notifications push, appli fermée, est dans le dépôt mais éteint : il demande l'offre
+  payante **Blaze** de Firebase et quelques réglages, voir « Notifications push » ci-dessous.
 - **La triche n'est pas impossible.** Sans serveur, c'est le téléphone du joueur qui tire les lettres et calcule le
   score, et le contenu du sac est lisible (les lettres de l'adversaire s'en déduisent). Chaque coup est revérifié
   par l'adversaire (mots, score, plateau), mais un joueur malin peut choisir ses lettres. C'est accepté pour un usage
   entre amis.
+
+## Synchronisation des données solo
+
+Quand on est connecté à un compte (rubrique « Parties à deux »), les **parties solo en cours** (duplicate et contre l'IA,
+plusieurs à la fois), les **historiques** (duplicate, résultats et parties gardées contre l'IA) et les **réglages**
+(thème, étiquettes, confirmation avant de passer, mode et temps du duplicate, niveau contre l'IA) sont enregistrés dans
+Firestore, sous `joueurs/{uid}/solo`, et retrouvés sur tous les appareils où l'on saisit le même nom. Les
+notifications ne sont pas synchronisées : elles dépendent de l'appareil. Sans compte, rien ne change : tout reste sur
+l'appareil (et la sauvegarde par fichier des Réglages sert toujours).
+
+- **Pas de bouton** : l'écoute est en direct, une partie commencée sur un téléphone apparaît dans le menu Solo de
+  l'autre. Hors ligne, on joue comme avant ; les changements partent au retour du réseau.
+- **Premier compte** : les parties et historiques déjà présents sur l'appareil sont envoyés au compte, et ceux du compte
+  arrivent sur l'appareil (on réunit les deux).
+- **Fusion** : par élément, la version la plus récente gagne (c'est aussi ce que vérifient les règles Firestore : une
+  écriture plus ancienne que celle du serveur est refusée). Une suppression est une version comme une autre, gardée six
+  mois : une partie abandonnée ou effacée sur un appareil ne revient pas depuis un autre. Les plafonds d'historique
+  (60 parties de duplicate, 100 résultats et 10 parties gardées contre l'IA) s'appliquent partout de la même façon.
+- **Même partie sur deux appareils** : la dernière sauvegarde l'emporte, sans fusion des coups ; le chrono du coup en cours
+  reste sur l'appareil.
+- **Changer de compte** sur un appareil demande de remplacer ses parties solo par celles du nouveau compte (les
+  anciennes restent sur l'ancien compte).
+- **Règles à republier** : `npx firebase-tools deploy --only firestore:rules --project <projectId>` (ou les coller dans
+  la console), pour la sous-collection `solo` ; sans cela, la synchro est refusée et le solo continue en local.
+- Limite connue : quiconque connaît ton nom d'utilisateur peut ouvrir ton compte, et donc lire ces données (voir
+  « Limites »).
+
+Le code : [`src/lib/synchro.ts`](src/lib/synchro.ts) (signaux, suppressions, décision),
+[`src/lib/moteurSynchro.ts`](src/lib/moteurSynchro.ts) (comparaison et application, testées avec deux appareils simulés dans
+`src/lib/synchro.test.ts`) et [`src/multi/synchro.ts`](src/multi/synchro.ts) (liaison Firestore).
+
+## Notifications push (appli fermée)
+
+Tout le code est dans le dépôt ; il reste éteint tant que `firebase.config.json` ne contient pas `"push": true`. Le
+principe : chaque appareil dépose son jeton Firebase Cloud Messaging dans Firestore (`joueurs/{uid}/appareils/{jeton}`,
+avec les genres de notification qu'il veut) ; une Cloud Function ([`functions/`](functions/index.js)) se déclenche à
+chaque écriture d'une partie et envoie le message au bon joueur ([`functions/messages.js`](functions/messages.js) :
+coup joué, adversaire arrivé, fin ou abandon, invitation, refus ; mêmes règles que `src/multi/veille.ts`, testées dans
+`src/multi/messages.test.ts`). Quand l'appli est ouverte, les notifications locales continuent ; cachée, c'est le serveur
+qui prévient (une notification de même identifiant remplace l'autre, pas de doublon sur le web).
+
+À faire une fois, dans l'ordre :
+
+1. **Passer le projet Firebase à l'offre Blaze** (console → Utilisation et facturation). Carte bancaire obligatoire ;
+   à cette échelle le quota gratuit suffit (2 millions d'appels par mois), mais on peut fixer une alerte de budget.
+2. **Régler la région** de la fonction dans `functions/index.js` (`setGlobalOptions`) : la même que la base Firestore
+   (console → Firestore → Paramètres).
+3. **Déployer la fonction et les règles** : `cd functions && npm install`, puis
+   `npx firebase-tools login` et `npx firebase-tools deploy --only functions,firestore:rules --project <projectId>`
+   (les règles ajoutent la sous-collection `appareils`).
+4. **Web et iPhone** : console → Paramètres du projet → Cloud Messaging → Certificats Web Push → *Générer une paire de
+   clés*, puis dans `firebase.config.json` : `"push": true` et `"vapidKey": "<la clé publique>"`. Sur iPhone (iOS 16.4
+   ou plus), l'appli doit être ajoutée à l'écran d'accueil.
+5. **Android (APK)** : console → ajouter une appli Android de nom de paquet `fr.perso.scrabble`, télécharger
+   `google-services.json` et le placer dans `android/app/` (le fichier ne contient pas de secret), puis ajouter
+   `"pushAndroid": true` à `firebase.config.json`. Le workflow reconstruit l'APK.
+6. Dans l'appli : *Réglages → Notifications → Aussi quand l'appli est fermée*.
+
+Ce que je n'ai pas pu vérifier de bout en bout depuis le dépôt (pas de projet Blaze ni d'appareil sous la main) : l'envoi
+réel par Firebase, l'affichage sur iPhone et sur Android. Les messages construits, les réglages et l'enregistrement des
+appareils sont testés ; le reste se vérifie à la première activation (journaux : console → Functions → Journaux).
 
 ## Liens d'invitation
 
@@ -361,12 +442,15 @@ npm test                # tests Vitest du moteur
 npm run typecheck
 ```
 
-Version de production : `npm run build` puis `npm run preview`.
+Version de production : `npm run build` puis `npm run preview`. Chaque pull request passe par le workflow
+[`verification.yml`](.github/workflows/verification.yml) : types, tests, construction de l'appli web et de l'APK.
 
 Tester le multijoueur sans projet Firebase : lancer les émulateurs
-(`npx firebase-tools emulators:start --only auth,firestore --project demo-scrabble`, avec un `firebase.json` qui
-pointe vers `firestore.rules`) et créer un `firebase.config.json` avec `"projectId": "demo-scrabble"`,
-`"apiKey": "demo"` et `"emulateurs": true` ; ne pas le committer.
+(`npx firebase-tools emulators:start --only auth,firestore --project demo-scrabble`, Java requis ; le `firebase.json` du
+dépôt les configure) et créer un `firebase.config.json` avec `"projectId": "demo-scrabble"`, `"apiKey": "demo"` et
+`"emulateurs": true` ; ne pas le committer. Les règles de sécurité ont leurs tests (`src/multi/regles.test.ts`), qui
+tournent sur l'émulateur : `npx firebase-tools emulators:exec --only firestore --project demo-scrabble "npm test"`
+(sans émulateur, ils sont simplement ignorés).
 
 APK en local : Android SDK (plateforme 36) + Java 21, puis `npm run android`
 → `android/app/build/outputs/apk/release/app-release.apk`.

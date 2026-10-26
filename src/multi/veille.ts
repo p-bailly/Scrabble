@@ -74,7 +74,8 @@ function signaler(p: Partie, uid: string) {
   const nom = p.pseudos[adversaire] ?? 'Ton adversaire'
   const hash = '#/partie/' + p.code
   if (p.etat === 'finie' && p.dernier?.uid !== uid) {
-    notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash, 'fin')
+    if (p.fin?.raison === 'abandon') notifier(p.code, 'Partie abandonnée', `${nom} a abandonné : tu gagnes la partie.`, hash, 'fin')
+    else notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash, 'fin')
   } else if (p.etat === 'encours' && p.tour === uid) {
     const d = p.dernier
     const texte =

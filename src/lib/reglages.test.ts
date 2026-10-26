@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { estSombre, lireReglages, notificationVoulue } from './reglages'
+import { estSombre, genresVoulus, lireReglages, notificationVoulue } from './reglages'
 
 /** localStorage factice : les tests tournent sous Node, sans navigateur. */
 function stockage(contenu: Record<string, string>) {
@@ -73,5 +73,16 @@ describe('thème sombre', () => {
   it('un thème choisi l’emporte sur le système', () => {
     expect(estSombre('clair', true)).toBe(false)
     expect(estSombre('sombre', false)).toBe(true)
+  })
+})
+
+describe('genres de notification voulus', () => {
+  it('tous par défaut, ceux qu’on a coupés en moins, aucun si tout est coupé', () => {
+    stockage({})
+    expect(genresVoulus().sort()).toEqual(['fin', 'invitation', 'tour'])
+    stockage({ 'scrabble.reglages': JSON.stringify({ notifInvitations: false }) })
+    expect(genresVoulus().sort()).toEqual(['fin', 'tour'])
+    stockage({ 'scrabble.reglages': JSON.stringify({ notifications: false }) })
+    expect(genresVoulus()).toEqual([])
   })
 })

@@ -4,23 +4,28 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
+import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
-import { IconeHistorique, IconeMelanger, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
+import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { BoutonSac, Sac } from '../composants/Sac'
+import { lettresNonVues } from '../jeu/classique'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
 import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
+import { ilYa, joursEcoules } from '../lib/temps'
 import { analyser } from '../moteur/moteur'
 import {
   abandonner,
   adversairesRecents,
   annulerInvitation,
   autre,
+  bilansFaceAFace,
   chercherJoueurs,
   cleRecherche,
   creerPartie,
@@ -46,6 +51,7 @@ import {
 } from './donnees'
 import { configuration, connexion } from './firebase'
 import AnalyseMulti from './AnalyseMulti'
+import { demarrerSynchro } from './synchro'
 import { demarrerVeille } from './veille'
 
 export default function Multi({ chemin }: { chemin: string[] }) {
@@ -87,6 +93,7 @@ function AvecSession({ chemin }: { chemin: string[] }) {
           }
         }
         void demarrerVeille()
+        void demarrerSynchro()
       })
       .catch((e: Error) => setErreur('Connexion impossible : ' + e.message))
   }, [])
@@ -147,6 +154,13 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const [code, setCode] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
+  // Parties terminées que j'ai retirées de ma liste (elles restent chez l'adversaire et dans le bilan).
+  const [masquees, setMasquees] = useState<string[]>(() => lire<string[]>('multi.masquees', []))
+  const masquer = (code: string) => {
+    const suite = [...masquees, code]
+    setMasquees(suite)
+    ecrire('multi.masquees', suite)
+  }
 
   useEffect(() => ecouterMesParties(uid, setParties, (e) => setErreur(e.message)), [uid])
   // Une erreur ici (règles Firestore pas encore à jour) ne doit pas gâcher le reste de l'écran : pas d'invitations, c'est tout.
@@ -173,6 +187,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const attente = liste.filter((p) => p.etat === 'encours' && p.tour !== uid).sort(tri)
   const invitations = liste.filter((p) => p.etat === 'attente').sort(tri)
   const finies = liste.filter((p) => p.etat === 'finie').sort(tri)
+  const bilans = bilansFaceAFace(liste, uid)
 
   return (
     <div className="contenu">
@@ -224,10 +239,26 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
           </div>
         </>
       )}
-      <Section titre="À toi de jouer" parties={aMoi} uid={uid} />
-      <Section titre="En attente de l’adversaire" parties={attente} uid={uid} />
-      <Section titre="Invitations envoyées" parties={invitations} uid={uid} />
-      <Section titre="Terminées" parties={finies.slice(0, 20)} uid={uid} />
+      <Section titre="À toi de jouer" parties={aMoi} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="En attente de l’adversaire" parties={attente} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="Invitations envoyées" parties={invitations} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <Section titre="Terminées" parties={finies.filter((p) => !masquees.includes(p.code)).slice(0, 20)} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      {bilans.length > 0 && (
+        <>
+          <h2>Face à face</h2>
+          <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {bilans.map((b) => (
+              <div key={b.uid} style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <b style={{ flex: 1 }}>{b.pseudo}</b>
+                <span className="note">
+                  {b.victoires} victoire{b.victoires > 1 ? 's' : ''} · {b.defaites} défaite{b.defaites > 1 ? 's' : ''}
+                  {b.egalites > 0 && ` · ${b.egalites} égalité${b.egalites > 1 ? 's' : ''}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -278,14 +309,19 @@ function RappelNotifications() {
   )
 }
 
-function Section({ titre, parties, uid }: { titre: string; parties: Partie[]; uid: string }) {
+interface ActionsListe {
+  onErreur: (message: string) => void
+  onMasquer: (code: string) => void
+}
+
+function Section({ titre, parties, uid, ...actions }: { titre: string; parties: Partie[]; uid: string } & ActionsListe) {
   if (parties.length === 0) return null
   return (
     <>
       <h2>{titre}</h2>
       <div className="liste">
         {parties.map((p) => (
-          <LignePartie key={p.code} p={p} uid={uid} />
+          <LignePartie key={p.code} p={p} uid={uid} {...actions} />
         ))}
       </div>
     </>
@@ -337,7 +373,10 @@ function LigneInvitation({ p, uid, pseudo }: { p: Partie; uid: string; pseudo: s
   )
 }
 
-function LignePartie({ p, uid }: { p: Partie; uid: string }) {
+/** Sans réponse de l'adversaire depuis ce nombre de jours, la liste le dit : on peut abandonner. */
+const JOURS_SANS_REPONSE = 14
+
+function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string } & ActionsListe) {
   const adv = autre(p, uid)
   const nom = adv ? p.pseudos[adv] : null
   const aMoi = p.etat === 'encours' && p.tour === uid
@@ -358,6 +397,9 @@ function LignePartie({ p, uid }: { p: Partie; uid: string }) {
             ? `${qui} abandonné`
             : `${qui} passé`
   } else sousTitre = 'Début de partie'
+  const depuis = p.majLe?.toMillis?.() ?? Date.now()
+  const sansReponse = p.etat === 'encours' && !aMoi && joursEcoules(depuis) >= JOURS_SANS_REPONSE
+  sousTitre += ' · ' + ilYa(depuis)
   let titre = nom
     ? p.etat === 'finie'
       ? resultat(p, uid) + ' contre ' + nom
@@ -368,22 +410,39 @@ function LignePartie({ p, uid }: { p: Partie; uid: string }) {
       ? 'Invitation envoyée à ' + nomInvite
       : 'Invitation envoyée'
   if (p.enAttente) titre += ' · envoi en attente'
+
+  // Le bouton × : abandonner une partie en cours, supprimer une invitation envoyée, retirer une partie terminée de la liste.
+  const sortir = () => {
+    if (p.etat === 'encours') {
+      if (confirm(`Abandonner la partie contre ${nom ?? 'ton adversaire'} ? ${nom ?? 'Ton adversaire'} gagne.`)) abandonner(p, uid, onErreur)
+    } else if (p.etat === 'attente') {
+      if (confirm('Supprimer cette invitation ?')) void supprimerPartie(p.code).catch((e) => onErreur(messageErreur(e)))
+    } else if (confirm('Retirer cette partie de la liste ?')) onMasquer(p.code)
+  }
+  const libelleSortie = p.etat === 'encours' ? 'Abandonner la partie' : p.etat === 'attente' ? 'Supprimer l’invitation' : 'Retirer de la liste'
+
   return (
-    <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
-      <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
-        {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
-      </div>
-      <div className="principal">
-        <div style={{ fontWeight: 700 }}>{titre}</div>
-        <div className="note">{sousTitre}</div>
-      </div>
-      {adv && (
-        <div style={{ textAlign: 'right' }}>
-          <div className="pts">{p.scores[uid] ?? 0}</div>
-          <div className="note">{p.scores[adv] ?? 0}</div>
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
+        <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
+          {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
         </div>
-      )}
-    </button>
+        <div className="principal">
+          <div style={{ fontWeight: 700 }}>{titre}</div>
+          <div className={'note' + (sansReponse ? ' ecart-neg' : '')}>{sousTitre}</div>
+          {sansReponse && <div className="note ecart-neg">Pas de réponse depuis longtemps : tu peux abandonner.</div>}
+        </div>
+        {adv && (
+          <div style={{ textAlign: 'right' }}>
+            <div className="pts">{p.scores[uid] ?? 0}</div>
+            <div className="note">{p.scores[adv] ?? 0}</div>
+          </div>
+        )}
+      </button>
+      <button type="button" className="bouton-icone" aria-label={libelleSortie} title={libelleSortie} onClick={sortir} style={{ height: 'auto' }}>
+        ×
+      </button>
+    </div>
   )
 }
 
@@ -608,6 +667,10 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const [suspects, setSuspects] = useState<Set<number>>(new Set())
   const [historique, setHistorique] = useState(false)
   const [changement, setChangement] = useState(false)
+  const [feuilleSac, setFeuilleSac] = useState(false)
+  // Coup de l'historique dont on lit la définition (numéro du coup).
+  const [defOuverte, setDefOuverte] = useState<number | null>(null)
+  const [menu, setMenu] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => ecouterPartie(code, setP), [code])
@@ -629,6 +692,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   useMasquerOnglets(!!p && p.etat !== 'attente')
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
+  const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
 
   if (p === undefined) return <div className="vide-etat">Chargement…</div>
   if (p === null)
@@ -645,7 +709,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
-    const err = jouerCoup(p, uid, chevalet, action)
+    const err = jouerCoup(p, uid, chevalet, action, setMessage)
     setMessage(err ?? '')
     if (!err) edition.rappeler()
   }
@@ -671,13 +735,18 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           <BarreJeu
             onRetour={() => naviguer('parties')}
             libelleRetour="Mes parties"
-            titre={
+            titre={p.etat === 'finie' ? 'Terminée' : aMoi ? 'À toi de jouer' : `Tour de ${nomAdv}`}
+            pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
+            droite={
               <>
-                {p.etat === 'finie' ? 'Partie terminée' : aMoi ? 'À toi de jouer' : `Au tour de ${nomAdv}`}{' '}
-                <span className="sous">· sac {p.sac.length}</span>
+                {boutonHistorique}
+                {p.etat === 'encours' && (
+                  <button type="button" className="bouton-icone" onClick={() => setMenu(true)} aria-label="Menu de la partie">
+                    <IconeMenu />
+                  </button>
+                )}
               </>
             }
-            droite={boutonHistorique}
           />
           <Plateau
             pleine
@@ -759,6 +828,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       )}
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={p.sac.length} adversaire={nomAdv} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}
@@ -772,44 +842,57 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       <Feuille ouvert={historique} onFermer={() => setHistorique(false)}>
         <h3>Historique</h3>
         {coups.length === 0 && <div className="note">Aucun coup pour l’instant.</div>}
+        {coups.some((c) => c.type === 'mot') && <div className="note">Touche un mot pour lire sa définition.</div>}
         <div className="liste">
           {coups.map((c) => (
-            <div className="ligne" key={c.n} style={{ cursor: 'default' }}>
-              <span className="note" style={{ width: 22 }}>
-                {c.n}
-              </span>
-              <div className="principal">
-                <div className="note">{p.pseudos[c.uid] ?? '?'}</div>
-                {c.type === 'mot' ? (
-                  <>
-                    <Mot mot={c.mot ?? ''} />
-                    <span className="ref">{c.ref}</span>
-                    {suspects.has(c.n) && <div className="note ecart-neg">Coup non conforme (mot ou score)</div>}
-                  </>
-                ) : c.type === 'change' ? (
-                  <span>A changé {c.nbChanges} lettre{(c.nbChanges ?? 0) > 1 ? 's' : ''}</span>
-                ) : (
-                  <span>A passé</span>
-                )}
+            <div key={c.n}>
+              <div
+                className={'ligne' + (defOuverte === c.n ? ' choisie' : '')}
+                style={{ cursor: c.type === 'mot' ? 'pointer' : 'default' }}
+                onClick={() => c.type === 'mot' && setDefOuverte(defOuverte === c.n ? null : c.n)}
+              >
+                <span className="note" style={{ width: 22 }}>
+                  {c.n}
+                </span>
+                <div className="principal">
+                  <div className="note">{p.pseudos[c.uid] ?? '?'}</div>
+                  {c.type === 'mot' ? (
+                    <>
+                      <Mot mot={c.mot ?? ''} />
+                      <span className="ref">{c.ref}</span>
+                      {suspects.has(c.n) && <div className="note ecart-neg">Coup non conforme (mot ou score)</div>}
+                    </>
+                  ) : c.type === 'change' ? (
+                    <span>A changé {c.nbChanges} lettre{(c.nbChanges ?? 0) > 1 ? 's' : ''}</span>
+                  ) : (
+                    <span>A passé</span>
+                  )}
+                </div>
+                <span className="pts">{c.points}</span>
               </div>
-              <span className="pts">{c.points}</span>
+              {defOuverte === c.n && c.type === 'mot' && c.mot && <DefinitionMot mot={c.mot.toUpperCase()} />}
             </div>
           ))}
         </div>
-        {p.etat === 'encours' && (
-          <button
-            type="button"
-            className="bouton danger"
-            onClick={() => {
-              if (confirm('Abandonner la partie ? Ton adversaire gagne.')) {
-                abandonner(p, uid)
-                setHistorique(false)
-              }
-            }}
-          >
-            Abandonner la partie
-          </button>
-        )}
+      </Feuille>
+      <Feuille ouvert={menu && p.etat === 'encours'} onFermer={() => setMenu(false)}>
+        <h3>Partie en cours</h3>
+        <p style={{ margin: 0 }} className="note">
+          Contre <b>{nomAdv}</b> · toi {moi}, {nomAdv} {lui}
+        </p>
+        <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
+          Reprendre
+        </button>
+        <button
+          type="button"
+          className="bouton danger"
+          onClick={() => {
+            setMenu(false)
+            if (confirm(`Abandonner la partie ? ${nomAdv} gagne.`)) abandonner(p, uid, setMessage)
+          }}
+        >
+          Abandonner la partie
+        </button>
       </Feuille>
     </>
   )
@@ -837,7 +920,9 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
       <b style={{ fontSize: 20 }}>{f?.gagnant ? (f.gagnant === uid ? 'Tu as gagné !' : `${nomAdv} a gagné`) : 'Égalité'}</b>
       <span className="note">
         {f?.raison === 'abandon'
-          ? 'Partie abandonnée.'
+          ? p.dernier?.uid === uid
+            ? 'Tu as abandonné la partie.'
+            : `${nomAdv} a abandonné la partie.`
           : f?.raison === 'passes'
             ? 'Six passes de suite : chacun perd la valeur de ses lettres restantes'
             : 'Le sac est vide et un chevalet aussi : les lettres restantes changent de camp'}

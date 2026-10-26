@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Mot } from '../composants/Apercu'
+import { DefinitionsDe } from '../composants/Definition'
 import { Entete } from '../composants/Entete'
 import { IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
@@ -194,6 +195,7 @@ export function AnalysePartie({ partie, retour }: { partie: PartieAnalysee; reto
                     {m.total === 0 ? 'Aucun coup possible' : `${m.total.toLocaleString('fr-FR')} coup${m.total > 1 ? 's' : ''} possible${m.total > 1 ? 's' : ''} avec ce chevalet`}
                     {m.total > m.coups.length && ` · les ${m.coups.length} meilleurs :`}
                   </div>
+                  <DefinitionsDe mots={[t.coup?.mot, meilleur?.mot]} />
                   <div className="liste">
                     {t.coup && (
                       <button

@@ -4,36 +4,48 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
+import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
+import { BoutonSac, Sac } from '../composants/Sac'
+import { lettresNonVues } from '../jeu/classique'
 import {
   abandonnerIA,
+  aides,
+  annulerCoup,
   appliquerDecision,
   changerIA,
   chevaletAdverseConnu,
+  demanderIndiceIA,
+  indicesDuTour,
   jouerMotIA,
+  memoriserAvant,
   nouvellePartieIA,
   passerIA,
+  peutAnnuler,
   type Camp,
   type CoupIA,
   type PartieIA,
 } from '../jeu/contreIA'
-import { reference } from '../jeu/coup'
+import { reference, type Coup } from '../jeu/coup'
+import { INDICES, NOM_INDICE, texteIndice } from '../jeu/duplicate'
 import { NIVEAUX, PROFILS } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
-import { chargerDico, decisionIA } from '../moteur/moteur'
+import { chargerDico, chercherCoups, decisionIA } from '../moteur/moteur'
 import {
   archiverIA,
   bilanParNiveau,
-  ecrirePartieIA,
   ecrireReglagesIA,
-  lirePartieIA,
+  enregistrerPartieIA,
   lireReglagesIA,
+  abandonnerPartieIA,
+  retirerPartieIA,
+  trouverPartieIAEnCours,
   type ReglagesIA,
 } from '../solo/sauvegardeIA'
 
@@ -42,43 +54,40 @@ const REFLEXION_MIN = 800
 
 const NOM_CAMP: Record<Camp, string> = { moi: 'Toi', ia: 'L’IA' }
 
-export function ContreIA() {
-  const [partie, setPartie] = useState<PartieIA | null>(lirePartieIA)
-  // Retour à l'accueil sans abandonner la partie en cours.
-  const [pause, setPause] = useState(false)
+/** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
+export function ContreIA({ id }: { id?: string }) {
+  const [partie, setPartie] = useState<PartieIA | null>(() => (id ? trouverPartieIAEnCours(id) : null))
 
-  const changer = useCallback((p: PartieIA | null) => {
+  // Une partie en cours est sauvegardée à chaque coup ; terminée, elle quitte les parties en cours pour l'historique.
+  const changer = useCallback((p: PartieIA) => {
     setPartie(p)
-    ecrirePartieIA(p)
-    if (p?.finie) archiverIA(p)
+    if (p.finie) {
+      retirerPartieIA(p.id)
+      archiverIA(p)
+    } else enregistrerPartieIA(p)
   }, [])
 
-  if (!partie || pause)
-    return (
-      <AccueilIA
-        enCours={partie && !partie.finie ? partie : null}
-        onReprendre={() => setPause(false)}
-        onLancer={(p) => {
-          if (partie && !partie.finie && partie.coups.length) changer(abandonnerIA(partie))
-          changer(p)
-          setPause(false)
-        }}
-      />
-    )
+  // Partie introuvable (abandonnée depuis le menu Solo, par exemple) : retour à l'accueil.
+  useEffect(() => {
+    if (id && !partie) naviguer('solo/ia', true)
+  }, [id, partie])
+
+  if (!partie) return <AccueilIA />
   return (
     <EcranIA
       partie={partie}
       onChange={changer}
-      onPause={() => setPause(true)}
-      onQuitter={() => {
-        changer(null)
-        naviguer('solo')
+      onRevanche={(p) => {
+        enregistrerPartieIA(p)
+        naviguer('solo/ia/' + encodeURIComponent(p.id), true)
       }}
+      onPause={() => naviguer('solo')}
+      onQuitter={() => naviguer('solo')}
     />
   )
 }
 
-function AccueilIA({ enCours, onReprendre, onLancer }: { enCours: PartieIA | null; onReprendre: () => void; onLancer: (p: PartieIA) => void }) {
+function AccueilIA() {
   const [reglages, setReglages] = useState<ReglagesIA>(lireReglagesIA)
   const [dico, setDico] = useState('')
   const bilan = useMemo(() => bilanParNiveau(), [])
@@ -90,29 +99,16 @@ function AccueilIA({ enCours, onReprendre, onLancer }: { enCours: PartieIA | nul
   }, [])
 
   const lancer = () => {
-    if (enCours && !confirm('Abandonner la partie en cours pour en commencer une autre ?')) return
     ecrireReglagesIA(reglages)
     const premier: Camp = reglages.premier === 'hasard' ? (Math.random() < 0.5 ? 'moi' : 'ia') : reglages.premier
-    onLancer(nouvellePartieIA(reglages.niveau, premier))
+    const p = nouvellePartieIA(reglages.niveau, premier)
+    enregistrerPartieIA(p)
+    naviguer('solo/ia/' + encodeURIComponent(p.id))
   }
 
   return (
     <div className="contenu">
       <EnteteRetour titre="Contre l’IA" vers="solo" />
-      {enCours && (
-        <div className="carte carte-accent">
-          <div className="note">Partie en cours · {PROFILS[enCours.niveau].nom}</div>
-          <div style={{ fontSize: 30, fontWeight: 800 }}>
-            {enCours.scores.moi} – {enCours.scores.ia}
-          </div>
-          <div className="note">
-            {enCours.coups.length} coup{enCours.coups.length > 1 ? 's' : ''} · sac {enCours.sac.length}
-          </div>
-          <button type="button" className="bouton" onClick={onReprendre}>
-            Reprendre
-          </button>
-        </div>
-      )}
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           Une vraie partie de Scrabble contre l’ordinateur : chacun son chevalet, on joue à tour de rôle. Choisis la force de
@@ -190,11 +186,14 @@ function decrire(c: CoupIA) {
 function EcranIA({
   partie,
   onChange,
+  onRevanche,
   onPause,
   onQuitter,
 }: {
   partie: PartieIA
-  onChange: (p: PartieIA | null) => void
+  onChange: (p: PartieIA) => void
+  /** Revanche : la nouvelle partie, déjà prête. */
+  onRevanche: (p: PartieIA) => void
   onPause: () => void
   onQuitter: () => void
 }) {
@@ -203,11 +202,18 @@ function EcranIA({
   const chevalet = partie.chevalets.moi
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
+  const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
   const aMoi = !partie.finie && partie.tour === 'moi'
   const [message, setMessage] = useState('')
   const [menu, setMenu] = useState(false)
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
+  const [feuilleSac, setFeuilleSac] = useState(false)
+  // Coup de l'historique dont on lit la définition (numéro du coup).
+  const [defOuverte, setDefOuverte] = useState<number | null>(null)
+  const [feuilleIndices, setFeuilleIndices] = useState(false)
+  // Le meilleur coup du chevalet, cherché à l'ouverture des indices (undefined : en cours ; null : aucun coup possible).
+  const [top, setTop] = useState<Coup | null | undefined>(undefined)
   // L'IA n'a pas pu jouer (dictionnaire introuvable…) ; `essai` relance sa réflexion.
   const [erreurIA, setErreurIA] = useState('')
   const [essai, setEssai] = useState(0)
@@ -239,6 +245,7 @@ function EcranIA({
     }
   }, [partie, plateau, onChange, essai])
 
+  // Un de mes coups : on garde la partie d'avant, pour pouvoir l'annuler.
   const appliquer = (r: PartieIA | { erreur: string }) => {
     if ('erreur' in r) {
       setMessage(r.erreur)
@@ -246,8 +253,31 @@ function EcranIA({
     }
     setMessage('')
     edition.rappeler()
+    onChange(memoriserAvant(partie, r))
+  }
+
+  const annuler = () => {
+    const r = annulerCoup(partie)
+    if ('erreur' in r) return setMessage(r.erreur)
+    setMessage('')
+    edition.rappeler()
     onChange(r)
   }
+
+  // Indices : on cherche le meilleur coup du chevalet quand la fenêtre s'ouvre.
+  useEffect(() => {
+    if (!feuilleIndices || !aMoi) return
+    let actuel = true
+    setTop(undefined)
+    chercherCoups(plateau, chevalet, 1).then(
+      (r) => actuel && setTop(r.coups[0] ?? null),
+      () => actuel && setTop(null),
+    )
+    return () => {
+      actuel = false
+    }
+  }, [feuilleIndices, aMoi, plateau, chevalet])
+  const reveles = indicesDuTour(partie)
 
   const dernier = partie.coups.at(-1)
   const derniers = useMemo(() => new Set(dernier?.coup ? dernier.coup.poses.map((p) => p.pos) : []), [dernier])
@@ -265,14 +295,8 @@ function EcranIA({
       <BarreJeu
         onRetour={() => setMenu(true)}
         libelleRetour="Menu de la partie"
-        titre={
-          <>
-            Contre {profil.nom}{' '}
-            <span className="sous">
-              · sac {partie.sac.length} lettre{partie.sac.length > 1 ? 's' : ''}
-            </span>
-          </>
-        }
+        titre={`Contre ${profil.nom}`}
+        pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
         droite={bouton}
       />
       <Plateau
@@ -330,9 +354,7 @@ function EcranIA({
         {partie.finie ? (
           <FinDePartie
             partie={partie}
-            onRevanche={() => {
-              onChange(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))
-            }}
+            onRevanche={() => onRevanche(nouvellePartieIA(partie.niveau, Math.random() < 0.5 ? 'moi' : 'ia'))}
             onQuitter={onQuitter}
           />
         ) : aMoi ? (
@@ -374,6 +396,7 @@ function EcranIA({
       </PanneauBas>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’IA" />
       <Changement
         ouvert={changement}
         chevalet={chevalet}
@@ -388,39 +411,99 @@ function EcranIA({
       <Feuille ouvert={historique} onFermer={() => setHistorique(false)}>
         <h3>Historique</h3>
         {partie.coups.length === 0 && <div className="note">Aucun coup pour l’instant.</div>}
+        {partie.coups.some((c) => c.coup) && <div className="note">Touche un mot pour lire sa définition.</div>}
         <div className="liste">
           {[...partie.coups].reverse().map((c) => {
             const d = decrire(c)
             return (
-              <div className="ligne" key={c.numero} style={{ cursor: 'default' }}>
-                <span className="note" style={{ width: 22 }}>
-                  {c.numero}
-                </span>
-                <div className="principal">
-                  <div className="note">{NOM_CAMP[c.camp]}</div>
-                  {d.coup ? (
-                    <>
-                      <Mot mot={d.coup.mot} />
-                      <span className="ref">{reference(d.coup.debut, d.coup.dir)}</span>
-                    </>
-                  ) : (
-                    <span>{c.type === 'change' ? `A changé ${c.nbChanges} lettre${(c.nbChanges ?? 0) > 1 ? 's' : ''}` : 'A passé'}</span>
-                  )}
+              <div key={c.numero}>
+                <div
+                  className={'ligne' + (defOuverte === c.numero ? ' choisie' : '')}
+                  style={{ cursor: d.coup ? 'pointer' : 'default' }}
+                  onClick={() => d.coup && setDefOuverte(defOuverte === c.numero ? null : c.numero)}
+                >
+                  <span className="note" style={{ width: 22 }}>
+                    {c.numero}
+                  </span>
+                  <div className="principal">
+                    <div className="note">{NOM_CAMP[c.camp]}</div>
+                    {d.coup ? (
+                      <>
+                        <Mot mot={d.coup.mot} />
+                        <span className="ref">{reference(d.coup.debut, d.coup.dir)}</span>
+                      </>
+                    ) : (
+                      <span>{c.type === 'change' ? `A changé ${c.nbChanges} lettre${(c.nbChanges ?? 0) > 1 ? 's' : ''}` : 'A passé'}</span>
+                    )}
+                  </div>
+                  <span className="pts">{c.points}</span>
                 </div>
-                <span className="pts">{c.points}</span>
+                {defOuverte === c.numero && d.coup && <DefinitionMot mot={d.coup.mot.toUpperCase()} />}
               </div>
             )
           })}
         </div>
       </Feuille>
 
+      <Feuille ouvert={feuilleIndices && aMoi} onFermer={() => setFeuilleIndices(false)}>
+        <h3>Indices</h3>
+        <p style={{ margin: 0 }} className="note">
+          Chaque indice demandé est compté dans le résumé de la partie.
+        </p>
+        {top === null && <span className="note ecart-neg">Aucun mot possible avec ce chevalet : change des lettres ou passe.</span>}
+        <div className="liste">
+          {INDICES.map((i) =>
+            reveles.includes(i) && top ? (
+              <div className="ligne" key={i} style={{ cursor: 'default' }}>
+                <div className="principal">
+                  <span className="note">{NOM_INDICE[i]}</span>
+                  <div style={{ fontWeight: 700 }}>{texteIndice(i, top)}</div>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="ligne" key={i} disabled={!top} onClick={() => onChange(demanderIndiceIA(partie, i))}>
+                <div className="principal">
+                  <div style={{ fontWeight: 700 }}>{NOM_INDICE[i]}</div>
+                  <span className="note">{top === undefined ? 'Recherche du meilleur coup…' : 'Toucher pour révéler'}</span>
+                </div>
+              </button>
+            ),
+          )}
+        </div>
+        <button type="button" className="bouton principal" onClick={() => setFeuilleIndices(false)}>
+          Continuer à chercher
+        </button>
+      </Feuille>
+
       <Feuille ouvert={menu} onFermer={() => setMenu(false)}>
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
-          Contre <b>{profil.nom}</b> · toi {moi}, IA {ia} · sac : {partie.sac.length} lettres
+          Contre <b>{profil.nom}</b> · toi {moi}, IA {ia} · sac : {nonVues.length} lettres
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre
+        </button>
+        <button
+          type="button"
+          className="bouton"
+          disabled={!aMoi}
+          onClick={() => {
+            setMenu(false)
+            setFeuilleIndices(true)
+          }}
+        >
+          Indice{aMoi ? '' : ' (à ton tour)'}
+        </button>
+        <button
+          type="button"
+          className="bouton"
+          disabled={!peutAnnuler(partie)}
+          onClick={() => {
+            setMenu(false)
+            annuler()
+          }}
+        >
+          Annuler mon dernier coup
         </button>
         <button type="button" className="bouton" onClick={onPause}>
           Mettre en pause
@@ -430,7 +513,13 @@ function EcranIA({
           className="bouton danger"
           onClick={() => {
             setMenu(false)
-            if (confirm('Abandonner la partie ? L’IA gagne.')) onChange(abandonnerIA(partie))
+            // Une partie où personne n'a joué disparaît ; sinon l'IA gagne et la partie reste dans l'historique.
+            if (!partie.coups.length) {
+              if (confirm('Abandonner cette partie qui n’a pas commencé ?')) {
+                abandonnerPartieIA(partie)
+                onQuitter()
+              }
+            } else if (confirm('Abandonner la partie ? L’IA gagne.')) onChange(abandonnerIA(partie))
           }}
         >
           Abandonner la partie
@@ -460,6 +549,7 @@ function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRe
         <span className="note">
           Score final : toi {partie.scores.moi}, IA {partie.scores.ia}
         </span>
+        {aides(partie) && <span className="note">Aides : {aides(partie)}</span>}
       </ContenuPanneau>
       {partie.coups.length > 0 && (
         <div className="actions">

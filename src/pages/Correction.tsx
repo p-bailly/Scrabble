@@ -2,18 +2,20 @@
 
 import { useMemo, useState } from 'react'
 import { Mot } from '../composants/Apercu'
+import { DefinitionsDe } from '../composants/Definition'
 import { Entete } from '../composants/Entete'
 import { IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { jouer, reference, type Coup } from '../jeu/coup'
 import { totaux, type PartieDuplicate } from '../jeu/duplicate'
 import { plateauVide } from '../jeu/plateau'
-import { formatPct, lireHistorique, lirePartie } from '../solo/sauvegarde'
+import { formatPct, lireHistorique, lirePartiesEnCours, trouverPartieEnCours } from '../solo/sauvegarde'
 
 export function Correction({ id }: { id: string }) {
   const partie = useMemo<PartieDuplicate | null>(() => {
-    if (id === 'courante') return lirePartie()
-    return lireHistorique().find((p) => p.id === id) ?? (lirePartie()?.id === id ? lirePartie() : null)
+    // « courante » : la partie en cours la plus récente.
+    if (id === 'courante') return lirePartiesEnCours()[0] ?? null
+    return lireHistorique().find((p) => p.id === id) ?? trouverPartieEnCours(id)
   }, [id])
   const [ouvert, setOuvert] = useState<number | null>(null)
   const [montre, setMontre] = useState<{ coup: Coup; style: 'apercu' | 'mien' } | null>(null)
@@ -94,6 +96,7 @@ export function Correction({ id }: { id: string }) {
               </button>
               {ouvert === i && (
                 <div className="liste" style={{ paddingLeft: 12 }}>
+                  <DefinitionsDe mots={[c.top.mot, j?.mot]} />
                   {j && (
                     <button type="button" className={'ligne' + (montre?.coup === j ? ' choisie' : '')} onClick={() => setMontre({ coup: j, style: 'mien' })}>
                       <div className="principal">

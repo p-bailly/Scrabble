@@ -72,6 +72,28 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
+// Notification envoyée par le serveur (Firebase Cloud Messaging) quand l'appli est fermée : elle porte un titre, un texte et
+// le lien de la partie. Même `tag` que les notifications locales de l'appli : l'une remplace l'autre, pas de doublon.
+self.addEventListener('push', (event) => {
+  let charge = {}
+  try {
+    charge = event.data ? event.data.json() : {}
+  } catch {
+    /* charge illisible : on affiche tout de même une notification (obligatoire sur iPhone) */
+  }
+  const n = charge.notification || {}
+  const d = charge.data || {}
+  event.waitUntil(
+    self.registration.showNotification(n.title || d.titre || 'Scrabble', {
+      body: n.body || d.texte || '',
+      tag: d.tag || undefined,
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: { url: d.hash || '#/parties' },
+    }),
+  )
+})
+
 // Toucher une notification « À toi de jouer » : ramène l'app au premier plan sur la partie.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()

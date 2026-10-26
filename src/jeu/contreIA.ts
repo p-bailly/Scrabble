@@ -5,6 +5,7 @@
 
 import { MIN_SAC_POUR_CHANGER, changer, finDePartie, lettresAdversaire, piocher } from './classique'
 import { jetonsUtilises, jouer, retirerDuChevalet, type Coup } from './coup'
+import type { Indice } from './duplicate'
 import type { Decision, NiveauIA } from './ia'
 import { tousLesJetons } from './lettres'
 import { plateauDepuisTexte, plateauEnTexte, plateauVide } from './plateau'
@@ -36,6 +37,8 @@ export interface PartieIA {
   id: string
   niveau: NiveauIA
   creeLe: number
+  /** Dernière sauvegarde de la partie en cours (la liste des parties en cours s'ordonne dessus). */
+  majLe?: number
   plateau: string
   sac: string[]
   chevalets: Record<Camp, string[]>
@@ -46,6 +49,14 @@ export interface PartieIA {
   coups: CoupIA[]
   finie: boolean
   fin: FinIA | null
+  /** La partie telle qu'elle était au début de mon dernier tour, avant mon coup : de quoi l'annuler. */
+  avant?: Omit<PartieIA, 'avant'>
+  /** Nombre de coups annulés. */
+  annulations?: number
+  /** Indices révélés pour le tour `tour` (le numéro du coup à jouer) ; ils ne valent que pour ce tour. */
+  indices?: { tour: number; reveles: Indice[] }
+  /** Nombre d'indices demandés dans la partie. */
+  nbIndices?: number
 }
 
 export function nouvellePartieIA(
@@ -145,6 +156,41 @@ export function appliquerDecision(
   return passerIA(p, camp)
 }
 
+/** La partie sans sa mémoire du tour précédent (pour ne pas empiler les mémoires les unes dans les autres). */
+const sansAvant = ({ avant: _avant, ...reste }: PartieIA): Omit<PartieIA, 'avant'> => reste
+
+/** `apres` : ma partie après mon coup. On y garde la partie d'avant, pour pouvoir annuler ce coup. */
+export const memoriserAvant = (avant: PartieIA, apres: PartieIA): PartieIA => ({ ...apres, avant: sansAvant(avant) })
+
+/** Mon dernier coup peut-il être annulé ? (Même si l'IA y a déjà répondu.) */
+export const peutAnnuler = (p: PartieIA): boolean => !p.finie && !!p.avant
+
+/**
+ * Annule mon dernier coup, et la réponse de l'IA s'il y en a eu une : on repart de mon tour, avec les mêmes lettres.
+ * On ne peut annuler qu'un coup à la fois. Les indices déjà demandés restent comptés.
+ */
+export function annulerCoup(p: PartieIA): PartieIA | { erreur: string } {
+  if (!peutAnnuler(p) || !p.avant) return { erreur: 'Il n’y a rien à annuler' }
+  return { ...p.avant, annulations: (p.annulations ?? 0) + 1, nbIndices: p.nbIndices }
+}
+
+/** Indices déjà révélés pour le coup à jouer. */
+export const indicesDuTour = (p: PartieIA): Indice[] => (p.indices?.tour === p.coups.length + 1 ? p.indices.reveles : [])
+
+/** Révèle un indice pour le coup à jouer (sans effet s'il l'est déjà) et le compte. */
+export function demanderIndiceIA(p: PartieIA, indice: Indice): PartieIA {
+  const deja = indicesDuTour(p)
+  if (deja.includes(indice)) return p
+  return { ...p, indices: { tour: p.coups.length + 1, reveles: [...deja, indice] }, nbIndices: (p.nbIndices ?? 0) + 1 }
+}
+
+/** Les coups annulés et les indices demandés, en une phrase (vide si aucune aide). */
+export function aides(p: { annulations?: number; nbIndices?: number }): string {
+  const a = p.annulations ?? 0
+  const i = p.nbIndices ?? 0
+  return [a && `${a} coup${a > 1 ? 's' : ''} annulé${a > 1 ? 's' : ''}`, i && `${i} indice${i > 1 ? 's' : ''}`].filter(Boolean).join(' · ')
+}
+
 /** Abandon du joueur : l'IA gagne, sans ajustement de fin de partie. */
 export function abandonnerIA(p: PartieIA): PartieIA {
   if (p.finie) return p
@@ -170,6 +216,9 @@ export interface ResumeIA {
   ia: number
   gagnant: Camp | null
   abandon: boolean
+  /** Coups annulés et indices demandés (absents des parties d'avant ces aides). */
+  annulations?: number
+  indices?: number
 }
 
 export const resumeIA = (p: PartieIA): ResumeIA => ({
@@ -180,4 +229,6 @@ export const resumeIA = (p: PartieIA): ResumeIA => ({
   ia: p.scores.ia,
   gagnant: p.fin?.gagnant ?? null,
   abandon: p.fin?.raison === 'abandon',
+  ...(p.annulations ? { annulations: p.annulations } : {}),
+  ...(p.nbIndices ? { indices: p.nbIndices } : {}),
 })

@@ -703,6 +703,18 @@ h2 {
   font-size: 14px;
   font-weight: 600;
 }
+.champ textarea {
+  min-height: 90px;
+  border-radius: var(--rayon);
+  border: 1.5px solid var(--bord);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  resize: vertical;
+}
 .champ input {
   min-height: 46px;
   border-radius: var(--rayon);
@@ -860,8 +872,14 @@ a.bouton {
 .barre-jeu .titre {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 17px;
   font-weight: 800;
+}
+.barre-jeu .titre .texte {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -870,6 +888,76 @@ a.bouton {
   font-weight: 500;
   color: var(--muted);
   font-size: 14px;
+}
+/* Pastille du sac dans la barre de jeu, et grille des lettres de sa fenêtre. */
+.puce-sac {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  border: 1.5px solid var(--bord);
+  border-radius: 15px;
+  background: var(--surface);
+  color: var(--lien);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.sac-grille {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px 8px;
+  padding-top: 4px;
+}
+.sac-case {
+  position: relative;
+  aspect-ratio: 1;
+}
+.sac-case .tuile {
+  cursor: default;
+  font-size: clamp(18px, 5.6vw, 26px);
+}
+.sac-case .nb {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.sac-case.vide .tuile {
+  opacity: 0.3;
+  box-shadow: none;
+}
+.sac-case.vide .nb {
+  background: var(--muted);
+  opacity: 0.7;
+}
+/* Petits téléphones : la barre de jeu se resserre pour laisser sa place au titre (pseudo de l'adversaire). */
+@media (max-width: 380px) {
+  .barre-jeu {
+    gap: 6px;
+    padding: 8px;
+  }
+  .barre-jeu .bouton-icone {
+    width: 40px;
+    height: 40px;
+  }
+  .puce-sac {
+    padding: 0 8px;
+  }
 }
 .zone-plateau.pleine {
   border-radius: 0;

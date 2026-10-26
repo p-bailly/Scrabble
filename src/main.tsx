@@ -1,10 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App as AppNative } from '@capacitor/app'
-import { App } from './App'
+import { App, prechargerEcrans } from './App'
 import { natif, surOuvertureNotification } from './lib/notifications'
 import { demarrerReglages } from './lib/reglages'
 import { naviguer } from './lib/routeur'
+import { demanderStockagePersistant } from './lib/sauvegardeAppareil'
 import { lire } from './lib/stockage'
 import { chargerDico } from './moteur/moteur'
 import './styles.css'
@@ -24,11 +25,23 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+// Version web : on demande au navigateur de ne pas purger les parties et statistiques gardées sur l'appareil.
+if (!natif) demanderStockagePersistant()
+
 // Le dictionnaire se charge dès l'ouverture, en arrière-plan (Web Worker).
 chargerDico().catch(() => {})
 
-// Parties à deux déjà commencées sur cet appareil : on surveille les coups de l'adversaire dès l'ouverture.
-if (lire('multi.pseudo', null)) import('./multi/veille').then((m) => m.demarrerVeille()).catch(() => {})
+// Une fois l'appli affichée, on prépare le reste sans gêner le premier rendu : les écrans moins courants (pour qu'ils
+// s'ouvrent aussi hors ligne) et, si des parties à deux ont été commencées sur cet appareil, la veille des coups de
+// l'adversaire (Firebase, la partie la plus lourde de l'appli).
+const apresAffichage = (tache: () => void) => ('requestIdleCallback' in window ? requestIdleCallback(tache, { timeout: 2000 }) : setTimeout(tache, 500))
+apresAffichage(() => {
+  prechargerEcrans()
+  if (lire('multi.pseudo', null)) {
+    import('./multi/veille').then((m) => m.demarrerVeille()).catch(() => {})
+    import('./multi/synchro').then((m) => m.demarrerSynchro()).catch(() => {})
+  }
+})
 
 // Toucher une notification « À toi de jouer » ouvre la partie.
 surOuvertureNotification((hash) => naviguer(hash.replace(/^#\/?/, '')))

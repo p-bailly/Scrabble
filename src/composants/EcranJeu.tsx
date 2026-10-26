@@ -36,16 +36,21 @@ interface PropsBarre {
   onRetour: () => void
   libelleRetour: string
   titre: ReactNode
+  /** Après le titre, jamais tronquée avec lui (la pastille du sac). */
+  pastille?: ReactNode
   droite?: ReactNode
 }
 
-export function BarreJeu({ onRetour, libelleRetour, titre, droite }: PropsBarre) {
+export function BarreJeu({ onRetour, libelleRetour, titre, pastille, droite }: PropsBarre) {
   return (
     <header className="barre-jeu">
       <button type="button" className="bouton-icone" onClick={onRetour} aria-label={libelleRetour}>
         <IconeRetour />
       </button>
-      <div className="titre">{titre}</div>
+      <div className="titre">
+        <span className="texte">{titre}</span>
+        {pastille}
+      </div>
       {droite}
     </header>
   )

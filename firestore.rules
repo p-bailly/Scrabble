@@ -11,6 +11,27 @@ service cloud.firestore {
 
     // Fiche de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
     match /joueurs/{uid} {
+      // Appareils qui reçoivent les notifications appli fermée (jeton FCM) : lui seul les lit et les écrit ; la Cloud
+      // Function (functions/) les lit avec ses droits d'administration.
+      match /appareils/{appareil} {
+        allow read, write: if connecte() && request.auth.uid == uid;
+      }
+
+      // Données solo synchronisées (parties en cours, historiques, résultats contre l'IA, réglages) : lui seul les lit et
+      // les écrit. Un élément est une version datée (`majLe`) ; la plus récente gagne, donc une écriture plus ancienne que
+      // celle du serveur est refusée (un appareil resté hors ligne ne peut pas écraser le travail des autres).
+      match /solo/{element} {
+        allow read, delete: if connecte() && request.auth.uid == uid;
+        allow create, update: if connecte() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['type', 'id', 'donnees', 'majLe', 'supprime'])
+          && request.resource.data.type is string
+          && request.resource.data.id is string
+          && request.resource.data.donnees is string && request.resource.data.donnees.size() < 900000
+          && request.resource.data.majLe is int
+          && request.resource.data.supprime is bool
+          && (resource == null || request.resource.data.majLe >= resource.data.majLe);
+      }
+
       allow get: if connecte();
       // Chercher un joueur à inviter (par sa clé de recherche) : 10 fiches au plus par requête, et une requête sans
       // `limit` est refusée, pour qu'on ne puisse pas tout lister d'un coup.

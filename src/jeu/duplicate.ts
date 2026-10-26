@@ -27,6 +27,13 @@ export type ModeDuplicate = 'entrainement' | 'topping'
 export type Indice = 'valeur' | 'longueur' | 'direction' | 'position'
 export const INDICES: readonly Indice[] = ['valeur', 'longueur', 'direction', 'position']
 
+export const NOM_INDICE: Record<Indice, string> = {
+  valeur: 'Valeur du top',
+  longueur: 'Longueur du mot',
+  direction: 'Direction',
+  position: 'Case de départ',
+}
+
 export interface CoupDuplicate {
   numero: number
   tirage: string[]
@@ -71,6 +78,8 @@ export interface PartieDuplicate {
   /** Temps par coup en secondes (0 : sans limite). */
   temps: number
   creeLe: number
+  /** Dernière sauvegarde de la partie en cours (la liste des parties en cours s'ordonne dessus). */
+  majLe?: number
   plateau: string
   sac: string[]
   /** État du générateur aléatoire. */
@@ -134,6 +143,12 @@ export function tirer(sac: readonly string[], reliquat: readonly string[], numer
 }
 
 export const modeDe = (partie: PartieDuplicate): ModeDuplicate => partie.mode ?? 'entrainement'
+
+/** Graine du défi du jour : la date (locale), donc les mêmes tirages pour tous ceux qui jouent ce jour-là. */
+export function graineDuJour(date = new Date()): string {
+  const deux = (n: number) => String(n).padStart(2, '0')
+  return `DEFI-${date.getFullYear()}-${deux(date.getMonth() + 1)}-${deux(date.getDate())}`
+}
 
 export function nouvellePartie(
   graine: string,

@@ -2,14 +2,31 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
-import { AnalyseIA } from './pages/Analyse'
 import { ContreIA } from './pages/ContreIA'
-import { Correction } from './pages/Correction'
-import { Dictionnaire } from './pages/Dictionnaire'
 import { Duplicate } from './pages/Duplicate'
-import { Reglages } from './pages/Reglages'
 import { Solo } from './pages/Solo'
-import { Stats } from './pages/Stats'
+
+// Les écrans qu'on n'ouvre pas à chaque lancement ne sont chargés qu'au besoin, pour un démarrage plus rapide.
+const chargeurs = {
+  analyse: () => import('./pages/Analyse'),
+  correction: () => import('./pages/Correction'),
+  dictionnaire: () => import('./pages/Dictionnaire'),
+  reglages: () => import('./pages/Reglages'),
+  stats: () => import('./pages/Stats'),
+}
+const AnalyseIA = lazy(() => chargeurs.analyse().then((m) => ({ default: m.AnalyseIA })))
+const Correction = lazy(() => chargeurs.correction().then((m) => ({ default: m.Correction })))
+const Dictionnaire = lazy(() => chargeurs.dictionnaire().then((m) => ({ default: m.Dictionnaire })))
+const Reglages = lazy(() => chargeurs.reglages().then((m) => ({ default: m.Reglages })))
+const Stats = lazy(() => chargeurs.stats().then((m) => ({ default: m.Stats })))
+
+/**
+ * Charge ces écrans en arrière-plan, une fois l'appli affichée : la version web les garde alors en cache et ils
+ * s'ouvrent aussi hors ligne, même sans être déjà passé par là.
+ */
+export function prechargerEcrans() {
+  for (const charger of Object.values(chargeurs)) void charger().catch(() => {})
+}
 
 // Le multijoueur (et Firebase) n'est chargé que si on l'ouvre : le solo reste léger et marche hors ligne.
 // Compte gère la connexion par e-mail, puis affiche les parties.
@@ -42,15 +59,17 @@ export function App() {
         <Multi chemin={chemin} />
       </Suspense>
     )
-  else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate />
+  else if (page === 'solo' && chemin[1] === 'duplicate') contenu = <Duplicate key={chemin[2]} id={chemin[2] && decodeURIComponent(chemin[2])} />
   else if (page === 'solo' && chemin[1] === 'ia' && chemin[2] === 'analyse') contenu = <AnalyseIA id={decodeURIComponent(chemin[3] ?? 'courante')} />
-  else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA />
+  else if (page === 'solo' && chemin[1] === 'ia') contenu = <ContreIA key={chemin[2]} id={chemin[2] && decodeURIComponent(chemin[2])} />
   else contenu = <Solo />
 
   const onglet = page === 'correction' ? 'solo' : page === 'partie' || page === 'rejoindre' ? 'parties' : page
   return (
     <div className="appli">
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{contenu}</main>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Suspense fallback={<div className="vide-etat">Chargement…</div>}>{contenu}</Suspense>
+      </main>
       <nav className="onglets" hidden={ongletsMasques}>
         <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />

@@ -3,12 +3,15 @@
 import { useState } from 'react'
 import { Entete } from '../composants/Entete'
 import { PROFILS } from '../jeu/ia'
+import { aides } from '../jeu/contreIA'
 import { naviguer } from '../lib/routeur'
+import { useSynchro } from '../lib/synchro'
 import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
 import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
 
 export function Stats() {
   const [, rafraichir] = useState(0)
+  useSynchro()
   const s = statistiques()
   const contreIA = bilanParNiveau().filter((b) => b.parties > 0)
   const partiesIA = lirePartiesIA().slice(0, 5)
@@ -74,7 +77,8 @@ export function Stats() {
                   </div>
                   <div className="note">
                     {p.fin?.raison === 'abandon' ? 'Abandonnée' : p.fin?.gagnant === 'moi' ? 'Gagnée' : p.fin?.gagnant === 'ia' ? 'Perdue' : 'Égalité'} ·{' '}
-                    {p.scores.moi} – {p.scores.ia} · toucher pour l’analyser
+                    {p.scores.moi} – {p.scores.ia}
+                    {aides(p) && ` · ${aides(p)}`} · toucher pour l’analyser
                   </div>
                 </div>
               </button>
