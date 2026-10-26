@@ -33,11 +33,9 @@ import {
   type CoupMulti,
   type Partie,
 } from './donnees'
-import { configuration, connexion } from './firebase'
+import { ADRESSE_WEB as URL_WEB, configuration, connexion } from './firebase'
 import { demarrerVeille } from './veille'
 
-/** Adresse publique de la version web, pour les liens d'invitation. */
-const URL_WEB = 'https://p-bailly.github.io/Scrabble/'
 const URL_APK = 'https://github.com/p-bailly/Scrabble/releases/latest/download/scrabble.apk'
 
 export default function Multi({ chemin }: { chemin: string[] }) {

@@ -131,13 +131,16 @@ oublient d'autres.
 
 ## Parties à deux : créer le projet Firebase
 
-Le multijoueur utilise **Firebase** en offre gratuite (Spark) : Authentication anonyme (un pseudo choisi au premier
-lancement) et Cloud Firestore. (Pas de Supabase : ses projets gratuits se mettent en pause après une semaine sans
-activité.) Sans configuration, le solo et le calculateur marchent et l'onglet « Mes parties » l'explique.
+Le multijoueur utilise **Firebase** en offre gratuite (Spark) : Authentication par **lien envoyé par e-mail** (sans
+mot de passe ; un pseudo est choisi à la première connexion) et Cloud Firestore. (Pas de Supabase : ses projets
+gratuits se mettent en pause après une semaine sans activité.) Sans configuration, le solo et le calculateur marchent
+et l'onglet « Mes parties » l'explique.
 
 1. Sur <https://console.firebase.google.com>, **Ajouter un projet** (nom au choix, ex. `mon-scrabble`). Google
    Analytics n'est pas utile.
-2. **Build → Authentication → Commencer**, onglet *Sign-in method* : activer **Anonyme**.
+2. **Build → Authentication → Commencer**, onglet *Sign-in method* : ouvrir **Adresse e-mail/Mot de passe** et activer
+   aussi l'option **Lien envoyé par e-mail (connexion sans mot de passe)** (Firebase demande d'activer la ligne du
+   dessus pour y accéder ; l'appli n'utilise jamais de mot de passe).
 3. **Build → Firestore Database → Créer une base de données** : emplacement `eur3 (europe-west)`, démarrer en
    **mode production**.
 4. Onglet **Règles** de Firestore : remplacer tout par le contenu de [`firestore.rules`](firestore.rules), puis
@@ -150,9 +153,26 @@ activité.) Sans configuration, le solo et le calculateur marchent et l'onglet �
    *Variante* : au lieu de committer le fichier, mettre son contenu dans une variable du dépôt nommée
    `FIREBASE_CONFIG` (Settings → Secrets and variables → Actions → onglet *Variables*) ; les workflows l'écrivent
    avant la compilation.
-7. **Authentication → Paramètres → Domaines autorisés** : ajouter `p-bailly.github.io` (la version web).
+7. **Authentication → Paramètres → Domaines autorisés** : ajouter `scrabble.pbailly.fr` (la version web). Sans cela,
+   Firebase refuse d'envoyer le lien de connexion. `localhost` y est déjà, pour le développement.
 
 La configuration web de Firebase n'est **pas un secret** : la sécurité repose sur les règles Firestore.
+
+### Connexion sans mot de passe
+
+Dans « Mes parties », on saisit son adresse e-mail et Firebase envoie un lien ; le toucher connecte. Le compte est lié
+à l'adresse, donc le même sur tous les appareils (mêmes parties, même pseudo, retrouvé dans Firestore).
+
+- Le lien ramène sur la page d'où la connexion a été demandée : depuis une invitation (`#/rejoindre/CODE`), on rejoint
+  la partie dès la connexion.
+- Même navigateur que la demande : la connexion se termine toute seule. Autre appareil ou autre navigateur : l'appli
+  redemande l'adresse pour confirmer.
+- **Dans l'appli Android**, le lien de l'e-mail s'ouvre dans le navigateur, pas dans l'appli. Après avoir demandé le
+  lien, coller le lien copié depuis l'e-mail dans le champ prévu à cet effet connecte l'appli ; sinon, jouer depuis la
+  version web.
+- L'e-mail part en français (`auth.languageCode`) de l'expéditeur Firebase (`noreply@…firebaseapp.com`) : il peut
+  arriver dans les courriers indésirables. Le modèle du message se change dans *Authentication → Modèles*.
+- Un lien ne sert qu'une fois et expire au bout d'un moment ; il suffit d'en redemander un.
 
 ### Règles de sécurité
 
@@ -184,28 +204,28 @@ chevalet de l'autre, etc.).
 
 ## Liens d'invitation
 
-Le lien envoyé est celui de la version web : `https://p-bailly.github.io/Scrabble/#/rejoindre/CODE`.
+Le lien envoyé est celui de la version web : `https://scrabble.pbailly.fr/#/rejoindre/CODE`.
 
-- Sur un téléphone sans l'appli, il ouvre la version web : on peut jouer directement dans le navigateur. Sur
-  Android, un bouton « Ouvrir dans l'appli » lance l'appli si elle est installée, sinon télécharge l'APK.
+- Sur un téléphone sans l'appli, il ouvre la version web : on peut jouer directement dans le navigateur (après s'être
+  connecté par e-mail). Sur Android, un bouton « Ouvrir dans l'appli » lance l'appli si elle est installée, sinon
+  télécharge l'APK.
 - L'appli Android déclare ce lien (et `fr.perso.scrabble://rejoindre/CODE`). Pour qu'Android l'ouvre **directement**
-  dans l'appli, sans passer par le navigateur, il faut prouver que le domaine vous appartient : publier ce fichier à
-  la racine du domaine, c'est-à-dire dans un dépôt `p-bailly.github.io`, au chemin `.well-known/assetlinks.json`
-  (avec un fichier `.nojekyll` à la racine pour que GitHub Pages serve le dossier `.well-known`) :
+  dans l'appli, sans passer par le navigateur, il faut prouver que le domaine appartient à l'appli : c'est le rôle de
+  [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json), publié avec la version web à
+  `https://scrabble.pbailly.fr/.well-known/assetlinks.json` (empreinte de la clé de signature de l'APK). Android
+  vérifie le lien à l'installation de l'APK ; en cas de doute, l'activer à la main : Paramètres → Applis → Scrabble →
+  Ouvrir par défaut → ajouter `scrabble.pbailly.fr`.
 
-  ```json
-  [{
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "fr.perso.scrabble",
-      "sha256_cert_fingerprints": ["0B:D9:37:5B:F3:9C:C9:BA:D5:F5:5B:5A:48:46:46:50:9F:81:74:76:5C:66:47:6C:7B:68:85:BC:86:85:17:8C"]
-    }
-  }]
-  ```
+## Nom de domaine
 
-  Sans ce fichier, on peut aussi l'activer à la main sur le téléphone : Paramètres → Applis → Scrabble → Ouvrir par
-  défaut → ajouter `p-bailly.github.io`.
+La version web est servie sur `https://scrabble.pbailly.fr` (l'ancienne adresse `p-bailly.github.io/Scrabble`
+redirige vers elle).
+
+1. **OVH** (zone DNS de `pbailly.fr`) : ajouter une entrée **CNAME**, sous-domaine `scrabble`, cible
+   `p-bailly.github.io.` (point final compris).
+2. **GitHub** : *Settings → Pages → Custom domain* : `scrabble.pbailly.fr`, puis cocher *Enforce HTTPS* quand GitHub a
+   émis le certificat (quelques minutes à une heure après la propagation DNS).
+3. **Firebase** : ajouter `scrabble.pbailly.fr` aux domaines autorisés (étape 7 ci-dessus).
 
 ## Lancer l'app en local
 
@@ -235,7 +255,7 @@ APK en local : Android SDK (plateforme 36) + Java 21, puis `npm run android`
 - **Version web** (iPhone, ordinateur, ou un adversaire sans l'APK) : le workflow
   [`deploy.yml`](.github/workflows/deploy.yml) la publie sur GitHub Pages à chaque push sur la branche par défaut,
   une fois Pages activé dans *Settings → Pages → Source : GitHub Actions* ; adresse :
-  <https://p-bailly.github.io/Scrabble/>. Puis :
+  <https://scrabble.pbailly.fr/>. Puis :
   - **iPhone (Safari)** : Partager → *Sur l'écran d'accueil* ;
   - **Android (Chrome)** : menu ⋮ → *Installer l'application*.
 
@@ -256,7 +276,7 @@ src/
   composants/     plateau zoomable, chevalet et glisser-déposer, aperçu du coup, icônes
   pages/          Solo (duplicate), Correction, Stats, Calculateur
   solo/           sauvegarde du duplicate et historique
-  multi/          parties à deux : Firebase, données Firestore, écrans, veille des coups
+  multi/          parties à deux : Firebase, connexion par e-mail, données Firestore, écrans, veille des coups
   lib/            routage par hash, stockage local, notifications
 scripts/dico.ts   liste de mots → public/dico/mots.dawg
 public/           manifest PWA, service worker, icônes, dictionnaire
