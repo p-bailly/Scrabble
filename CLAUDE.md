@@ -24,7 +24,12 @@ citent son titre : le garder en cas de renommage.
 - Jetons : `?` = joker sur le chevalet ou dans le sac, **minuscule** = joker posé sur le plateau (« e » = joker joué en E).
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
-- Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore).
+- Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore). En haut l'essentiel
+  (taille du texte, mode simple, thème, être prévenu, compte), le reste replié sous « Réglages avancés ». Taille du texte : `--texte`
+  (`data-texte` sur `<html>`, posé aussi par `index.html`), qui multiplie les `font-size` de l'interface, jamais celles du plateau ni des jetons.
+- Mode simple (réglage de l'appareil, pensé pour une personne âgée) : onglets Mes parties / Seul / Dictionnaire (Stats et Réglages par des
+  liens discrets, `LiensModeSimple`), pas de duplicate, contre l'ordinateur en un toucher avec trois niveaux (Facile = Débutant, Moyen =
+  Amateur, Difficile = Confirmé, `NIVEAUX_SIMPLES`), Stats réduites à « Mes résultats ». L'appli dit « l'ordinateur », jamais « l'IA ».
 - Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. Partie à deux pensée pour une personne âgée : « Nouvelle partie »
   d'un toucher, puis on touche le nom d'un joueur (tous ceux qui acceptent d'être trouvés, récents en tête) ou « Envoyer le lien » ;
   aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.
@@ -38,7 +43,7 @@ citent son titre : le garder en cas de renommage.
 - Duplicate (FISF + modes « Entraînement » et « Topping » de DupliJeu ; les modes Joker, 7 sur 8, 7 et 8 ne sont pas repris).
   Validation du **tirage** (jamais du mot posé) : ≥ 2 voyelles et 2 consonnes jusqu'au 15e coup, puis ≥ 1 et ≥ 1 ; sinon tout
   retourne au sac. Conventions : **Y = voyelle**, **joker = voyelle et consonne à la fois**. Égalité de score : le top retenu a le
-  moins de jokers, puis le mot le plus long, puis la première position (haut en bas, gauche à droite). Défi du jour : graine = date.
+  moins de jokers, puis le mot le plus long, puis la première position (haut en bas, gauche à droite).
 - IA : le niveau ne règle que le **choix** parmi tous les coups légaux (`ia.ts`, `contreIA.ts`). Score moyen IA contre IA (20 parties
   par couple et par couleur, dictionnaire complet) : Débutant 160, Amateur 260, Confirmé 360, Expert 440, Champion 550. La valeur
   des lettres gardées vaut ≈ 35 points par partie au Champion. Les tests vérifient l'ordre des niveaux.

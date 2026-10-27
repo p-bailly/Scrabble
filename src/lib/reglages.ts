@@ -1,18 +1,33 @@
-// Réglages de l'appli, gardés sur l'appareil. Le thème et les étiquettes du plateau s'appliquent à la page entière
-// (attributs de <html> que lit styles.css) ; les autres sont lus au moment où ils servent.
+// Réglages de l'appli, gardés sur l'appareil. Le thème, la taille du texte et les étiquettes du plateau s'appliquent à
+// la page entière (attributs de <html> que lit styles.css) ; les autres sont lus au moment où ils servent.
 
+import { useSyncExternalStore } from 'react'
 import { ecrire, lire } from './stockage'
 import { ecrireEstampille, lireEstampille, signaler, type Adapteur } from './synchro'
 
 export type Theme = 'auto' | 'clair' | 'sombre'
 export const THEMES: { theme: Theme; nom: string }[] = [
-  { theme: 'auto', nom: 'Automatique' },
+  { theme: 'auto', nom: 'Auto' },
   { theme: 'clair', nom: 'Clair' },
   { theme: 'sombre', nom: 'Sombre' },
 ]
 
+export type TailleTexte = 'normal' | 'grand' | 'tres-grand'
+export const TAILLES: { taille: TailleTexte; nom: string }[] = [
+  { taille: 'normal', nom: 'Normal' },
+  { taille: 'grand', nom: 'Grand' },
+  { taille: 'tres-grand', nom: 'Très grand' },
+]
+
 export interface Reglages {
   theme: Theme
+  /** Taille des textes de l'interface (pas des lettres du plateau). Propre à l'appareil. */
+  texte: TailleTexte
+  /**
+   * Mode simple, pour une personne qui découvre (ou une personne âgée) : trois onglets, pas de duplicate, contre
+   * l'ordinateur en un toucher, statistiques et réglages réduits. Propre à l'appareil.
+   */
+  simple: boolean
   /** Libellés des cases bonus sur le plateau (MT, MD, LT, LD). */
   etiquettes: boolean
   /** Notifications (en plus de l'autorisation du système) ; les trois suivants choisissent lesquelles. */
@@ -33,6 +48,8 @@ const CLE_GENRE = { tour: 'notifTour', invitation: 'notifInvitations', fin: 'not
 const CLE = 'reglages'
 const DEFAUT: Reglages = {
   theme: 'auto',
+  texte: 'normal',
+  simple: false,
   etiquettes: true,
   notifications: true,
   notifTour: true,
@@ -48,6 +65,8 @@ export function lireReglages(): Reglages {
   const r = lire<Partial<Record<keyof Reglages, unknown>> | null>(CLE, null) ?? {}
   return {
     theme: THEMES.some((t) => t.theme === r.theme) ? (r.theme as Theme) : DEFAUT.theme,
+    texte: TAILLES.some((t) => t.taille === r.texte) ? (r.texte as TailleTexte) : DEFAUT.texte,
+    simple: booleen(r.simple, DEFAUT.simple),
     etiquettes: booleen(r.etiquettes, DEFAUT.etiquettes),
     notifications: booleen(r.notifications, DEFAUT.notifications),
     notifTour: booleen(r.notifTour, DEFAUT.notifTour),
@@ -70,15 +89,30 @@ export function notificationVoulue(genre?: GenreNotification): boolean {
   return r.notifications && (!genre || r[CLE_GENRE[genre]])
 }
 
+const abonnes = new Set<(r: Reglages) => void>()
+// Derniers réglages lus, pour useReglages (React exige le même objet tant que rien ne change).
+let instantane: Reglages | null = null
+
+/** Être prévenu de chaque changement de réglages (le mode simple change les onglets, par exemple). */
+export function surReglages(rappel: (r: Reglages) => void): () => void {
+  abonnes.add(rappel)
+  return () => abonnes.delete(rappel)
+}
+
 /** Change un ou plusieurs réglages, les enregistre et les applique à la page. Renvoie les réglages à jour. */
 export function modifierReglages(modif: Partial<Reglages>): Reglages {
   const r = { ...lireReglages(), ...modif }
   ecrire(CLE, r)
   appliquer(r)
+  instantane = r
+  for (const rappel of abonnes) rappel(r)
   // Apparence et confirmation suivent le compte ; les notifications dépendent de l'appareil (autorisation, appli installée).
   if ('theme' in modif || 'etiquettes' in modif || 'confirmerPasse' in modif) signaler('reglages', 'app', reglagesDuCompte(r))
   return r
 }
+
+/** Réglages à jour dans un composant, qui se redessine quand ils changent. */
+export const useReglages = (): Reglages => useSyncExternalStore(surReglages, () => (instantane ??= lireReglages()))
 
 type ReglagesDuCompte = Pick<Reglages, 'theme' | 'etiquettes' | 'confirmerPasse'>
 const reglagesDuCompte = (r: Reglages): ReglagesDuCompte => ({ theme: r.theme, etiquettes: r.etiquettes, confirmerPasse: r.confirmerPasse })
@@ -105,6 +139,8 @@ function appliquer(r: Reglages) {
   const racine = document.documentElement
   racine.dataset.theme = sombre ? 'dark' : 'light'
   racine.dataset.etiquettes = r.etiquettes ? 'oui' : 'non'
+  racine.dataset.texte = r.texte
+  racine.dataset.simple = r.simple ? 'oui' : 'non'
   // Les deux <meta> d'index.html suivent le système ; un thème choisi à la main impose sa couleur aux deux.
   for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
     m.removeAttribute('media')

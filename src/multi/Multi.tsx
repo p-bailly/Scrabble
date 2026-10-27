@@ -9,6 +9,7 @@ import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/ed
 import { Entete, Feuille } from '../composants/Entete'
 import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
+import { LiensModeSimple } from '../composants/LiensModeSimple'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
 import { FeuilleVerifier } from '../composants/VerifierMot'
@@ -224,6 +225,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
       <Section titre="En attente de l’adversaire" parties={attente} uid={uid} onErreur={setErreur} onMasquer={masquer} />
       <Section titre="Invitations envoyées" parties={invitations} uid={uid} onErreur={setErreur} onMasquer={masquer} />
       <Section titre="Terminées" parties={finies.filter((p) => !masquees.includes(p.code)).slice(0, 20)} uid={uid} onErreur={setErreur} onMasquer={masquer} />
+      <LiensModeSimple />
     </div>
   )
 }

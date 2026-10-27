@@ -102,6 +102,20 @@ body {
   min-height: 100%;
 }
 
+/* Taille du texte (Réglages → « Taille du texte ») : textes de l'interface seulement, pas les lettres du plateau ni du chevalet. */
+:root {
+  --texte: 1;
+}
+:root[data-texte='grand'] {
+  --texte: 1.15;
+}
+:root[data-texte='tres-grand'] {
+  --texte: 1.3;
+}
+body {
+  font-size: calc(16px * var(--texte));
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -138,7 +152,7 @@ select {
 }
 .entete h1 {
   margin: 0;
-  font-size: 23px;
+  font-size: calc(23px * var(--texte));
   font-weight: 800;
   letter-spacing: -0.01em;
   flex: 1;
@@ -173,7 +187,7 @@ select {
   background: var(--surface);
   border: 1.5px solid var(--bord);
   color: var(--lien);
-  font-size: 13px;
+  font-size: calc(13px * var(--texte));
   font-weight: 700;
   white-space: nowrap;
 }
@@ -194,7 +208,7 @@ select {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: calc(11px * var(--texte));
   font-weight: 500;
   color: var(--muted);
   text-decoration: none;
@@ -205,6 +219,11 @@ select {
 .onglets a.actif {
   color: var(--lien);
   font-weight: 700;
+}
+/* Mode simple : trois onglets, plus grands. */
+:root[data-simple='oui'] .onglets a {
+  font-size: calc(14px * var(--texte));
+  min-width: 96px;
 }
 .onglets a.actif::before {
   content: '';
@@ -253,12 +272,12 @@ select {
   min-width: 0;
 }
 .stat .etiquette {
-  font-size: 11px;
+  font-size: calc(11px * var(--texte));
   color: var(--muted);
   white-space: nowrap;
 }
 .stat .valeur {
-  font-size: 19px;
+  font-size: calc(19px * var(--texte));
   font-weight: 700;
 }
 .stat.accent {
@@ -272,7 +291,7 @@ select {
   gap: 2px;
 }
 .stat.accent .valeur {
-  font-size: 18px;
+  font-size: calc(18px * var(--texte));
   font-variant-numeric: tabular-nums;
 }
 .stat.urgent {
@@ -293,7 +312,7 @@ select {
   border-radius: var(--rayon);
   background: var(--surface);
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -309,7 +328,7 @@ select {
   background: var(--accent);
   border-color: var(--accent-bord);
   color: var(--accent-text);
-  font-size: 15px;
+  font-size: calc(15px * var(--texte));
 }
 .bouton.large {
   flex: 1;
@@ -601,7 +620,7 @@ select {
   background: var(--surface);
   border: 1px solid var(--line);
   min-height: 46px;
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
 }
 .apercu .mots {
   flex: 1;
@@ -611,7 +630,7 @@ select {
   white-space: nowrap;
 }
 .apercu .total {
-  font-size: 20px;
+  font-size: calc(20px * var(--texte));
   font-weight: 800;
   white-space: nowrap;
   color: var(--lien);
@@ -627,7 +646,7 @@ select {
   text-decoration: line-through;
 }
 .note {
-  font-size: 12px;
+  font-size: calc(12px * var(--texte));
   color: var(--muted);
 }
 
@@ -669,7 +688,7 @@ select {
 }
 .ligne .ref {
   color: var(--muted);
-  font-size: 13px;
+  font-size: calc(13px * var(--texte));
   margin-left: 6px;
 }
 .ligne .pts {
@@ -681,7 +700,7 @@ select {
   text-transform: lowercase;
 }
 h2 {
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   font-weight: 700;
   color: var(--lien);
   margin: 8px 0 0;
@@ -714,7 +733,7 @@ h2 {
 }
 .feuille h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: calc(20px * var(--texte));
   font-weight: 800;
 }
 .clavier {
@@ -742,7 +761,7 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   font-weight: 600;
 }
 .champ textarea {
@@ -753,7 +772,7 @@ h2 {
   color: var(--text);
   padding: 10px 12px;
   font: inherit;
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   font-weight: 400;
   resize: vertical;
 }
@@ -764,7 +783,7 @@ h2 {
   background: var(--surface);
   color: var(--text);
   padding: 0 12px;
-  font-size: 16px;
+  font-size: calc(16px * var(--texte));
 }
 .segments {
   display: flex;
@@ -800,7 +819,7 @@ h2 {
   color: var(--ok);
 }
 .titre-page {
-  font-size: 23px;
+  font-size: calc(23px * var(--texte));
   font-weight: 800;
   letter-spacing: -0.01em;
   margin: 0;
@@ -814,7 +833,7 @@ h2 {
   color: var(--bg);
   padding: 10px 16px;
   border-radius: var(--rayon);
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   font-weight: 600;
   z-index: 60;
   max-width: 90vw;
@@ -866,7 +885,7 @@ h2 {
   background: var(--surface);
   color: var(--text);
   padding: 0 12px;
-  font-size: 16px;
+  font-size: calc(16px * var(--texte));
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -910,7 +929,8 @@ a.bouton {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 17px;
+  /* Plafonnée : en très grand texte, le titre (« Niveau Moyen »…) tiendrait mal à côté des boutons. */
+  font-size: calc(17px * min(var(--texte), 1.1));
   font-weight: 800;
 }
 .barre-jeu .titre .texte {
@@ -922,7 +942,7 @@ a.bouton {
 .barre-jeu .titre .sous {
   font-weight: 500;
   color: var(--muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
 }
 /* Pastille du sac dans la barre de jeu, et grille des lettres de sa fenêtre. */
 .puce-sac {
@@ -1076,7 +1096,7 @@ a.bouton {
   border-right: 0;
   border-top: 0;
   padding: 10px 16px;
-  font-size: 15px;
+  font-size: calc(15px * var(--texte));
 }
 .ecran-jeu .note-centree {
   text-align: center;
@@ -1139,7 +1159,7 @@ a.bouton {
   color: var(--lien);
 }
 .panneau-bas .bouton.principal {
-  font-size: 16px;
+  font-size: calc(16px * var(--texte));
 }
 .statut {
   display: flex;
@@ -1173,7 +1193,7 @@ a.bouton {
   gap: 5px;
 }
 .statut .texte {
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1223,7 +1243,7 @@ a.bouton {
 }
 .panneau-bas > .actions.dense .bouton {
   padding: 0 6px;
-  font-size: 14px;
+  font-size: calc(14px * var(--texte));
 }
 
 /* Réglages : des lignes dans une carte, avec un interrupteur ou un bouton à droite. */
@@ -1250,7 +1270,7 @@ a.bouton {
 }
 .reglage .titre {
   font-weight: 700;
-  font-size: 15px;
+  font-size: calc(15px * var(--texte));
 }
 .reglage .bouton {
   min-height: 40px;
@@ -1308,6 +1328,19 @@ a.bouton {
 }
 .historique-essais .essai {
   white-space: nowrap;
+}
+
+/* Options repliées (« Plus d'options », « Réglages avancés ») : le choix courant suffit presque toujours. */
+details.options > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--lien);
+  font-size: calc(15px * var(--texte));
+  padding: 8px 0;
+}
+details.options[open] > summary,
+details.options > :not(summary) {
+  margin-bottom: 12px;
 }
 
 /* Grand écran (ordinateur, tablette à l'horizontale), comme DupliJeu : le plateau à gauche, aussi grand que la hauteur
@@ -1415,3 +1448,4 @@ a.bouton {
     padding-bottom: 18px;
   }
 }
+

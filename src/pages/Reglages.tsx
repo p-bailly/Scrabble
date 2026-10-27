@@ -1,4 +1,5 @@
-// Réglages : apparence, jeu, notifications, compte des parties à deux, données gardées sur l'appareil, à propos.
+// Réglages : l'essentiel en haut (taille du texte, mode simple, thème, être prévenu, compte), le reste replié sous
+// « Réglages avancés » (plateau, jeu, détail des notifications, données de l'appareil, à propos).
 
 import { lazy, Suspense, useEffect, useState, type ChangeEvent } from 'react'
 import { Interrupteur, Rangee } from '../composants/Reglage'
@@ -6,7 +7,7 @@ import { Entete } from '../composants/Entete'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { nbDefinitionsGardees, viderDefinitions } from '../lib/definitions'
 import { demanderPermission, natif, notificationsAutorisees, notifier, pushActif } from '../lib/notifications'
-import { THEMES, lireReglages, modifierReglages, type Reglages as ReglagesAppli } from '../lib/reglages'
+import { TAILLES, THEMES, lireReglages, modifierReglages, type Reglages as ReglagesAppli } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { useSynchro } from '../lib/synchro'
 import { ilYa } from '../lib/temps'
@@ -33,8 +34,23 @@ export function Reglages() {
     <div className="contenu">
       <Entete titre="Réglages" />
 
-      <h2>Apparence</h2>
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="champ">
+          Taille du texte
+          <div className="segments">
+            {TAILLES.map((t) => (
+              <button key={t.taille} type="button" className={r.texte === t.taille ? 'actif' : ''} aria-pressed={r.texte === t.taille} onClick={() => maj({ texte: t.taille })}>
+                {t.nom}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Interrupteur
+          titre="Mode simple"
+          texte="Trois onglets, pas de duplicate, la partie contre l’ordinateur en un toucher. Idéal pour découvrir ou pour une personne peu habituée aux téléphones."
+          actif={r.simple}
+          onChange={(simple) => maj({ simple })}
+        />
         <div className="champ">
           Thème
           <div className="segments">
@@ -44,29 +60,9 @@ export function Reglages() {
               </button>
             ))}
           </div>
-          <span className="note">« Automatique » suit le réglage clair ou sombre du téléphone.</span>
+          <span className="note">« Auto » suit le réglage clair ou sombre du téléphone.</span>
         </div>
-        <Interrupteur
-          titre="Étiquettes des cases bonus"
-          texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
-          actif={r.etiquettes}
-          onChange={(etiquettes) => maj({ etiquettes })}
-        />
-      </div>
-
-      <h2>Jeu</h2>
-      <div className="carte">
-        <Interrupteur
-          titre="Confirmer avant de passer"
-          texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’IA."
-          actif={r.confirmerPasse}
-          onChange={(confirmerPasse) => maj({ confirmerPasse })}
-        />
-      </div>
-
-      <h2>Notifications</h2>
-      <div className="carte">
-        <Notifications r={r} maj={maj} />
+        <EtrePrevenu r={r} maj={maj} />
       </div>
 
       <h2>Parties à deux</h2>
@@ -88,34 +84,91 @@ export function Reglages() {
         )}
       </div>
 
-      <h2>Données de cet appareil</h2>
-      <div className="carte">
-        <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
-      </div>
-      <div className="carte">
-        <Synchronisation />
-        <Sauvegarde />
-      </div>
+      <details className="options">
+        <summary>Réglages avancés</summary>
+        <h2>Plateau et jeu</h2>
+        <div className="carte">
+          <Interrupteur
+            titre="Étiquettes des cases bonus"
+            texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
+            actif={r.etiquettes}
+            onChange={(etiquettes) => maj({ etiquettes })}
+          />
+          <Interrupteur
+            titre="Confirmer avant de passer"
+            texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’ordinateur."
+            actif={r.confirmerPasse}
+            onChange={(confirmerPasse) => maj({ confirmerPasse })}
+          />
+        </div>
 
-      <h2>À propos</h2>
-      <div className="carte">
-        <APropos />
-      </div>
+        <h2>Notifications</h2>
+        <div className="carte">
+          <Notifications r={r} maj={maj} />
+        </div>
+
+        <h2>Données de cet appareil</h2>
+        <div className="carte">
+          <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
+        </div>
+        <div className="carte">
+          <Synchronisation />
+          <Sauvegarde />
+        </div>
+
+        <h2>À propos</h2>
+        <div className="carte">
+          <APropos />
+        </div>
+      </details>
     </div>
   )
 }
 
+/** L'interrupteur général des notifications, et le bouton pour les autoriser si le système ne le fait pas encore. */
+function EtrePrevenu({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<ReglagesAppli>) => void }) {
+  // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
+  const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)
+  const [refus, setRefus] = useState(false)
+  useEffect(() => {
+    void notificationsAutorisees().then(setAutorisees)
+  }, [])
+  const demander = async () => {
+    await demanderPermission()
+    const ok = await notificationsAutorisees()
+    setAutorisees(ok)
+    setRefus(ok === false)
+  }
+  return (
+    <Interrupteur
+      titre="Être prévenu quand c’est mon tour"
+      texte="Une alerte pour tes parties à deux : ton tour, une invitation, une fin de partie."
+      actif={r.notifications}
+      onChange={(notifications) => {
+        maj({ notifications })
+        if (notifications) void demander()
+      }}
+    >
+      {r.notifications && autorisees === null && <span className="note">Cet appareil ne propose pas les notifications.</span>}
+      {r.notifications && autorisees === false && (
+        <div>
+          <button type="button" className="bouton" onClick={() => void demander()}>
+            Autoriser les alertes
+          </button>
+        </div>
+      )}
+      {refus && <span className="note">Si rien ne se passe : réglages du téléphone, Notifications, Scrabble.</span>}
+    </Interrupteur>
+  )
+}
+
+/** Détail des notifications (Réglages avancés) : essai, appli fermée, genres d’alertes. */
 function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<ReglagesAppli>) => void }) {
   // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
   const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)
   useEffect(() => {
     void notificationsAutorisees().then(setAutorisees)
   }, [])
-
-  const demander = async () => {
-    await demanderPermission()
-    setAutorisees(await notificationsAutorisees())
-  }
 
   // Notifications appli fermée : proposées quand le projet les a configurées (voir CLAUDE.md, « Notifications push »).
   const [pushOn, setPushOn] = useState(pushActif)
@@ -151,37 +204,18 @@ function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<Regl
 
   return (
     <>
-      <Interrupteur
-        titre="Notifications"
-        texte="Une alerte quand il se passe quelque chose dans tes parties à deux. Elle arrive quand l’appli est ouverte ou revient au premier plan."
-        actif={r.notifications}
-        onChange={(notifications) => {
-          maj({ notifications })
-          if (notifications) void demander()
-        }}
-      >
-        {r.notifications && autorisees === null && <span className="note">Cet appareil ne propose pas les notifications.</span>}
-        {r.notifications && autorisees === false && (
-          <>
-            <span className="note ecart-neg">
-              Le système ne les autorise pas encore. Si le bouton ne fait rien, ouvre les réglages du téléphone (ou du navigateur), rubrique
-              Notifications de Scrabble, et autorise-les.
-            </span>
-            <div>
-              <button type="button" className="bouton" onClick={() => void demander()}>
-                Autoriser
-              </button>
-            </div>
-          </>
-        )}
-        {r.notifications && autorisees && (
-          <div>
+      {!r.notifications && <Rangee titre="Alertes coupées" texte="Active « Être prévenu quand c’est mon tour » en haut de l’écran." />}
+      {r.notifications && autorisees && (
+        <Rangee
+          titre="Essai"
+          texte="Vérifie que les alertes arrivent bien sur cet appareil."
+          droite={
             <button type="button" className="bouton" onClick={() => void notifier('test', 'Scrabble', 'Les notifications fonctionnent.', '#/reglages')}>
               Envoyer un essai
             </button>
-          </div>
-        )}
-      </Interrupteur>
+          }
+        />
+      )}
       {r.notifications && pushConfigure && (
         <Interrupteur
           titre="Aussi quand l’appli est fermée"
@@ -235,9 +269,9 @@ function Donnees({ rafraichir }: { rafraichir: () => void }) {
         droite={bouton(nbDuplicate, effacer('Effacer l’historique du duplicate et ses statistiques ?', viderHistorique))}
       />
       <Rangee
-        titre="Contre l’IA"
+        titre="Contre l’ordinateur"
         texte={`${pluriel(nbIA, 'partie')} terminée${nbIA > 1 ? 's' : ''}, d’où viennent les victoires par niveau, avec les dernières parties gardées pour l’analyse.`}
-        droite={bouton(nbIA, effacer('Effacer les résultats contre l’IA et les parties gardées pour l’analyse ?', supprimerHistoriqueIA))}
+        droite={bouton(nbIA, effacer('Effacer les résultats contre l’ordinateur et les parties gardées pour l’analyse ?', supprimerHistoriqueIA))}
       />
       <Rangee
         titre="Définitions du dictionnaire"
