@@ -1,4 +1,5 @@
-// Définition d'un mot (Wiktionnaire), cherchée au premier affichage puis gardée sur l'appareil.
+// Définition d'un mot (Wiktionnaire), cherchée au premier affichage puis gardée sur l'appareil. Pour une forme fléchie
+// (pluriel, conjugaison…), la définition du mot d'origine suit.
 
 import { useEffect, useState } from 'react'
 import { chercherDefinition, type Definition } from '../lib/definitions'
@@ -30,21 +31,31 @@ export function DefinitionMot({ mot }: { mot: string }) {
         <span className="note">Pas de définition trouvée pour ce mot.</span>
       ) : (
         <>
-          <b>{def.titre}</b>
-          {def.sens.map((s, i) => (
-            <div key={i}>
-              <span className="note">{s.nature}</span>
-              <ol style={{ margin: '2px 0 0', paddingLeft: 20, lineHeight: 1.4 }}>
-                {s.definitions.map((t, j) => (
-                  <li key={j}>{t}</li>
-                ))}
-              </ol>
-            </div>
-          ))}
+          <Sens def={def} />
+          {def.lemme && <Sens def={def.lemme} />}
           <span className="note">Source : Wiktionnaire (CC BY-SA)</span>
         </>
       )}
     </div>
+  )
+}
+
+/** Titre et sens d'une page du Wiktionnaire. */
+function Sens({ def }: { def: Definition }) {
+  return (
+    <>
+      <b>{def.titre}</b>
+      {def.sens.map((s, i) => (
+        <div key={i}>
+          <span className="note">{s.nature}</span>
+          <ol style={{ margin: '2px 0 0', paddingLeft: 20, lineHeight: 1.4 }}>
+            {s.definitions.map((t, j) => (
+              <li key={j}>{t}</li>
+            ))}
+          </ol>
+        </div>
+      ))}
+    </>
   )
 }
 
