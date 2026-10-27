@@ -3,9 +3,10 @@
 Appli perso de **Scrabble en français**, web app installable (PWA) aussi livrée en APK Android :
 
 - **Duplicate en solo** : même tirage pour tout le monde, on cherche le meilleur mot (« entraînement » ou « topping ») ;
-- **Partie solo contre l'IA**, en cinq niveaux ;
-- **Parties à deux en différé** : on invite un joueur par son pseudo, ou on envoie un lien ;
-- **Dictionnaire** (ODS8) : vérification d'un mot et de sa valeur, définitions.
+- **Partie solo contre l'ordinateur**, en cinq niveaux ;
+- **Parties à deux en différé** : on touche le nom d'un joueur de l'appli pour l'inviter, ou on envoie un lien ;
+- **Dictionnaire** (ODS8) : vérification d'un mot et de sa valeur, définitions ;
+- **Mode simple** et **taille du texte** (Réglages) : une appli dépouillée et lisible pour une personne âgée.
 
 Le solo et le dictionnaire marchent hors ligne et sans configuration ; seules les parties à deux demandent Firebase.
 
@@ -27,8 +28,8 @@ npm run dev             # http://localhost:5173 (ajouter -- --host pour l'ouvrir
 npm test                # tests Vitest
 ```
 
-Usage : onglet **Solo** → *Duplicate* ou *Contre l'IA* ; onglet **Mes parties** → *Nouvelle partie* → inviter un pseudo
-ou envoyer le code / lien.
+Usage : onglet **Solo** → *Duplicate* ou *Contre l'ordinateur* ; onglet **Mes parties** → *Nouvelle partie* → toucher le nom d'un
+joueur ou envoyer le lien.
 
 Autres commandes (build, APK en local, tests des règles Firestore, changement de dictionnaire) et architecture :
 voir [`CLAUDE.md`](CLAUDE.md).

@@ -15,7 +15,6 @@ import { reference, type Analyse, type Coup } from '../jeu/coup'
 import {
   INDICES,
   NOM_INDICE,
-  graineDuJour,
   modeDe,
   nouvellePartie,
   plateauAvantCoup,
@@ -44,7 +43,6 @@ import {
   formatTemps,
   lireCoup,
   lireHistorique,
-  lirePartiesEnCours,
   lireReglages,
   retirerPartie,
   trouverPartieEnCours,
@@ -143,79 +141,60 @@ function AccueilDuplicate() {
   }
   const lancer = () => lancerAvec(graine.trim().toUpperCase() || nouvelleGraine())
 
-  // Défi du jour : même graine pour tout le monde ; on reprend celui qu'on a commencé, ou on le rejoue.
-  const defi = graineDuJour()
-  const defiEnCours = lirePartiesEnCours().find((p) => p.graine === defi)
-  const defiFait = lireHistorique().find((p) => p.graine === defi && p.coups.length > 0)
-
   return (
     <div className="contenu">
       <EnteteRetour titre="Duplicate" vers="solo" />
-      <div className="carte carte-accent">
-        <b>Défi du jour</b>
-        <span className="note">
-          Les mêmes tirages pour tous ceux qui jouent aujourd’hui : compare ton score avec tes amis. Mode et temps comme ci-dessous.
-        </span>
-        {defiFait && !defiEnCours && (
-          <span className="note">Déjà joué aujourd’hui : {formatPct(totaux(defiFait).pourcentage)} des tops.</span>
-        )}
-        <div className="actions">
-          {defiEnCours ? (
-            <button type="button" className="bouton large" onClick={() => naviguer('solo/duplicate/' + encodeURIComponent(defiEnCours.id))}>
-              Reprendre le défi
-            </button>
-          ) : (
-            <button type="button" className="bouton large" onClick={() => lancerAvec(defi)}>
-              {defiFait ? 'Rejouer le défi' : 'Relever le défi'}
-            </button>
-          )}
-        </div>
-      </div>
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
           À chaque coup, le même tirage de 7 lettres que pour tout le monde : trouve le meilleur mot avant la fin du temps.
           Ensuite, c’est le <b>top</b> qui est posé, et on continue avec les lettres restantes.
         </p>
-        <div className="champ">
-          Mode de jeu
-          <div className="segments">
-            {MODES.map((m) => (
-              <button key={m.mode} type="button" className={mode === m.mode ? 'actif' : ''} onClick={() => setMode(m.mode)}>
-                {m.nom}
-              </button>
-            ))}
-          </div>
-          <span className="note">{MODES.find((m) => m.mode === mode)?.texte}</span>
-        </div>
-        <div className="champ">
-          Temps par coup
-          <div className="segments">
-            {TEMPS.map((t) => (
-              <button key={t.secondes} type="button" className={temps === t.secondes ? 'actif' : ''} onClick={() => setTemps(t.secondes)}>
-                {t.nom}
-                <span className="note" style={{ display: 'block', fontWeight: 500, color: 'inherit', opacity: 0.8 }}>
-                  {t.secondes === 0 ? '∞' : formatTemps(t.secondes)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <label className="champ">
-          Graine (facultatif)
-          <input
-            value={graine}
-            onChange={(e) => setGraine(e.target.value)}
-            placeholder="Au hasard"
-            autoCapitalize="characters"
-            autoComplete="off"
-            maxLength={24}
-          />
-          <span className="note">Une même graine redonne les mêmes tirages : pratique pour rejouer une partie ou défier un ami.</span>
-        </label>
         <button type="button" className="bouton principal" onClick={lancer}>
           Nouvelle partie
         </button>
-        <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
+        <details className="options">
+          <summary>
+            Plus d’options · {MODES.find((m) => m.mode === mode)?.nom}, {TEMPS.find((t) => t.secondes === temps)?.nom}
+            {graine.trim() && `, graine ${graine.trim().toUpperCase()}`}
+          </summary>
+          <div className="champ">
+            Mode de jeu
+            <div className="segments">
+              {MODES.map((m) => (
+                <button key={m.mode} type="button" className={mode === m.mode ? 'actif' : ''} onClick={() => setMode(m.mode)}>
+                  {m.nom}
+                </button>
+              ))}
+            </div>
+            <span className="note">{MODES.find((m) => m.mode === mode)?.texte}</span>
+          </div>
+          <div className="champ">
+            Temps par coup
+            <div className="segments">
+              {TEMPS.map((t) => (
+                <button key={t.secondes} type="button" className={temps === t.secondes ? 'actif' : ''} onClick={() => setTemps(t.secondes)}>
+                  {t.nom}
+                  <span className="note" style={{ display: 'block', fontWeight: 500, color: 'inherit', opacity: 0.8 }}>
+                    {t.secondes === 0 ? '∞' : formatTemps(t.secondes)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="champ">
+            Graine (facultatif)
+            <input
+              value={graine}
+              onChange={(e) => setGraine(e.target.value)}
+              placeholder="Au hasard"
+              autoCapitalize="characters"
+              autoComplete="off"
+              maxLength={24}
+            />
+            <span className="note">Une même graine redonne les mêmes tirages : pratique pour rejouer une partie ou défier un ami.</span>
+          </label>
+          <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
+        </details>
       </div>
       {precedente && precedente.coups.length > 0 && <Bilan partie={precedente} />}
     </div>

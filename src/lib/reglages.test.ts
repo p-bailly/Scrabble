@@ -17,6 +17,8 @@ describe('réglages', () => {
     stockage({})
     expect(lireReglages()).toEqual({
       theme: 'auto',
+      texte: 'normal',
+      simple: false,
       etiquettes: true,
       notifications: true,
       notifTour: true,
@@ -32,8 +34,10 @@ describe('réglages', () => {
   })
 
   it('ignore les valeurs abîmées', () => {
-    stockage({ 'scrabble.reglages': JSON.stringify({ theme: 'violet', etiquettes: 'oui', notifications: 0, confirmerPasse: false }) })
-    expect(lireReglages()).toMatchObject({ theme: 'auto', etiquettes: true, notifications: true, confirmerPasse: false })
+    stockage({
+      'scrabble.reglages': JSON.stringify({ theme: 'violet', texte: 'enorme', simple: 'oui', etiquettes: 'oui', notifications: 0, confirmerPasse: false }),
+    })
+    expect(lireReglages()).toMatchObject({ theme: 'auto', texte: 'normal', simple: false, etiquettes: true, notifications: true, confirmerPasse: false })
   })
 
   it('ignore un contenu qui n’est pas du JSON', () => {

@@ -1,4 +1,4 @@
-// Partie classique contre l'ordinateur : cinq niveaux, du débutant au champion. Tout se passe sur l'appareil (le
+// Partie classique contre l'ordinateur : cinq niveaux, du débutant au champion (trois en mode simple). Tout se passe sur l'appareil (le
 // choix du coup de l'IA se fait dans le Web Worker du moteur) et marche hors ligne.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -33,9 +33,9 @@ import {
 } from '../jeu/contreIA'
 import { reference, type Coup } from '../jeu/coup'
 import { INDICES, NOM_INDICE, texteIndice } from '../jeu/duplicate'
-import { NIVEAUX, PROFILS } from '../jeu/ia'
+import { NIVEAUX, PROFILS, type NiveauIA } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
-import { lireReglages } from '../lib/reglages'
+import { lireReglages, useReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { chargerDico, chercherCoups, decisionIA } from '../moteur/moteur'
 import {
@@ -53,7 +53,7 @@ import {
 /** Temps minimal de « réflexion » de l'IA, pour qu'on voie son coup arriver. */
 const REFLEXION_MIN = 800
 
-const NOM_CAMP: Record<Camp, string> = { moi: 'Toi', ia: 'L’IA' }
+const NOM_CAMP: Record<Camp, string> = { moi: 'Toi', ia: 'L’ordinateur' }
 
 /** Sans `id` : l'accueil, où l'on commence une partie. Avec : cette partie, à reprendre là où elle en était. */
 export function ContreIA({ id }: { id?: string }) {
@@ -88,8 +88,46 @@ export function ContreIA({ id }: { id?: string }) {
   )
 }
 
+/** Mode simple : trois niveaux seulement, aux noms parlants. */
+export const NIVEAUX_SIMPLES: {
+  niveau: NiveauIA
+  nom: string
+  texte: string
+}[] = [
+  {
+    niveau: 'debutant',
+    nom: 'Facile',
+    texte: 'Pour découvrir ou jouer tranquillement.',
+  },
+  {
+    niveau: 'amateur',
+    nom: 'Moyen',
+    texte: 'Un adversaire honnête, qui joue des mots courants.',
+  },
+  {
+    niveau: 'confirme',
+    nom: 'Difficile',
+    texte: 'Il joue de bons coups : il faut s’accrocher.',
+  },
+]
+
+/** Nom d'un niveau à afficher (Facile, Moyen, Difficile en mode simple). */
+export const nomNiveau = (n: NiveauIA, simple: boolean) => (simple && NIVEAUX_SIMPLES.find((x) => x.niveau === n)?.nom) || PROFILS[n].nom
+
+/** Commence une partie avec les réglages donnés (enregistrés pour la prochaine fois) et l'ouvre. */
+export function lancerPartieIA(reglages: ReglagesIA) {
+  ecrireReglagesIA(reglages)
+  const premier: Camp = reglages.premier === 'hasard' ? (Math.random() < 0.5 ? 'moi' : 'ia') : reglages.premier
+  const p = nouvellePartieIA(reglages.niveau, premier)
+  enregistrerPartieIA(p)
+  naviguer('solo/ia/' + encodeURIComponent(p.id))
+}
+
+/** Accueil : un gros bouton « Jouer » au dernier niveau choisi ; le niveau et qui commence se changent au besoin. */
 function AccueilIA() {
+  const { simple } = useReglages()
   const [reglages, setReglages] = useState<ReglagesIA>(lireReglagesIA)
+  const [choixNiveau, setChoixNiveau] = useState(false)
   const [dico, setDico] = useState('')
   const bilan = useMemo(() => bilanParNiveau(), [])
 
@@ -99,45 +137,60 @@ function AccueilIA() {
       .catch((e: Error) => setDico('Dictionnaire indisponible : ' + e.message))
   }, [])
 
-  const lancer = () => {
-    ecrireReglagesIA(reglages)
-    const premier: Camp = reglages.premier === 'hasard' ? (Math.random() < 0.5 ? 'moi' : 'ia') : reglages.premier
-    const p = nouvellePartieIA(reglages.niveau, premier)
-    enregistrerPartieIA(p)
-    naviguer('solo/ia/' + encodeURIComponent(p.id))
+  const niveaux = simple
+    ? NIVEAUX_SIMPLES
+    : NIVEAUX.map((n) => ({
+        niveau: n,
+        nom: PROFILS[n].nom,
+        texte: PROFILS[n].description,
+      }))
+  const choisir = (niveau: NiveauIA) => {
+    const suite = { ...reglages, niveau }
+    setReglages(suite)
+    ecrireReglagesIA(suite)
+    setChoixNiveau(false)
   }
 
   return (
     <div className="contenu">
-      <EnteteRetour titre="Contre l’IA" vers="solo" />
+      <EnteteRetour titre="Contre l’ordinateur" vers="solo" />
       <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ margin: 0, lineHeight: 1.5 }}>
-          Une vraie partie de Scrabble contre l’ordinateur : chacun son chevalet, on joue à tour de rôle. Choisis la force de
-          l’adversaire.
+          Une vraie partie de Scrabble contre l’ordinateur : chacun son chevalet, on joue à tour de rôle.
         </p>
-        <div className="champ">
-          Niveau
+        <button type="button" className="bouton principal large" style={{ minHeight: 56 }} onClick={() => lancerPartieIA(reglages)}>
+          Jouer
+        </button>
+        <div className="reglage">
+          <div className="texte">
+            <div className="titre">
+              Niveau : <b>{nomNiveau(reglages.niveau, simple)}</b>
+            </div>
+          </div>
+          <button type="button" className="bouton" aria-expanded={choixNiveau} onClick={() => setChoixNiveau(!choixNiveau)}>
+            {choixNiveau ? 'Fermer' : 'Changer'}
+          </button>
+        </div>
+        {choixNiveau && (
           <div className="liste">
-            {NIVEAUX.map((n) => {
-              const b = bilan.find((x) => x.niveau === n)!
+            {niveaux.map(({ niveau, nom, texte }) => {
+              const b = bilan.find((x) => x.niveau === niveau)!
               return (
                 <button
-                  key={n}
+                  key={niveau}
                   type="button"
-                  className={'ligne' + (reglages.niveau === n ? ' choisie' : '')}
+                  className={'ligne' + (reglages.niveau === niveau ? ' choisie' : '')}
                   style={{ background: 'var(--surface-2)' }}
-                  onClick={() => setReglages({ ...reglages, niveau: n })}
-                  aria-pressed={reglages.niveau === n}
+                  onClick={() => choisir(niveau)}
+                  aria-pressed={reglages.niveau === niveau}
                 >
                   <div className="principal">
-                    <div style={{ fontWeight: 700 }}>{PROFILS[n].nom}</div>
-                    <div className="note">{PROFILS[n].description}</div>
+                    <div style={{ fontWeight: 700 }}>{nom}</div>
+                    <div className="note">{texte}</div>
                   </div>
                   {b.parties > 0 && (
                     <div style={{ textAlign: 'right' }}>
-                      <div className="pts">
-                        {b.victoires} V
-                      </div>
+                      <div className="pts">{b.victoires} V</div>
                       <div className="note">sur {b.parties}</div>
                     </div>
                   )}
@@ -145,32 +198,34 @@ function AccueilIA() {
               )
             })}
           </div>
-        </div>
-        <div className="champ">
-          Qui commence ?
-          <div className="segments">
-            {(
-              [
-                ['hasard', 'Au hasard'],
-                ['moi', 'Moi'],
-                ['ia', 'L’IA'],
-              ] as const
-            ).map(([valeur, texte]) => (
-              <button
-                key={valeur}
-                type="button"
-                className={reglages.premier === valeur ? 'actif' : ''}
-                onClick={() => setReglages({ ...reglages, premier: valeur })}
-              >
-                {texte}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="bouton principal" onClick={lancer}>
-          Nouvelle partie
-        </button>
-        <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
+        )}
+        {!simple && (
+          <details className="options">
+            <summary>Plus d’options</summary>
+            <div className="champ">
+              Qui commence ?
+              <div className="segments">
+                {(
+                  [
+                    ['hasard', 'Au hasard'],
+                    ['moi', 'Moi'],
+                    ['ia', 'L’ordinateur'],
+                  ] as const
+                ).map(([valeur, texte]) => (
+                  <button
+                    key={valeur}
+                    type="button"
+                    className={reglages.premier === valeur ? 'actif' : ''}
+                    onClick={() => setReglages({ ...reglages, premier: valeur })}
+                  >
+                    {texte}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
+          </details>
+        )}
       </div>
     </div>
   )
@@ -178,7 +233,7 @@ function AccueilIA() {
 
 /** Phrase décrivant un coup de l'historique. */
 function decrire(c: CoupIA) {
-  const qui = c.camp === 'moi' ? 'Tu as' : 'L’IA a'
+  const qui = c.camp === 'moi' ? 'Tu as' : 'L’ordinateur a'
   if (c.type === 'mot') return { texte: `${qui} joué`, coup: c.coup! }
   if (c.type === 'change') return { texte: `${qui} changé ${c.nbChanges} lettre${(c.nbChanges ?? 0) > 1 ? 's' : ''}`, coup: null }
   return { texte: `${qui} passé`, coup: null }
@@ -205,6 +260,7 @@ function EcranIA({
   const analyse = useAnalyse(plateau, edition.poses)
   const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
   const aMoi = !partie.finie && partie.tour === 'moi'
+  const { simple } = useReglages()
   const [message, setMessage] = useState('')
   const [menu, setMenu] = useState(false)
   const [changement, setChangement] = useState(false)
@@ -304,7 +360,7 @@ function EcranIA({
       <BarreJeu
         onRetour={onQuitter}
         libelleRetour="Retour"
-        titre={`Contre ${profil.nom}`}
+        titre={simple ? `Niveau ${nomNiveau(partie.niveau, true)}` : `Contre ${profil.nom}`}
         pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
         droite={boutons}
       />
@@ -323,10 +379,10 @@ function EcranIA({
         {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
         {!partie.finie && !aMoi && (
           <div className="apercu">
-            <span className="indice">{erreurIA ? '' : 'L’IA réfléchit…'}</span>
+            <span className="indice">{erreurIA ? '' : 'L’ordinateur réfléchit…'}</span>
             {erreurIA && (
               <>
-                <span className="mots ecart-neg">L’IA ne peut pas jouer : {erreurIA}</span>
+                <span className="mots ecart-neg">L’ordinateur ne peut pas jouer : {erreurIA}</span>
                 <button type="button" className="bouton" onClick={() => setEssai((n) => n + 1)}>
                   Réessayer
                 </button>
@@ -354,7 +410,7 @@ function EcranIA({
             <BarreStatut
               texte={
                 <>
-                  Toi <b>{moi}</b> · <b>{ia}</b> IA
+                  Toi <b>{moi}</b> · <b>{ia}</b> Ordinateur
                 </>
               }
               part={moi + ia ? moi / (moi + ia) : 0.5}
@@ -407,7 +463,7 @@ function EcranIA({
       </ColonneJeu>
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
-      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’IA" />
+      <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’ordinateur" />
       <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
       <Changement
         ouvert={changement}
@@ -490,7 +546,7 @@ function EcranIA({
       <Feuille ouvert={menu} onFermer={() => setMenu(false)}>
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
-          Contre <b>{profil.nom}</b> · toi {moi}, IA {ia} · sac : {nonVues.length} lettres
+          Contre <b>{profil.nom}</b> · toi {moi}, ordinateur {ia} · sac : {nonVues.length} lettres
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre
@@ -531,7 +587,7 @@ function EcranIA({
                 abandonnerPartieIA(partie)
                 onQuitter()
               }
-            } else if (confirm('Abandonner la partie ? L’IA gagne.')) onChange(abandonnerIA(partie))
+            } else if (confirm('Abandonner la partie ? L’ordinateur gagne.')) onChange(abandonnerIA(partie))
           }}
         >
           Abandonner la partie
@@ -546,20 +602,21 @@ const signe = (n: number) => (n > 0 ? '+' + n : String(n))
 function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRevanche: () => void; onQuitter: () => void }) {
   const f = partie.fin!
   const profil = PROFILS[partie.niveau]
+  const { simple } = useReglages()
   return (
     <>
       <ContenuPanneau>
-        <b style={{ fontSize: 20 }}>{f.gagnant === 'moi' ? 'Tu as gagné !' : f.gagnant === 'ia' ? `${profil.nom} a gagné` : 'Égalité'}</b>
+        <b style={{ fontSize: 20 }}>{f.gagnant === 'moi' ? 'Tu as gagné !' : f.gagnant === 'ia' ? (simple ? 'L’ordinateur a gagné' : `${profil.nom} a gagné`) : 'Égalité'}</b>
         <span className="note">
           {f.raison === 'abandon'
             ? 'Partie abandonnée.'
             : f.raison === 'passes'
               ? 'Six tours sans mot : chacun perd la valeur de ses lettres restantes'
               : 'Le sac est vide et un chevalet aussi : les lettres restantes changent de camp'}
-          {f.raison !== 'abandon' && ` (toi ${signe(f.ajustements.moi)}, IA ${signe(f.ajustements.ia)}).`}
+          {f.raison !== 'abandon' && ` (toi ${signe(f.ajustements.moi)}, ordinateur ${signe(f.ajustements.ia)}).`}
         </span>
         <span className="note">
-          Score final : toi {partie.scores.moi}, IA {partie.scores.ia}
+          Score final : toi {partie.scores.moi}, ordinateur {partie.scores.ia}
         </span>
         {aides(partie) && <span className="note">Aides : {aides(partie)}</span>}
       </ContenuPanneau>

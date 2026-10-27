@@ -15,15 +15,16 @@
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <title>Scrabble</title>
     <script>
-      // Thème choisi dans les réglages, posé avant le premier affichage (pas d'éclair clair sur un téléphone en sombre).
-      // Même calcul que estSombre() dans src/lib/reglages.ts.
+      // Thème et taille du texte choisis dans les réglages, posés avant le premier affichage (pas d'éclair clair sur un
+      // téléphone en sombre, ni de texte qui grossit). Même calcul que estSombre() dans src/lib/reglages.ts.
       ;(function () {
-        var theme
+        var r = {}
         try {
-          theme = JSON.parse(localStorage.getItem('scrabble.reglages') || '{}').theme
+          r = JSON.parse(localStorage.getItem('scrabble.reglages') || '{}') || {}
         } catch (e) {}
-        var sombre = theme === 'sombre' || (theme !== 'clair' && matchMedia('(prefers-color-scheme: dark)').matches)
+        var sombre = r.theme === 'sombre' || (r.theme !== 'clair' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.dataset.theme = sombre ? 'dark' : 'light'
+        if (typeof r.texte === 'string') document.documentElement.dataset.texte = r.texte
       })()
     </script>
   </head>

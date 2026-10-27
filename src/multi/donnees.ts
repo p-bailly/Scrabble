@@ -26,6 +26,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  startAfter,
   updateDoc,
   where,
   writeBatch,
@@ -175,6 +176,30 @@ export async function chercherJoueurs(texte: string, moi: string): Promise<Joueu
     .map((d) => ({ uid: d.id, pseudo: d.data().pseudo as string }))
 }
 
+/**
+ * Joueurs qu'on peut inviter (ceux qui acceptent d'être trouvés), par ordre alphabétique, moi exclu, `max` au plus ;
+ * `complet` : il n'y en a pas d'autres. Lus par pages de 10, la taille que les règles Firestore autorisent par requête.
+ */
+export async function listerJoueurs(moi: string, max = 100): Promise<{ joueurs: JoueurTrouve[]; complet: boolean }> {
+  const joueurs: JoueurTrouve[] = []
+  let apres: Parameters<typeof startAfter>[0] | undefined
+  for (let lus = 0; lus < max; lus += 10) {
+    const parametres = [orderBy('recherche'), ...(apres ? [startAfter(apres)] : []), limit(10)]
+    const s = await getDocs(query(collection(base(), 'joueurs'), ...parametres))
+    if (s.metadata.fromCache) throw new Error('Pas de connexion : la liste des joueurs demande Internet.')
+    for (const d of s.docs) if (d.id !== moi) joueurs.push({ uid: d.id, pseudo: d.data().pseudo as string })
+    if (s.docs.length < 10) return { joueurs, complet: true }
+    apres = s.docs[s.docs.length - 1]
+  }
+  return { joueurs, complet: false }
+}
+
+/** Liste à proposer pour inviter : les adversaires récents d'abord, puis les autres joueurs, chacun une fois. */
+export function joueursAInviter(recents: readonly JoueurTrouve[], tous: readonly JoueurTrouve[]): JoueurTrouve[] {
+  const vus = new Set(recents.map((j) => j.uid))
+  return [...recents, ...tous.filter((j) => !vus.has(j.uid))]
+}
+
 /** Adversaires déjà rencontrés, du plus récent au plus ancien : on peut les réinviter d'un geste. */
 export function adversairesRecents(parties: readonly Partie[], uid: string): JoueurTrouve[] {
   const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
@@ -250,7 +275,7 @@ export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTr
 export async function rejoindre(code: string, uid: string, pseudo: string): Promise<void> {
   const ref = doc(base(), 'parties', code)
   const d = await getDoc(ref)
-  if (!d.exists()) throw new Error('Aucune partie avec ce code')
+  if (!d.exists()) throw new Error('Cette partie n’existe plus.')
   const p = d.data() as Partie
   if (p.joueurs.includes(uid)) return
   if (p.etat !== 'attente') throw new Error('Cette partie a déjà deux joueurs')

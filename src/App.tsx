@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
 import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
+import { useReglages } from './lib/reglages'
 import { useChemin } from './lib/routeur'
 import { lire } from './lib/stockage'
 import { ContreIA } from './pages/ContreIA'
@@ -50,6 +51,8 @@ export function App() {
   // Pas d'onglets pendant une partie : les écrans de jeu les masquent.
   const [ongletsMasques, setOngletsMasques] = useState(false)
   useEffect(() => surMasquageOnglets(setOngletsMasques), [])
+  // Mode simple : trois onglets ; Stats et Réglages restent accessibles par un lien discret (Solo, Mes parties).
+  const { simple } = useReglages()
   const page = chemin[0] ?? 'solo'
   let contenu: ReactNode
   if (page === 'correction') contenu = <Correction id={decodeURIComponent(chemin[1] ?? 'courante')} />
@@ -75,10 +78,10 @@ export function App() {
       </main>
       <nav className="onglets" hidden={ongletsMasques}>
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
-        <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
+        <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte={simple ? 'Seul' : 'Solo'} />
         <Onglet href="#/dictionnaire" actif={onglet === 'dictionnaire'} icone={<IconeLoupe />} texte="Dictionnaire" />
-        <Onglet href="#/stats" actif={onglet === 'stats'} icone={<IconeStats />} texte="Stats" />
-        <Onglet href="#/reglages" actif={onglet === 'reglages'} icone={<IconeReglages />} texte="Réglages" />
+        {!simple && <Onglet href="#/stats" actif={onglet === 'stats'} icone={<IconeStats />} texte="Stats" />}
+        {!simple && <Onglet href="#/reglages" actif={onglet === 'reglages'} icone={<IconeReglages />} texte="Réglages" />}
       </nav>
     </div>
   )
