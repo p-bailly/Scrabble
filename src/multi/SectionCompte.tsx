@@ -94,7 +94,7 @@ function Compte() {
       </Rangee>
       <Interrupteur
         titre="Être trouvé par les autres joueurs"
-        texte="Ils peuvent t’inviter en tapant ton pseudo. Désactivé, seuls le code et le lien d’une partie permettent de te faire jouer."
+        texte="Ton pseudo apparaît dans la liste des joueurs qu’on peut inviter. Désactivé, seul le lien d’une partie permet de te faire jouer."
         actif={joueur?.visible ?? true}
         desactive={!joueur}
         onChange={(visible) => joueur && void enregistrer(joueur.pseudo, visible)}

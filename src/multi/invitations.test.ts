@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase/firestore'
 import { describe, expect, it } from 'vitest'
 import { reference } from '../jeu/coup'
-import { adversairesRecents, bilansFaceAFace, cleRecherche, MIN_RECHERCHE, toursDeMulti, type CoupMulti, type Partie } from './donnees'
+import { adversairesRecents, bilansFaceAFace, cleRecherche, joueursAInviter, MIN_RECHERCHE, toursDeMulti, type CoupMulti, type Partie } from './donnees'
 
 const instant = (ms: number) => ({ toMillis: () => ms }) as unknown as Timestamp
 
@@ -18,6 +18,16 @@ describe('clé de recherche', () => {
   it('un nom sans lettre ni chiffre donne une clé vide, donc introuvable', () => {
     expect(cleRecherche('???')).toBe('')
     expect(cleRecherche('???').length).toBeLessThan(MIN_RECHERCHE)
+  })
+})
+
+describe('joueurs à inviter', () => {
+  it('les adversaires récents d’abord, puis les autres, chacun une fois', () => {
+    const marie = { uid: 'marie', pseudo: 'Marie' }
+    const paul = { uid: 'paul', pseudo: 'Paul' }
+    const zoe = { uid: 'zoe', pseudo: 'Zoé' }
+    expect(joueursAInviter([paul], [marie, paul, zoe])).toEqual([paul, marie, zoe])
+    expect(joueursAInviter([], [marie])).toEqual([marie])
   })
 })
 

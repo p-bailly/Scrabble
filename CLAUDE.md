@@ -25,7 +25,9 @@ citent son titre : le garder en cas de renommage.
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
 - Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore).
-- Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.
+- Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. Partie à deux pensée pour une personne âgée : « Nouvelle partie »
+  d'un toucher, puis on touche le nom d'un joueur (tous ceux qui acceptent d'être trouvés, récents en tête) ou « Envoyer le lien » ;
+  aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
   aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).
@@ -65,12 +67,12 @@ citent son titre : le garder en cas de renommage.
   Hosting, copier `firebaseConfig` ; (6) créer `firebase.config.json` sur le modèle de `firebase.config.example.json` (JSON strict),
   le committer, ou le mettre dans la variable de dépôt `FIREBASE_CONFIG` que les workflows écrivent avant le build.
 - **Republier les règles à chaque changement de `firestore.rules`** (console, ou `npx firebase-tools deploy --only firestore:rules
-  --project <projectId>`), sinon « Inviter un joueur » et la synchro solo sont refusées (le code et le lien d'invitation marchent encore).
+  --project <projectId>`), sinon la liste des joueurs à inviter et la synchro solo sont refusées (le lien d'invitation marche encore).
 - Compte = simple nom d'utilisateur, sans mot de passe : `src/multi/firebase.ts` fabrique l'e-mail `<nom>@joueurs.scrabble.pbailly.fr`
   (n'existe pas) et le mot de passe `scrabble-<nom>`. Le nom ignore accents, casse et ponctuation. **Le nom n'est pas secret** (qui le
   connaît ouvre le compte, lit les parties et les données de synchro) : accepté entre proches ; durcissement possible = code à 4 chiffres mêlé au mot de passe.
 - Données : `parties/{code}` (+ `coups/{n}`, `chevalets/{uid}` lisible par son seul joueur), `joueurs/{uid}` (clé `recherche` = pseudo
-  sans accents ni casse, requêtes limitées à 10 fiches ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
+  sans accents ni casse, requêtes limitées à 10 fiches : la liste des joueurs à inviter se lit par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
   partie (celle en attente est lisible par code) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
   directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable.
 - Triche possible, acceptée : le téléphone tire les lettres, calcule le score, et le contenu du sac est lisible ; chaque coup est

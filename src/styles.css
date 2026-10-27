@@ -874,18 +874,6 @@ h2 {
   text-transform: none;
   letter-spacing: normal;
 }
-/* Le code d'invitation est un mot de jetons. */
-.code-invitation {
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-align: center;
-  padding: 10px 10px 10px calc(10px + 0.18em);
-  border-radius: var(--rayon);
-  background: var(--tile);
-  border: 2px solid var(--tile-edge);
-  color: var(--tile-text);
-}
 a.bouton {
   text-decoration: none;
 }

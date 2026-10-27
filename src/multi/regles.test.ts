@@ -3,7 +3,7 @@
 // (sans lui, ils sont ignorés : un simple « npm test » reste possible).
 
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter } from 'firebase/firestore'
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 
@@ -82,6 +82,17 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertSucceeds(getDoc(doc(autre(), 'joueurs', 'moi')))
       await assertFails(setDoc(doc(autre(), 'joueurs', 'moi'), { pseudo: 'Pirate' }))
       await assertFails(getDoc(doc(anonyme(), 'joueurs', 'moi')))
+    })
+
+    it('la liste des joueurs se lit par pages de 10, jamais d’un coup', async () => {
+      await env.withSecurityRulesDisabled(async (c) => {
+        for (let i = 0; i < 12; i++) await setDoc(doc(c.firestore(), 'joueurs', 'j' + i), { pseudo: 'J' + i, visible: true, recherche: 'j' + String(i).padStart(2, '0') })
+      })
+      const joueurs = collection(moi(), 'joueurs')
+      const page = await assertSucceeds(getDocs(query(joueurs, orderBy('recherche'), limit(10))))
+      await assertSucceeds(getDocs(query(joueurs, orderBy('recherche'), startAfter(page.docs[9]), limit(10))))
+      await assertFails(getDocs(query(joueurs, orderBy('recherche'))))
+      await assertFails(getDocs(query(joueurs, orderBy('recherche'), limit(11))))
     })
   })
 })

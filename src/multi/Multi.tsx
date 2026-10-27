@@ -36,8 +36,10 @@ import {
   ecouterPartie,
   enregistrerPseudo,
   inviter,
+  joueursAInviter,
   jouerCoup,
   lireJoueur,
+  listerJoueurs,
   messageErreur,
   MIN_RECHERCHE,
   normaliserCode,
@@ -151,7 +153,6 @@ function ChoixPseudo({ uid, onFini }: { uid: string; onFini: (p: string) => void
 function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; onPseudo: () => void }) {
   const [parties, setParties] = useState<Partie[] | null>(null)
   const [recues, setRecues] = useState<Partie[]>([])
-  const [code, setCode] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
   // Parties terminées que j'ai retirées de ma liste (elles restent chez l'adversaire et dans le bilan).
@@ -203,30 +204,11 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
           <IconePlus /> Nouvelle partie
         </button>
       </div>
-      <form
-        className="actions"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (normaliserCode(code)) naviguer('rejoindre/' + normaliserCode(code))
-        }}
-      >
-        <input
-          className="champ-code"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Code reçu (ex. K7P2QX)"
-          autoCapitalize="characters"
-          aria-label="Code d’invitation"
-        />
-        <button type="submit" className="bouton" disabled={!normaliserCode(code)}>
-          Rejoindre
-        </button>
-      </form>
       {erreur && <div className="apercu erreur">{erreur}</div>}
       <RappelNotifications />
       {parties === null && <div className="vide-etat">Chargement…</div>}
       {parties && liste.length === 0 && recues.length === 0 && (
-        <div className="vide-etat">Aucune partie. Crée-en une, puis invite un joueur de l’appli ou envoie le lien à un ami par SMS ou WhatsApp.</div>
+        <div className="vide-etat">Aucune partie. Touche « Nouvelle partie », puis choisis avec qui jouer.</div>
       )}
       {recues.length > 0 && (
         <>
@@ -363,12 +345,12 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
   const adv = autre(p, uid)
   const nom = adv ? p.pseudos[adv] : null
   const aMoi = p.etat === 'encours' && p.tour === uid
-  // Partie en attente : l'invité, s'il y en a un, a un nom ; sinon on attend quelqu'un qui aura le code.
+  // Partie en attente : l'invité, s'il y en a un, a un nom ; sinon on attend quelqu'un qui aura reçu le lien.
   const invite = p.etat === 'attente' ? p.invites?.[0] : undefined
   const nomInvite = invite ? p.pseudos[invite] : undefined
   let sousTitre = ''
   if (p.etat === 'attente')
-    sousTitre = `Code ${p.code} · ${nomInvite ? 'en attente de sa réponse' : p.refus?.length ? 'invitation refusée' : 'personne n’a encore rejoint'}`
+    sousTitre = nomInvite ? 'En attente de sa réponse' : p.refus?.length ? 'Invitation refusée · touche pour inviter quelqu’un d’autre' : 'Touche pour inviter quelqu’un'
   else if (p.dernier) {
     const qui = p.dernier.uid === uid ? 'Tu as' : (p.pseudos[p.dernier.uid] ?? '?') + ' a'
     sousTitre =
@@ -391,7 +373,7 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
         : 'En attente de ' + nom
     : nomInvite
       ? 'Invitation envoyée à ' + nomInvite
-      : 'Invitation envoyée'
+      : 'Nouvelle partie'
   if (p.enAttente) titre += ' · envoi en attente'
 
   // Le bouton × : abandonner une partie en cours, supprimer une invitation envoyée, retirer une partie terminée de la liste.
@@ -399,10 +381,10 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
     if (p.etat === 'encours') {
       if (confirm(`Abandonner la partie contre ${nom ?? 'ton adversaire'} ? ${nom ?? 'Ton adversaire'} gagne.`)) abandonner(p, uid, onErreur)
     } else if (p.etat === 'attente') {
-      if (confirm('Supprimer cette invitation ?')) void supprimerPartie(p.code).catch((e) => onErreur(messageErreur(e)))
+      if (confirm('Supprimer cette partie ?')) void supprimerPartie(p.code).catch((e) => onErreur(messageErreur(e)))
     } else if (confirm('Retirer cette partie de la liste ?')) onMasquer(p.code)
   }
-  const libelleSortie = p.etat === 'encours' ? 'Abandonner la partie' : p.etat === 'attente' ? 'Supprimer l’invitation' : 'Retirer de la liste'
+  const libelleSortie = p.etat === 'encours' ? 'Abandonner la partie' : p.etat === 'attente' ? 'Supprimer la partie' : 'Retirer de la liste'
 
   return (
     <div style={{ display: 'flex', gap: 6 }}>
@@ -431,15 +413,141 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
 
 const resultat = (p: Partie, uid: string) => (!p.fin?.gagnant ? 'Égalité' : p.fin.gagnant === uid ? 'Gagnée' : 'Perdue')
 
+/**
+ * Partie qui attend son adversaire, vue par son créateur : on touche le nom d'un joueur de l'appli pour l'inviter, ou on
+ * partage le lien. Tout est fait pour aller vite et sans rien taper (pas de code à recopier).
+ */
+function ChoisirAdversaire({ p, uid }: { p: Partie; uid: string }) {
+  return (
+    <>
+      <InviterJoueur p={p} uid={uid} />
+      <PartagerLien p={p} />
+      <button
+        type="button"
+        className="bouton discret"
+        onClick={() => {
+          if (confirm('Supprimer cette partie ?')) void supprimerPartie(p.code).then(() => naviguer('parties'))
+        }}
+      >
+        Supprimer cette partie
+      </button>
+    </>
+  )
+}
+
+/** Au-delà de ce nombre de joueurs, un champ permet de filtrer la liste par le nom. */
+const FILTRE_DES = 8
+
+/**
+ * Les joueurs de l'appli (adversaires récents en tête) : on touche un nom, il reçoit l'invitation dans « Mes parties » et
+ * l'accepte ou la refuse. Un seul invité à la fois : un nouveau remplace l'ancien.
+ */
+function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
+  const [recents, setRecents] = useState<JoueurTrouve[]>([])
+  const [tous, setTous] = useState<{ joueurs: JoueurTrouve[]; complet: boolean } | null>(null)
+  const [texte, setTexte] = useState('')
+  const [trouves, setTrouves] = useState<JoueurTrouve[]>([])
+  const [occupe, setOccupe] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => ecouterMesParties(uid, (parties) => setRecents(adversairesRecents(parties, uid))), [uid])
+  useEffect(() => {
+    listerJoueurs(uid).then(setTous, (e) => setErreur(messageErreur(e)))
+  }, [uid])
+
+  // Liste incomplète (beaucoup de joueurs) : le nom tapé est aussi cherché sur le serveur.
+  useEffect(() => {
+    if (!tous || tous.complet || cleRecherche(texte).length < MIN_RECHERCHE) {
+      setTrouves([])
+      return
+    }
+    let actuel = true
+    const minuteur = setTimeout(() => {
+      chercherJoueurs(texte, uid).then((r) => actuel && setTrouves(r), () => {})
+    }, 300)
+    return () => {
+      actuel = false
+      clearTimeout(minuteur)
+    }
+  }, [texte, uid, tous])
+
+  const invite = p.invites?.[0]
+  const refuse = p.refus?.[p.refus.length - 1]
+  const agir = async (action: () => Promise<void>) => {
+    setOccupe(true)
+    setErreur('')
+    try {
+      await action()
+    } catch (e) {
+      setErreur(messageErreur(e))
+    } finally {
+      setOccupe(false)
+    }
+  }
+
+  const proposes = joueursAInviter(joueursAInviter(recents, tous?.joueurs ?? []), trouves)
+  const cle = cleRecherche(texte)
+  const affiches = cle ? proposes.filter((j) => cleRecherche(j.pseudo).includes(cle)) : proposes
+
+  return (
+    <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <b style={{ fontSize: 20 }}>Avec qui veux-tu jouer ?</b>
+      {invite ? (
+        <div className="apercu" role="status">
+          <span>
+            <b>Invitation envoyée à {p.pseudos[invite] ?? '?'} ✓</b>
+            <br />
+            La partie commence dès que {p.pseudos[invite] ?? 'ce joueur'} accepte. Tu seras prévenu.
+          </span>
+          <button type="button" className="bouton discret" disabled={occupe} onClick={() => void agir(() => annulerInvitation(p))}>
+            Annuler
+          </button>
+        </div>
+      ) : refuse ? (
+        <span className="note ecart-neg">{p.pseudos[refuse] ?? 'Le joueur'} a refusé. Tu peux inviter quelqu’un d’autre.</span>
+      ) : (
+        <span className="note">Touche le nom d’un joueur pour l’inviter.</span>
+      )}
+      {proposes.length > FILTRE_DES && (
+        <input value={texte} onChange={(e) => setTexte(e.target.value)} placeholder="Chercher un nom" maxLength={20} autoComplete="off" aria-label="Chercher un nom" />
+      )}
+      {tous === null && !erreur && <span className="note">Chargement des joueurs…</span>}
+      {tous && proposes.length === 0 && <span className="note">Aucun autre joueur pour l’instant : envoie le lien ci-dessous.</span>}
+      {cle && affiches.length === 0 && <span className="note">Personne ne s’appelle comme ça.</span>}
+      <div className="liste">
+        {affiches.map((j) => (
+          <button
+            key={j.uid}
+            type="button"
+            className={'ligne' + (j.uid === invite ? ' choisie' : '')}
+            disabled={occupe}
+            onClick={() => j.uid !== invite && void agir(() => inviter(p, j))}
+          >
+            <div className="avatar" style={{ background: j.uid === invite ? 'var(--accent)' : 'var(--muted)' }}>
+              {j.pseudo.slice(0, 1).toUpperCase()}
+            </div>
+            <div className="principal" style={{ fontWeight: 700, fontSize: 18 }}>
+              {j.pseudo}
+            </div>
+            <span className={j.uid === invite ? 'note' : 'bouton'}>{j.uid === invite ? 'Invité ✓' : 'Inviter'}</span>
+          </button>
+        ))}
+      </div>
+      {erreur && <div className="apercu erreur">{erreur}</div>}
+    </div>
+  )
+}
+
 /** Lien d'invitation : la version web publiée (ou celle qu'on utilise, si on est déjà sur le web). */
 function lienInvitation(code: string) {
   const baseWeb = natif || location.hostname === 'localhost' ? ADRESSE_WEB : location.origin + location.pathname
   return `${baseWeb}#/rejoindre/${code}`
 }
 
-function Invitation({ p }: { p: Partie }) {
+/** Pour quelqu'un qui n'est pas dans la liste : un lien à envoyer (SMS, WhatsApp, e-mail…), qui ouvre la partie. */
+function PartagerLien({ p }: { p: Partie }) {
   const lien = lienInvitation(p.code)
-  const message = `Viens jouer au Scrabble avec moi ! Code ${p.code} : ${lien}`
+  const message = `Viens jouer au Scrabble avec moi ! Touche ce lien : ${lien}`
   const [copie, setCopie] = useState(false)
   const partager = async () => {
     if (navigator.share) {
@@ -455,161 +563,21 @@ function Invitation({ p }: { p: Partie }) {
   }
   return (
     <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <b>Ou envoie le lien</b>
-      <div className="code-invitation">{p.code}</div>
-      <span className="note">
-        Pour quelqu’un qui n’a pas encore l’appli, ou que tu ne trouves pas ci-dessus : le lien ouvre l’appli Scrabble si
-        elle est installée, sinon la version web. On peut aussi saisir le code dans « Mes parties ».
-      </span>
-      <div className="actions" style={{ flexWrap: 'wrap' }}>
-        <button type="button" className="bouton principal large" onClick={() => void partager()}>
-          <IconePartager /> Partager
-        </button>
-        <a className="bouton large" href={'https://wa.me/?text=' + encodeURIComponent(message)} target="_blank" rel="noreferrer">
-          WhatsApp
-        </a>
-        <a className="bouton large" href={'sms:?&body=' + encodeURIComponent(message)}>
-          SMS
-        </a>
-      </div>
-      <button
-        type="button"
-        className="bouton discret"
-        onClick={() => {
-          void navigator.clipboard?.writeText(lien)
-          setCopie(true)
-        }}
-      >
-        {copie ? 'Copié !' : 'Copier le lien'}
+      <b style={{ fontSize: 20 }}>Quelqu’un d’autre ?</b>
+      <span className="note">Envoie-lui un lien : en le touchant, il arrive directement dans la partie.</span>
+      <button type="button" className="bouton principal large" onClick={() => void partager()}>
+        <IconePartager /> {copie ? 'Lien copié !' : 'Envoyer le lien'}
       </button>
-      <button
-        type="button"
-        className="bouton danger"
-        onClick={() => {
-          if (confirm('Supprimer cette invitation ?')) void supprimerPartie(p.code).then(() => naviguer('parties'))
-        }}
-      >
-        Supprimer l’invitation
-      </button>
-    </div>
-  )
-}
-
-/**
- * Inviter directement un joueur de l'appli : on tape son pseudo (ou on touche un adversaire déjà rencontré), il reçoit
- * l'invitation dans « Mes parties » et l'accepte ou la refuse. Un seul invité à la fois : un nouveau remplace l'ancien.
- */
-function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
-  const [texte, setTexte] = useState('')
-  const [trouves, setTrouves] = useState<JoueurTrouve[] | null>(null)
-  const [recents, setRecents] = useState<JoueurTrouve[]>([])
-  const [occupe, setOccupe] = useState(false)
-  const [erreur, setErreur] = useState('')
-
-  // Adversaires déjà rencontrés : proposés d'un toucher, sans rien taper.
-  useEffect(() => ecouterMesParties(uid, (parties) => setRecents(adversairesRecents(parties, uid).slice(0, 6))), [uid])
-
-  // Recherche au fil de la frappe, après une courte pause.
-  useEffect(() => {
-    if (cleRecherche(texte).length < MIN_RECHERCHE) {
-      setTrouves(null)
-      return
-    }
-    let actuel = true
-    const minuteur = setTimeout(() => {
-      chercherJoueurs(texte, uid)
-        .then((r) => {
-          if (!actuel) return
-          setTrouves(r)
-          setErreur('')
-        })
-        .catch((e) => actuel && setErreur(messageErreur(e)))
-    }, 300)
-    return () => {
-      actuel = false
-      clearTimeout(minuteur)
-    }
-  }, [texte, uid])
-
-  const invite = p.invites?.[0]
-  const refuse = p.refus?.[p.refus.length - 1]
-  const agir = async (action: () => Promise<void>) => {
-    setOccupe(true)
-    setErreur('')
-    try {
-      await action()
-    } catch (e) {
-      setErreur(messageErreur(e))
-    } finally {
-      setOccupe(false)
-    }
-  }
-  const choisir = (j: JoueurTrouve) => {
-    if (j.uid !== invite) void agir(() => inviter(p, j))
-  }
-
-  return (
-    <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <b>Inviter un joueur</b>
-      {invite ? (
-        <div className="liste">
-          <div className="ligne choisie" style={{ cursor: 'default' }}>
-            <div className="principal">
-              <div style={{ fontWeight: 700 }}>Invitation envoyée à {p.pseudos[invite] ?? '?'}</div>
-              <div className="note">Elle la trouvera dans « Mes parties » et te préviendra en l’acceptant.</div>
-            </div>
-            <button type="button" className="bouton discret" disabled={occupe} onClick={() => void agir(() => annulerInvitation(p))}>
-              Annuler
-            </button>
-          </div>
-        </div>
-      ) : (
-        refuse && <span className="note ecart-neg">{p.pseudos[refuse] ?? 'Le joueur'} a refusé ton invitation.</span>
-      )}
-      {recents.length > 0 && (
-        <div className="champ">
-          Joué récemment
-          <div className="segments">
-            {recents.map((j) => (
-              <button key={j.uid} type="button" className={j.uid === invite ? 'actif' : ''} disabled={occupe} onClick={() => choisir(j)}>
-                {j.pseudo}
-              </button>
-            ))}
-          </div>
+      {!navigator.share && (
+        <div className="actions">
+          <a className="bouton large" href={'https://wa.me/?text=' + encodeURIComponent(message)} target="_blank" rel="noreferrer">
+            WhatsApp
+          </a>
+          <a className="bouton large" href={'sms:?&body=' + encodeURIComponent(message)}>
+            SMS
+          </a>
         </div>
       )}
-      <label className="champ">
-        Chercher un joueur
-        <input
-          value={texte}
-          onChange={(e) => setTexte(e.target.value)}
-          placeholder="Son pseudo"
-          maxLength={20}
-          autoComplete="off"
-          autoCapitalize="none"
-        />
-      </label>
-      {trouves &&
-        (trouves.length === 0 ? (
-          <span className="note">
-            Personne ne s’appelle comme ça. Il n’a peut-être pas encore de compte, ou ne veut pas être trouvé : envoie-lui le lien ci-dessous.
-          </span>
-        ) : (
-          <div className="liste">
-            {trouves.map((j) => (
-              <button key={j.uid} type="button" className={'ligne' + (j.uid === invite ? ' choisie' : '')} disabled={occupe} onClick={() => choisir(j)}>
-                <div className="avatar" style={{ background: 'var(--accent)' }}>
-                  {j.pseudo.slice(0, 1).toUpperCase()}
-                </div>
-                <div className="principal" style={{ fontWeight: 700 }}>
-                  {j.pseudo}
-                </div>
-                <span className="note">{j.uid === invite ? 'Invité' : 'Inviter'}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      {erreur && <div className="apercu erreur">{erreur}</div>}
     </div>
   )
 }
@@ -711,8 +679,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       {p.etat === 'attente' ? (
         <div className="contenu">
           <Retour droite={boutonHistorique} />
-          {p.createur === uid && <InviterJoueur p={p} uid={uid} />}
-          <Invitation p={p} />
+          {p.createur === uid ? <ChoisirAdversaire p={p} uid={uid} /> : <PartagerLien p={p} />}
         </div>
       ) : (
         <div className="ecran-jeu">
