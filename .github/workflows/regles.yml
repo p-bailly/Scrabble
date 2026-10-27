@@ -1,0 +1,35 @@
+# Publie firestore.rules sur le projet Firebase à chaque push sur la branche par défaut (rien n'est republié si les
+# règles en ligne sont déjà celles du fichier). Sans le secret FIREBASE_SERVICE_ACCOUNT, ne fait rien (pas d'échec) :
+# voir CLAUDE.md, « Firebase », pour créer la clé.
+name: Règles Firestore
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regles-firestore
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publication des règles
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::notice::Secret FIREBASE_SERVICE_ACCOUNT absent : règles Firestore non publiées (voir CLAUDE.md, « Firebase »)."
+            exit 0
+          fi
+          node scripts/regles.ts

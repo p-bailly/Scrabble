@@ -2,3 +2,6 @@ node_modules
 dist
 *.log
 .DS_Store
+# Clé de compte de service Firebase (secret FIREBASE_SERVICE_ACCOUNT) : ne jamais la committer.
+*firebase-adminsdk*.json
+cle.json

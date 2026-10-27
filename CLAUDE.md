@@ -14,8 +14,8 @@ citent son titre : le garder en cas de renommage.
 - APK en local : Android SDK (plateforme 36) + Java 21, `npm run android` → `android/app/build/outputs/apk/release/app-release.apk`.
 - `npm run dico -- liste.txt "Nom"` : voir Dictionnaire. `scripts/dico.ts` et `src/jeu/construireDawg.ts` tournent directement sous Node
   (`.ts` importés avec extension, `erasableSyntaxOnly`) : `construireDawg.ts` reste sans import, sans enum ni syntaxe TS non effaçable.
-- CI : `verification.yml` (PR : typecheck, tests avec émulateur, build, APK + contrôle du `versionName`), `deploy.yml` (Pages) et
-  `android.yml` (APK, release « apk ») uniquement sur la branche par défaut.
+- CI : `verification.yml` (PR : typecheck, tests avec émulateur, build, APK + contrôle du `versionName`), `deploy.yml` (Pages),
+  `android.yml` (APK, release « apk ») et `regles.yml` (règles Firestore, voir Firebase) uniquement sur la branche par défaut.
 
 ## Architecture
 - `src/jeu/` : règles et calculs en TypeScript pur (ni React ni réseau), testés. `generateur.ts` : tous les coups légaux
@@ -62,8 +62,13 @@ citent son titre : le garder en cas de renommage.
   `eur3`, mode production ; (4) onglet Règles : coller `firestore.rules` et publier ; (5) Paramètres → appli Web `</>` « Scrabble », sans
   Hosting, copier `firebaseConfig` ; (6) créer `firebase.config.json` sur le modèle de `firebase.config.example.json` (JSON strict),
   le committer, ou le mettre dans la variable de dépôt `FIREBASE_CONFIG` que les workflows écrivent avant le build.
-- **Republier les règles à chaque changement de `firestore.rules`** (console, ou `npx firebase-tools deploy --only firestore:rules
-  --project <projectId>`), sinon « Inviter un joueur » et la synchro solo sont refusées (le code et le lien d'invitation marchent encore).
+- **Les règles en ligne doivent suivre `firestore.rules`**, sinon « Inviter un joueur » et la synchro solo sont refusées (« Refusé par
+  le serveur » ; le code et le lien d'invitation marchent encore). `regles.yml` les publie à chaque push sur la branche par défaut
+  (`scripts/regles.ts`, API Firebase Rules, rien si elles sont déjà à jour ; lancement manuel : Actions → Règles Firestore → Run
+  workflow) grâce au **secret de dépôt `FIREBASE_SERVICE_ACCOUNT`** : console Firebase → Paramètres du projet → Comptes de service →
+  Générer une nouvelle clé privée, coller tout le JSON dans GitHub *Settings → Secrets and variables → Actions*. Erreur 403 : donner
+  au compte le rôle « Administrateur Firebase Rules » (Google Cloud → IAM). Sans secret, le workflow ne fait rien : publier à la main
+  (console, `FIREBASE_SERVICE_ACCOUNT="$(cat cle.json)" npm run regles` ou `npx firebase-tools deploy --only firestore:rules --project <projectId>`).
 - Compte = simple nom d'utilisateur, sans mot de passe : `src/multi/firebase.ts` fabrique l'e-mail `<nom>@joueurs.scrabble.pbailly.fr`
   (n'existe pas) et le mot de passe `scrabble-<nom>`. Le nom ignore accents, casse et ponctuation. **Le nom n'est pas secret** (qui le
   connaît ouvre le compte, lit les parties et les données de synchro) : accepté entre proches ; durcissement possible = code à 4 chiffres mêlé au mot de passe.
