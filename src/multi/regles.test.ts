@@ -3,7 +3,7 @@
 // (sans lui, ils sont ignorés : un simple « npm test » reste possible).
 
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore'
+import { deleteDoc, deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 
@@ -82,6 +82,57 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertSucceeds(getDoc(doc(autre(), 'joueurs', 'moi')))
       await assertFails(setDoc(doc(autre(), 'joueurs', 'moi'), { pseudo: 'Pirate' }))
       await assertFails(getDoc(doc(anonyme(), 'joueurs', 'moi')))
+    })
+  })
+
+  describe('invitation directe (parties/{code})', () => {
+    // Même forme que creerPartie et inviter (src/multi/donnees.ts).
+    const partie = (invites: string[] = []) => ({
+      code: 'ABCDEF',
+      createur: 'moi',
+      joueurs: ['moi'],
+      pseudos: { moi: 'Moi', ...Object.fromEntries(invites.map((u) => [u, u])) },
+      invites,
+      refus: [],
+      etat: 'attente',
+      tour: null,
+      plateau: '',
+      sac: 'ABC',
+      scores: { moi: 0 },
+      passes: 0,
+      nbCoups: 0,
+      dernier: null,
+      fin: null,
+      creeLe: serverTimestamp(),
+      majLe: serverTimestamp(),
+    })
+    const ref = (db: ReturnType<typeof moi>) => doc(db, 'parties', 'ABCDEF')
+    const inviter = (db: ReturnType<typeof moi>, uid: string, ancien?: string) =>
+      updateDoc(ref(db), {
+        invites: [uid],
+        refus: [],
+        [`pseudos.${uid}`]: uid,
+        ...(ancien ? { [`pseudos.${ancien}`]: deleteField() } : {}),
+        majLe: serverTimestamp(),
+      })
+
+    it('le créateur invite un joueur, en remplace un autre, annule', async () => {
+      await assertSucceeds(setDoc(ref(moi()), partie()))
+      await assertSucceeds(inviter(moi(), 'autre'))
+      await assertSucceeds(inviter(moi(), 'tiers', 'autre'))
+      await assertSucceeds(updateDoc(ref(moi()), { invites: [], refus: [], 'pseudos.tiers': deleteField(), majLe: serverTimestamp() }))
+    })
+
+    it('création avec un invité, puis l’invité refuse', async () => {
+      await assertSucceeds(setDoc(ref(moi()), partie(['autre'])))
+      await assertSucceeds(getDoc(ref(autre())))
+      await assertSucceeds(updateDoc(ref(autre()), { invites: [], refus: ['autre'], majLe: serverTimestamp() }))
+    })
+
+    it('personne d’autre que le créateur n’invite', async () => {
+      await assertSucceeds(setDoc(ref(moi()), partie()))
+      await assertFails(inviter(autre(), 'tiers'))
+      await assertFails(inviter(moi(), 'moi'))
     })
   })
 })
