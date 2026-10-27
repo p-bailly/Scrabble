@@ -5,7 +5,7 @@ Appli perso de **Scrabble en français**, web app installable (PWA) aussi livré
 - **Duplicate en solo** : même tirage pour tout le monde, on cherche le meilleur mot (« entraînement » ou « topping ») ;
 - **Partie solo contre l'IA**, en cinq niveaux ;
 - **Parties à deux en différé** : on invite un joueur par son pseudo, ou on envoie un lien ;
-- **Dictionnaire** (ODS8) : recherche de mots, vérification d'un mot et de sa valeur, définitions.
+- **Dictionnaire** (ODS8) : vérification d'un mot et de sa valeur, définitions.
 
 Le solo et le dictionnaire marchent hors ligne et sans configuration ; seules les parties à deux demandent Firebase.
 

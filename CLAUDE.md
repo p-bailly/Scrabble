@@ -25,7 +25,7 @@ citent son titre : le garder en cas de renommage.
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
 - Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore).
-- Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. En partie, la loupe sous le chevalet ouvre « Vérifier un mot » (même outil que le dictionnaire, jamais une recherche par lettres).
+- Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
   aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).
@@ -43,7 +43,9 @@ citent son titre : le garder en cas de renommage.
 - Analyse d'une partie (`pages/Analyse.tsx`) : exige le **chevalet de chaque tour** (`PartieIA.coups[].chevalet`, champ `chevalet`
   de `parties/{code}/coups/{n}`) ; les parties plus anciennes ne sont pas analysables. « Meilleur » = le plus de points (lettres gardées
   et points de fin de partie ignorés). À deux, l'analyse n'ouvre qu'après la fin de partie (elle montre le jeu de l'adversaire).
-- Le dictionnaire n'a volontairement **pas** de recherche « avec mes lettres » (ce serait tricher en cours de partie).
+- Le dictionnaire n'a volontairement **aucune** recherche (début, fin, « avec mes lettres »…) : il vérifie un mot précis.
+- Définitions : Wiktionnaire (`src/lib/definitions.ts`, en-tête `Api-User-Agent`), graphie accentuée retrouvée par `opensearch` ;
+  pour une forme fléchie (« Pluriel de chat. »), la définition du mot d'origine suit. Cache sur l'appareil (300 mots).
 
 ## Dictionnaire
 - ODS8 (2021 ; 411 430 formes dont 402 325 de 2 à 15 lettres gardées), repris de `Thecoolsim/French-Scrabble-ODS8`. **Pas une liste
