@@ -249,7 +249,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const tirage = useMemo(() => courant?.tirage ?? [], [courant])
   // Entrée au clavier = Valider ; la fonction est donnée au hook par une référence, définie plus bas.
   const validerRef = useRef<() => void>(() => {})
-  const edition = useEdition(plateau, tirage, () => validerRef.current())
+  const edition = useEdition(plateau, tirage, () => validerRef.current(), 'dup.' + partie.id)
   const analyse = useAnalyse(plateau, edition.poses)
   const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(partie.id, numero))
   const [menu, setMenu] = useState(false)

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import type { Pose } from '../jeu/coup'
 import { ALPHABET, JOKER, valeur } from '../jeu/lettres'
 import { CENTRE, TAILLE, colonneDe, ligneDe, type Plateau } from '../jeu/plateau'
+import { ecrire, lire } from '../lib/stockage'
 
 export interface Tuile {
   id: number
@@ -33,6 +34,14 @@ interface EtatEdition {
 
 let prochainId = 1
 const versTuiles = (lettres: readonly string[]): Tuile[] => lettres.map((lettre) => ({ id: prochainId++, lettre }))
+
+/** Les lettres du chevalet dans l'ordre mémorisé sur l'appareil, si ce sont bien les mêmes lettres ; sinon telles quelles. */
+function dansLOrdreMemorise(chevalet: readonly string[], memoire?: string): readonly string[] {
+  if (!memoire) return chevalet
+  const ordre = lire<string>('chevalet.' + memoire, '')
+  if (ordre.length !== chevalet.length || [...ordre].sort().join('') !== [...chevalet].sort().join('')) return chevalet
+  return [...ordre]
+}
 
 const vide = (tuiles: Tuile[]): EtatEdition => ({ tuiles, poses: {}, choisie: null, curseur: null, joker: null })
 
@@ -81,9 +90,9 @@ function emplacementProche(x: number, y: number): number | null {
 }
 
 /** État de la pose en cours, pour un plateau et un chevalet donnés. */
-export function useEdition(plateau: Plateau, chevalet: readonly string[], surEntree?: () => void) {
+export function useEdition(plateau: Plateau, chevalet: readonly string[], surEntree?: () => void, memoire?: string) {
   const cle = chevalet.join('')
-  const [etat, setEtat] = useState<EtatEdition>(() => vide(versTuiles(chevalet)))
+  const [etat, setEtat] = useState<EtatEdition>(() => vide(versTuiles(dansLOrdreMemorise(chevalet, memoire))))
   const [glisse, setGlisse] = useState<Glisse | null>(null)
   const [cible, setCible] = useState<number | null>(null)
   // Emplacement du chevalet où la tuile tenue se poserait ; null tant qu'elle n'est pas au-dessus du chevalet.
@@ -99,8 +108,14 @@ export function useEdition(plateau: Plateau, chevalet: readonly string[], surEnt
 
   // Nouveau chevalet (coup suivant, lettres changées) : on repart de zéro.
   useEffect(() => {
-    setEtat(vide(versTuiles(chevalet)))
+    setEtat(vide(versTuiles(dansLOrdreMemorise(chevalet, memoire))))
   }, [cle])
+
+  // L'ordre des lettres choisi est gardé sur l'appareil (par partie) : il survit à la fermeture de l'appli.
+  const ordre = etat.tuiles.map((t) => t.lettre).join('')
+  useEffect(() => {
+    if (memoire && ordre) ecrire('chevalet.' + memoire, ordre)
+  }, [memoire, ordre])
 
   const occupee = useCallback(
     (pos: number, e: EtatEdition) => !!plateauRef.current[pos] || Object.values(e.poses).some((p) => p.pos === pos),

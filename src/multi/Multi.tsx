@@ -642,7 +642,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const plateau = useMemo(() => plateauDepuisTexte(p?.plateau ?? '.'.repeat(225)), [p?.plateau])
   // Pas d'onglets pendant une partie commencée (ils restent pour l'invitation).
   useMasquerOnglets(!!p && p.etat !== 'attente')
-  const edition = useEdition(plateau, chevalet)
+  const edition = useEdition(plateau, chevalet, undefined, 'multi.' + code)
   const analyse = useAnalyse(plateau, edition.poses)
   // Brouillon posé pendant le tour de l'adversaire : il saute quand son coup arrive (les cases ont pu changer).
   const rappelerBrouillon = edition.rappeler
@@ -810,7 +810,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
         {coups.length === 0 && <div className="note">Aucun coup pour l’instant.</div>}
         {coups.some((c) => c.type === 'mot') && <div className="note">Touche un mot pour lire sa définition.</div>}
         <div className="liste">
-          {coups.map((c) => (
+          {[...coups].reverse().map((c) => (
             <div key={c.n}>
               <div
                 className={'ligne' + (defOuverte === c.n ? ' choisie' : '')}

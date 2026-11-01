@@ -224,7 +224,7 @@ function EcranIA({
   useMasquerOnglets()
   const plateau = useMemo(() => plateauDepuisTexte(partie.plateau), [partie.plateau])
   const chevalet = partie.chevalets.moi
-  const edition = useEdition(plateau, chevalet)
+  const edition = useEdition(plateau, chevalet, undefined, 'ia.' + partie.id)
   const analyse = useAnalyse(plateau, edition.poses)
   const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
   const aMoi = !partie.finie && partie.tour === 'moi'
