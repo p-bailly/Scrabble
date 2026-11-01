@@ -9,6 +9,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Remise à zéro des statistiques de tous les joueurs : une date (ms) que chaque appli lit, puis efface ses statistiques
+    // d'avant. Tout joueur connecté peut la faire avancer (jamais reculer ni viser le futur) : accepté entre proches.
+    match /config/stats {
+      allow read: if connecte();
+      allow create, update: if connecte()
+        && request.resource.data.keys().hasOnly(['depuis'])
+        && request.resource.data.depuis is int
+        && request.resource.data.depuis <= request.time.toMillis() + 300000
+        && (resource == null || request.resource.data.depuis > resource.data.depuis);
+    }
+
     // Fiche de chaque joueur : lisible par tous les joueurs connectés, modifiable par lui seul.
     match /joueurs/{uid} {
       // Appareils qui reçoivent les notifications appli fermée (jeton FCM) : lui seul les lit et les écrit ; la Cloud

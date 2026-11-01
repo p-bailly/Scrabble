@@ -7,10 +7,11 @@ import { aides } from '../jeu/contreIA'
 import { configuration } from '../lib/configFirebase'
 import { useReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
-import { ecrire, lire } from '../lib/stockage'
+import { lire } from '../lib/stockage'
 import { useSynchro } from '../lib/synchro'
-import { formatPct, formatTemps, statistiques, supprimerDeHistorique, viderHistorique } from '../solo/sauvegarde'
-import { bilanParNiveau, lirePartiesIA, supprimerHistoriqueIA } from '../solo/sauvegardeIA'
+import { remettreStatsAZero } from '../solo/remiseAZero'
+import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
+import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
 import { nomNiveau } from './ContreIA'
 
 // Les bilans des parties à deux viennent de Firestore : ce morceau (avec Firebase) n'est chargé que si l'appareil a un compte.
@@ -148,15 +149,18 @@ export function Stats() {
           type="button"
           className="bouton danger"
           onClick={() => {
-            if (!confirm('Remettre toutes les statistiques à zéro ? Les parties en cours sont conservées.')) return
-            viderHistorique()
-            supprimerHistoriqueIA()
-            ecrire('stats.depuis', Date.now())
+            const tous = aUnCompte
+              ? 'Remettre à zéro les statistiques de TOUS les joueurs (chacun sur son appareil, à sa prochaine ouverture) ? Les parties en cours sont conservées.'
+              : 'Remettre toutes les statistiques à zéro ? Les parties en cours sont conservées.'
+            if (!confirm(tous)) return
+            const maintenant = Date.now()
+            remettreStatsAZero(maintenant)
             // Le bilan face à face lit cette date au chargement : on le remonte.
             setRemise((x) => x + 1)
+            if (aUnCompte) void import('../multi/synchro').then((m) => m.publierRemiseAZero(maintenant)).catch((e: Error) => alert('Remise à zéro des autres joueurs impossible : ' + e.message))
           }}
         >
-          Remettre les statistiques à zéro
+          {aUnCompte ? 'Remettre à zéro les statistiques de tous les joueurs' : 'Remettre les statistiques à zéro'}
         </button>
       </div>
     </div>
