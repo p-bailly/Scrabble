@@ -40,6 +40,7 @@ import { jetonsUtilises, jouer, lireReference, reference, retirerDuChevalet, typ
 import { tousLesJetons } from '../jeu/lettres'
 import { plateauDepuisTexte, plateauEnTexte, plateauVide } from '../jeu/plateau'
 import { base, identifiant } from './firebase'
+import { prevenir } from './prevenir'
 
 export type Etat = 'attente' | 'encours' | 'finie'
 
@@ -268,6 +269,7 @@ export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTr
   b.set(doc(base(), 'parties', code), partie)
   b.set(doc(base(), 'parties', code, 'chevalets', uid), { lettres: tires.join('') })
   await b.commit()
+  if (invite) prevenir(code)
   return code
 }
 
@@ -293,6 +295,7 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
   })
   b.set(doc(base(), 'parties', code, 'chevalets', uid), { lettres: tires.join('') })
   await b.commit()
+  prevenir(code)
 }
 
 export async function supprimerPartie(code: string) {
@@ -318,6 +321,7 @@ export async function inviter(p: Partie, invite: JoueurTrouve) {
     ...(ancien && ancien !== invite.uid ? { [`pseudos.${ancien}`]: deleteField() } : {}),
     majLe: serverTimestamp(),
   })
+  prevenir(p.code)
 }
 
 /** Retire l'invitation envoyée (la partie reste, avec son code et son lien). */
@@ -336,6 +340,7 @@ export async function annulerInvitation(p: Partie) {
 export async function refuserInvitation(code: string, uid: string) {
   exigerConnexion()
   await updateDoc(doc(base(), 'parties', code), { invites: arrayRemove(uid), refus: arrayUnion(uid), majLe: serverTimestamp() })
+  prevenir(code)
 }
 
 /** Invitations reçues, pas encore acceptées ni refusées (mise à jour en direct). */
@@ -470,7 +475,7 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   })
   b.set(doc(base(), 'parties', p.code, 'chevalets', uid), { lettres: nouveauChevalet.join('') })
   b.set(doc(base(), 'parties', p.code, 'coups', String(n)), { ...coup, le: serverTimestamp() })
-  b.commit().catch((e) => {
+  b.commit().then(() => prevenir(p.code)).catch((e) => {
     console.error('Coup refusé par le serveur', e)
     surRefus?.('Coup non enregistré : ' + messageErreur(e))
   })
@@ -488,7 +493,7 @@ export function abandonner(p: Partie, uid: string, surRefus?: (message: string) 
     dernier: { uid, type: 'abandon', points: 0 },
     majLe: serverTimestamp(),
   })
-  b.commit().catch((e) => {
+  b.commit().then(() => prevenir(p.code)).catch((e) => {
     console.error('Abandon refusé', e)
     surRefus?.('Abandon non enregistré : ' + messageErreur(e))
   })

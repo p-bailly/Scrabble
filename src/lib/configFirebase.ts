@@ -8,7 +8,15 @@ import type { FirebaseOptions } from 'firebase/app'
 // Avec « "emulateurs": true », l'appli utilise les émulateurs Firebase locaux (tests, voir CLAUDE.md, « Commandes »).
 // Notifications appli fermée (voir CLAUDE.md, « Notifications push ») : « "push": true » les propose ; « "vapidKey" » les
 // active sur le web et l'iPhone, « "pushAndroid": true » dans l'APK (une fois google-services.json ajouté à android/app).
-export type Configuration = FirebaseOptions & { emulateurs?: boolean; push?: boolean; vapidKey?: string; pushAndroid?: boolean }
+// Sans offre Blaze (pas de Cloud Function) : « "notifierUrl" » est l'adresse du Worker Cloudflare (dossier worker/) que l'appli
+// appelle après chaque coup, invitation ou fin de partie pour prévenir l'autre joueur.
+export type Configuration = FirebaseOptions & {
+  emulateurs?: boolean
+  push?: boolean
+  vapidKey?: string
+  pushAndroid?: boolean
+  notifierUrl?: string
+}
 
 const fichiers = import.meta.glob<Configuration>('/firebase.config.json', { eager: true, import: 'default' })
 export const configuration: Configuration | null = Object.values(fichiers)[0] ?? null

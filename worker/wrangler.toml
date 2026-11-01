@@ -1,0 +1,5 @@
+# Déploiement : cd worker && npx wrangler secret put FIREBASE_SERVICE_ACCOUNT && npx wrangler deploy
+# (voir CLAUDE.md, « Notifications push »). L'URL obtenue va dans firebase.config.json, champ « notifierUrl ».
+name = "scrabble-push"
+main = "index.js"
+compatibility_date = "2025-01-01"

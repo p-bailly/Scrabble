@@ -101,3 +101,32 @@ export function notificationsPartie(avant, apres) {
   }
   return envois
 }
+
+/**
+ * Ce qu'il faut notifier à partir de l'état *actuel* d'une partie, quand c'est `appelant` qui vient de l'écrire : c'est
+ * ce que sait un serveur appelé par le client (worker/), sans l'état d'avant. L'appelant n'est cru que s'il est bien
+ * l'auteur de ce que l'état montre (dernier coup, invitation, refus) : on ne prévient pas pour le compte d'un autre.
+ * @param {any} partie
+ * @param {string} appelant
+ * @returns {Notification[]}
+ */
+export function notificationsDepuisEtat(partie, appelant) {
+  if (!partie || !appelant) return []
+  const joueurs = partie.joueurs ?? []
+  if (partie.etat === 'attente') {
+    if (partie.createur === appelant) return notificationsPartie({ etat: 'attente', invites: [], refus: partie.refus ?? [] }, partie)
+    const refus = partie.refus ?? []
+    if (refus[refus.length - 1] === appelant)
+      return notificationsPartie({ etat: 'attente', invites: partie.invites ?? [], refus: refus.slice(0, -1) }, partie)
+    return []
+  }
+  if (!joueurs.includes(appelant)) return []
+  if (partie.etat === 'encours') {
+    if (partie.tour === appelant) return []
+    if (partie.nbCoups === 0) return notificationsPartie({ etat: 'attente' }, partie)
+    if (partie.dernier?.uid !== appelant) return []
+    return notificationsPartie({ etat: 'encours', nbCoups: partie.nbCoups - 1 }, partie)
+  }
+  if (partie.etat === 'finie' && partie.dernier?.uid === appelant) return notificationsPartie({ etat: 'encours' }, partie)
+  return []
+}

@@ -33,7 +33,7 @@ let db: Firestore | null = null
 function initialiser() {
   if (!configuration) throw new Error('Firebase n’est pas configuré')
   if (!app) {
-    const { emulateurs, push: _push, vapidKey: _vapidKey, pushAndroid: _pushAndroid, ...options } = configuration
+    const { emulateurs, push: _push, vapidKey: _vapidKey, pushAndroid: _pushAndroid, notifierUrl: _notifierUrl, ...options } = configuration
     app = initializeApp(options)
     auth = getAuth(app)
     // Cache local persistant : les parties s'affichent hors ligne et les coups joués sans réseau sont mis en
