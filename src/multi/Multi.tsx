@@ -720,9 +720,11 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             <Chevalet edition={edition} />
             {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
             {p.etat === 'encours' && !aMoi && (
-              <div className="apercu">
-                <span className="indice">{nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.</span>
-              </div>
+              <Apercu
+                analyse={null}
+                indice={`${nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.`}
+                onVerifier={() => setFeuilleVerifier(true)}
+              />
             )}
             {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
             {message && <div className="apercu erreur">{message}</div>}

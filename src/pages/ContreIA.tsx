@@ -2,7 +2,7 @@
 // choix du coup de l'IA se fait dans le Web Worker du moteur) et marche hors ligne.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
+import { Apercu, Loupe, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
@@ -378,7 +378,7 @@ function EcranIA({
         <Chevalet edition={edition} />
         {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
         {!partie.finie && !aMoi && (
-          <div className="apercu">
+          <div className="apercu avec-loupe">
             <span className="indice">{erreurIA ? '' : 'L’ordinateur réfléchit…'}</span>
             {erreurIA && (
               <>
@@ -388,6 +388,7 @@ function EcranIA({
                 </button>
               </>
             )}
+            <Loupe onVerifier={() => setFeuilleVerifier(true)} />
           </div>
         )}
         {dernier && !partie.finie && (

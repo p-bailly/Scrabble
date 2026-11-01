@@ -43,7 +43,7 @@ export function Mot({ mot }: { mot: string }) {
 }
 
 /** Bouton « Vérifier un mot » au bout de la ligne d'aperçu. */
-function Loupe({ onVerifier }: { onVerifier?: () => void }) {
+export function Loupe({ onVerifier }: { onVerifier?: () => void }) {
   if (!onVerifier) return null
   return (
     <button type="button" className="bouton-loupe" onClick={onVerifier} aria-label="Vérifier un mot">
