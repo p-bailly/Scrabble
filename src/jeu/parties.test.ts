@@ -126,10 +126,13 @@ describe('partie classique', () => {
 
   it('fin de partie et déduction des lettres restantes', () => {
     // Chevalet vide et sac vide : le joueur gagne les points de l'adversaire, qui les perd.
-    expect(finDePartie([], [[], ['K', 'E']], 0)).toEqual({ ajustements: [11, -11], raison: 'chevalet-vide' })
+    expect(finDePartie([], [[], ['K', 'E']], 0, 8)).toEqual({ ajustements: [11, -11], raison: 'chevalet-vide' })
     // Six passes de suite : chacun perd ses lettres.
-    expect(finDePartie(['A'], [['Z'], ['?', 'E']], 6)).toEqual({ ajustements: [-10, -1], raison: 'passes' })
-    expect(finDePartie(['A'], [[], ['E']], 2)).toBeNull()
+    expect(finDePartie(['A'], [['Z'], ['?', 'E']], 6, 8)).toEqual({ ajustements: [-10, -1], raison: 'passes' })
+    expect(finDePartie(['A'], [[], ['E']], 2, 8)).toBeNull()
+    // Les deux joueurs jouent autant de tours : si le premier finit (tours impairs), l'autre joue encore.
+    expect(finDePartie([], [[], ['K', 'E']], 0, 7)).toBeNull()
+    expect(finDePartie(['A'], [['Z'], ['?', 'E']], 6, 7)).toBeNull()
   })
 
   it('les lettres de l’adversaire se déduisent du reste', () => {

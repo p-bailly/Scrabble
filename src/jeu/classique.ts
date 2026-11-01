@@ -2,7 +2,9 @@
 //
 // À son tour, un joueur pose un mot, change des lettres (s'il en reste au moins 7 dans le sac) ou passe.
 // Fin de partie : le sac est vide et un joueur a vidé son chevalet (il gagne la valeur des lettres restant à
-// l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
+// l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes). Dans les deux
+// cas la partie ne s'arrête que lorsque les deux joueurs ont joué autant de tours : si celui qui joue en premier finit,
+// l'autre a encore un dernier tour (règle maison, plus juste que le Scrabble officiel).
 
 import { analyserCoup, jetonsUtilises, jouer, retirerDuChevalet, type Analyse, type Dico, type Pose } from './coup'
 import { VOYELLES, estJoker, sommeValeurs, tousLesJetons } from './lettres'
@@ -130,9 +132,16 @@ export interface Fin {
 
 /**
  * Fin de partie éventuelle, après un coup. `chevalets` : les lettres restantes de chaque joueur.
- * Renvoie null si la partie continue.
+ * `toursJoues` : nombre de tours joués depuis le début (celui qui vient d'être joué compris) ; impair, le premier joueur a
+ * un tour de plus et l'autre a droit à son dernier tour. Renvoie null si la partie continue.
  */
-export function finDePartie(sac: readonly string[], chevalets: readonly (readonly string[])[], passesDeSuite: number): Fin | null {
+export function finDePartie(
+  sac: readonly string[],
+  chevalets: readonly (readonly string[])[],
+  passesDeSuite: number,
+  toursJoues: number,
+): Fin | null {
+  if (toursJoues % 2 !== 0) return null
   const vide = chevalets.findIndex((c) => c.length === 0)
   if (sac.length === 0 && vide >= 0) {
     const restes = chevalets.map((c) => sommeValeurs(c))
