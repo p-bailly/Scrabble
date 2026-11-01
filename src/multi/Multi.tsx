@@ -782,9 +782,6 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                       <IconeRappeler />
                     </button>
                   )}
-                  <button type="button" className="bouton large" onClick={() => naviguer('parties')}>
-                    Mes parties
-                  </button>
                 </div>
               )}
             </PanneauBas>
