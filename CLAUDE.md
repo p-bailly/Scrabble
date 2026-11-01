@@ -97,6 +97,15 @@ citent son titre : le garder en cas de renommage.
   --only functions,firestore:rules --project <projectId>` ; web/iPhone : clé Web Push (Cloud Messaging) → `"push": true` + `"vapidKey"` (iPhone :
   iOS ≥ 16.4, appli sur l'écran d'accueil) ; Android : appli Android `fr.perso.scrabble` dans la console, `google-services.json` dans
   `android/app/` (pas de secret) + `"pushAndroid": true` ; puis Réglages → Notifications → « Aussi quand l'appli est fermée ».
+- **Sans offre Blaze : Worker Cloudflare** (`worker/`, offre gratuite sans carte) à la place de la Cloud Function, **ne pas déployer les deux** (doublons).
+  Après chaque écriture d'une partie (coup, abandon, invitation, refus, partie rejointe) l'appli appelle `POST <notifierUrl>/prevenir`
+  (`src/multi/prevenir.ts`, jeton Firebase de l'appelant + code) ; le Worker vérifie le jeton (`worker/google.js`), lit la partie et les
+  appareils de l'autre joueur dans Firestore (REST, compte de service), puis envoie via FCM HTTP v1. Il ne notifie que pour ce dont l'appelant
+  est l'auteur (`notificationsDepuisEtat` dans `functions/messages.js`). Mise en place : console Firebase → Paramètres → Comptes de service →
+  générer une clé privée (JSON, **secret, jamais committé**) ; compte Cloudflare gratuit ; `cd worker && npx wrangler login && npx wrangler secret
+  put FIREBASE_SERVICE_ACCOUNT` (coller le JSON) `&& npx wrangler deploy` ; l'URL `https://scrabble-push.<compte>.workers.dev` va dans
+  `firebase.config.json` (`"notifierUrl"`, avec `"push": true`, `"vapidKey"` / `"pushAndroid": true` comme ci-dessus). Pas de Blaze nécessaire :
+  FCM, Firestore (Spark) et les règles restent tels quels. Tests : `src/multi/worker.test.ts`.
 - Non vérifié de bout en bout (pas de projet Blaze) : envoi réel FCM, affichage iPhone/Android ; logs : console → Functions.
 - Permission système demandée à la création du compte et à chaque partie créée/rejointe ; Android : `POST_NOTIFICATIONS`.
 
