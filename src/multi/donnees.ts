@@ -225,12 +225,13 @@ export interface Bilan {
  * Bilan face à face avec chaque adversaire, sur les parties terminées (abandons compris : l'abandon donne la victoire à
  * l'autre). Le plus joué d'abord, puis par ordre alphabétique du pseudo ; le pseudo est celui de la partie la plus récente.
  */
-export function bilansFaceAFace(parties: readonly Partie[], uid: string): Bilan[] {
+export function bilansFaceAFace(parties: readonly Partie[], uid: string, depuis = 0): Bilan[] {
   const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
   const bilans = new Map<string, Bilan>()
   for (const p of [...parties].sort((a, b) => date(b) - date(a))) {
     const adv = autre(p, uid)
-    if (p.etat !== 'finie' || !adv) continue
+    // `depuis` : remise à zéro des statistiques sur cet appareil, les parties finies avant ne comptent plus.
+    if (p.etat !== 'finie' || !adv || date(p) <= depuis) continue
     const b = bilans.get(adv) ?? { uid: adv, pseudo: p.pseudos[adv] ?? '?', victoires: 0, defaites: 0, egalites: 0 }
     const gagnant = p.fin?.gagnant ?? null
     if (gagnant === null) b.egalites++

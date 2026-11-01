@@ -7,10 +7,10 @@ import { aides } from '../jeu/contreIA'
 import { configuration } from '../lib/configFirebase'
 import { useReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
-import { lire } from '../lib/stockage'
+import { ecrire, lire } from '../lib/stockage'
 import { useSynchro } from '../lib/synchro'
-import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
-import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
+import { formatPct, formatTemps, statistiques, supprimerDeHistorique, viderHistorique } from '../solo/sauvegarde'
+import { bilanParNiveau, lirePartiesIA, supprimerHistoriqueIA } from '../solo/sauvegardeIA'
 import { nomNiveau } from './ContreIA'
 
 // Les bilans des parties à deux viennent de Firestore : ce morceau (avec Firebase) n'est chargé que si l'appareil a un compte.
@@ -18,6 +18,7 @@ const FaceAFace = lazy(() => import('../multi/FaceAFace'))
 
 export function Stats() {
   const [, rafraichir] = useState(0)
+  const [remise, setRemise] = useState(0)
   useSynchro()
   const { simple } = useReglages()
   const s = statistiques()
@@ -31,7 +32,7 @@ export function Stats() {
         <>
           <h2>Face à face</h2>
           <Suspense fallback={<div className="vide-etat">Chargement…</div>}>
-            <FaceAFace />
+            <FaceAFace key={remise} />
           </Suspense>
         </>
       )}
@@ -142,6 +143,22 @@ export function Stats() {
           </div>
         </>
       )}
+      <div style={{ marginTop: 24 }}>
+        <button
+          type="button"
+          className="bouton danger"
+          onClick={() => {
+            if (!confirm('Remettre toutes les statistiques à zéro ? Les parties en cours sont conservées.')) return
+            viderHistorique()
+            supprimerHistoriqueIA()
+            ecrire('stats.depuis', Date.now())
+            // Le bilan face à face lit cette date au chargement : on le remonte.
+            setRemise((x) => x + 1)
+          }}
+        >
+          Remettre les statistiques à zéro
+        </button>
+      </div>
     </div>
   )
 }
