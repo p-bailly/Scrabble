@@ -419,7 +419,7 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
     if (!a.valide) return `Mot inconnu : ${a.motsInconnus.join(', ')}`
     const reste = retirerDuChevalet(chevalet, jetonsUtilises(a.coup.poses))
     if (!reste) return 'Ces lettres ne sont pas sur le chevalet'
-    const pioche = piocher(sac, 7 - reste.length)
+    const pioche = piocher(sac, 7 - reste.length, undefined, reste)
     nouveauPlateau = jouer(plateau, a.coup.poses)
     nouveauSac = pioche.sac
     nouveauChevalet = [...reste, ...pioche.tires]

@@ -103,7 +103,7 @@ export function jouerMotIA(p: PartieIA, camp: Camp, coup: Coup, hasard?: () => n
   if (refus) return { erreur: refus }
   const reste = retirerDuChevalet(p.chevalets[camp], jetonsUtilises(coup.poses))
   if (!reste) return { erreur: 'Ces lettres ne sont pas sur le chevalet' }
-  const pioche = piocher(p.sac, 7 - reste.length, hasard)
+  const pioche = piocher(p.sac, 7 - reste.length, hasard, reste)
   const suite: PartieIA = {
     ...p,
     plateau: plateauEnTexte(jouer(plateauDepuisTexte(p.plateau), coup.poses)),
