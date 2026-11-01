@@ -450,7 +450,7 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   const scores = { ...p.scores, [uid]: (p.scores[uid] ?? 0) + points }
   // Les lettres de l'adversaire se déduisent du reste (utile pour les points de fin de partie).
   const lettresAutre = lettresAdversaire(nouveauPlateau, nouveauSac, nouveauChevalet)
-  const fin = finDePartie(nouveauSac, [nouveauChevalet, lettresAutre], passes)
+  const fin = finDePartie(nouveauSac, [nouveauChevalet, lettresAutre], passes, n)
   let etat: Etat = 'encours'
   let finPartie: Partie['fin'] = null
   if (fin) {

@@ -86,7 +86,7 @@ export function nouvellePartieIA(
 
 /** Vérifie la fin de partie après un coup, et la prononce s'il y a lieu. */
 function conclure(p: PartieIA): PartieIA {
-  const fin = finDePartie(p.sac, [p.chevalets.moi, p.chevalets.ia], p.passes)
+  const fin = finDePartie(p.sac, [p.chevalets.moi, p.chevalets.ia], p.passes, p.coups.length)
   if (!fin) return p
   const ajustements: Record<Camp, number> = { moi: fin.ajustements[0], ia: fin.ajustements[1] }
   const scores = { moi: p.scores.moi + ajustements.moi, ia: p.scores.ia + ajustements.ia }
