@@ -5,18 +5,54 @@
 // l'adversaire, qui les perd), ou six passes de suite (chacun perd la valeur de ses lettres restantes).
 
 import { analyserCoup, jetonsUtilises, jouer, retirerDuChevalet, type Analyse, type Dico, type Pose } from './coup'
-import { sommeValeurs, tousLesJetons } from './lettres'
+import { VOYELLES, estJoker, sommeValeurs, tousLesJetons } from './lettres'
 import { NB_CASES, plateauDepuisTexte, type Plateau } from './plateau'
 
 export const PASSES_MAX = 6
 export const MIN_SAC_POUR_CHANGER = 7
 
-/** Tire `n` jetons au hasard dans le sac. */
-export function piocher(sac: readonly string[], n: number, hasard: () => number = Math.random): { tires: string[]; sac: string[] } {
-  const s = [...sac]
-  const tires: string[] = []
-  while (tires.length < n && s.length) tires.push(s.splice(Math.floor(hasard() * s.length), 1)[0])
-  return { tires, sac: s }
+const ESSAIS_EQUILIBRE = 200
+
+/** Voyelles, consonnes et jokers d'un ensemble de jetons (Y = voyelle ; un joker compte pour les deux au contrôle). */
+function compterJetons(jetons: readonly string[]): { v: number; c: number; j: number } {
+  let v = 0
+  let c = 0
+  let j = 0
+  for (const t of jetons) {
+    if (estJoker(t)) j++
+    else if (VOYELLES.has(t)) v++
+    else c++
+  }
+  return { v, c, j }
+}
+
+/**
+ * Tire `n` jetons au hasard dans le sac. `gardes` : les jetons déjà sur le chevalet. Le chevalet obtenu doit avoir au
+ * moins 2 voyelles et 2 consonnes (un joker vaut pour les deux), sauf si le sac et le chevalet réunis n'en ont plus
+ * assez : sinon on tire de nouveau.
+ */
+export function piocher(
+  sac: readonly string[],
+  n: number,
+  hasard: () => number = Math.random,
+  gardes: readonly string[] = [],
+): { tires: string[]; sac: string[] } {
+  const tirer = () => {
+    const s = [...sac]
+    const tires: string[] = []
+    while (tires.length < n && s.length) tires.push(s.splice(Math.floor(hasard() * s.length), 1)[0])
+    return { tires, sac: s }
+  }
+  const dispo = compterJetons([...gardes, ...sac])
+  const minV = Math.min(2, dispo.v + dispo.j)
+  const minC = Math.min(2, dispo.c + dispo.j)
+  let essai = tirer()
+  for (let i = 1; i < ESSAIS_EQUILIBRE; i++) {
+    const t = compterJetons([...gardes, ...essai.tires])
+    if (t.v + t.j >= minV && t.c + t.j >= minC) break
+    essai = tirer()
+  }
+  return essai
 }
 
 export interface ResultatMot {
@@ -40,7 +76,7 @@ export function jouerMot(
   if (!analyse.valide) return { erreur: `Mot inconnu : ${analyse.motsInconnus.join(', ')}` }
   const reste = retirerDuChevalet(chevalet, jetonsUtilises(poses))
   if (!reste) return { erreur: 'Ces lettres ne sont pas sur le chevalet' }
-  const p = piocher(sac, 7 - reste.length, hasard)
+  const p = piocher(sac, 7 - reste.length, hasard, reste)
   return { analyse, plateau: jouer(plateau, poses), chevalet: [...reste, ...p.tires], sac: p.sac }
 }
 
@@ -55,7 +91,7 @@ export function changer(
   if (rendues.length === 0) return { erreur: 'Choisis les lettres à changer' }
   const reste = retirerDuChevalet(chevalet, rendues)
   if (!reste) return { erreur: 'Ces lettres ne sont pas sur le chevalet' }
-  const p = piocher(sac, rendues.length, hasard)
+  const p = piocher(sac, rendues.length, hasard, reste)
   return { chevalet: [...reste, ...p.tires], sac: [...p.sac, ...rendues] }
 }
 

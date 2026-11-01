@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changer, finDePartie, jouerMot, lettresAdversaire, lettresNonVues } from './classique'
+import { changer, finDePartie, piocher, jouerMot, lettresAdversaire, lettresNonVues } from './classique'
 import { analyserCoup, type Coup } from './coup'
 import {
   INDICES,
@@ -101,6 +101,19 @@ describe('partie classique', () => {
   it('refuse un mot inconnu ou des lettres absentes du chevalet', () => {
     expect(jouerMot(vide(), [...'ZZZABCD'], [], posesDe(vide(), 7, 7, 'H', 'ZZZ'), dico)).toEqual({ erreur: 'Mot inconnu : ZZZ' })
     expect('erreur' in jouerMot(vide(), [...'ABCDEFG'], [], posesDe(vide(), 7, 7, 'H', 'ZEN'), dico)).toBe(true)
+  })
+
+  it('piocher : au moins 2 voyelles et 2 consonnes quand le sac le permet', () => {
+    const sac = [...'AEIOUBCDFGHLMNPRST']
+    for (let i = 0; i < 300; i++) {
+      const r = piocher(sac, 6, Math.random, ['R'])
+      const rack = ['R', ...r.tires]
+      expect(rack.filter((t) => 'AEIOUY'.includes(t)).length).toBeGreaterThanOrEqual(2)
+      expect(rack.filter((t) => !'AEIOUY'.includes(t)).length).toBeGreaterThanOrEqual(2)
+    }
+    // Plus assez de voyelles dans le sac : on se contente de ce qu'il y a.
+    const r = piocher([...'BCDFG'], 5, Math.random, ['A'])
+    expect(r.tires).toHaveLength(5)
   })
 
   it('changer des lettres : au moins 7 dans le sac', () => {
