@@ -1,5 +1,5 @@
-// Réglages : l'essentiel en haut (taille du texte, mode simple, thème, être prévenu, compte), le reste replié sous
-// « Réglages avancés » (plateau, jeu, détail des notifications, données de l'appareil, à propos).
+// Réglages : tout est visible d'un coup : l'essentiel en haut (taille du texte, thème, être prévenu, compte),
+// puis plateau et jeu, détail des notifications, données de l'appareil, à propos.
 
 import { lazy, Suspense, useEffect, useState, type ChangeEvent } from 'react'
 import { Interrupteur, Rangee } from '../composants/Reglage'
@@ -45,12 +45,6 @@ export function Reglages() {
             ))}
           </div>
         </div>
-        <Interrupteur
-          titre="Mode simple"
-          texte="Trois onglets, pas de duplicate, la partie contre l’ordinateur en un toucher. Idéal pour découvrir ou pour une personne peu habituée aux téléphones."
-          actif={r.simple}
-          onChange={(simple) => maj({ simple })}
-        />
         <div className="champ">
           Thème
           <div className="segments">
@@ -84,43 +78,40 @@ export function Reglages() {
         )}
       </div>
 
-      <details className="options">
-        <summary>Réglages avancés</summary>
-        <h2>Plateau et jeu</h2>
-        <div className="carte">
-          <Interrupteur
-            titre="Étiquettes des cases bonus"
-            texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
-            actif={r.etiquettes}
-            onChange={(etiquettes) => maj({ etiquettes })}
-          />
-          <Interrupteur
-            titre="Confirmer avant de passer"
-            texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’ordinateur."
-            actif={r.confirmerPasse}
-            onChange={(confirmerPasse) => maj({ confirmerPasse })}
-          />
-        </div>
+      <h2>Plateau et jeu</h2>
+      <div className="carte">
+        <Interrupteur
+          titre="Étiquettes des cases bonus"
+          texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
+          actif={r.etiquettes}
+          onChange={(etiquettes) => maj({ etiquettes })}
+        />
+        <Interrupteur
+          titre="Confirmer avant de passer"
+          texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’ordinateur."
+          actif={r.confirmerPasse}
+          onChange={(confirmerPasse) => maj({ confirmerPasse })}
+        />
+      </div>
 
-        <h2>Notifications</h2>
-        <div className="carte">
-          <Notifications r={r} maj={maj} />
-        </div>
+      <h2>Notifications</h2>
+      <div className="carte">
+        <Notifications r={r} maj={maj} />
+      </div>
 
-        <h2>Données de cet appareil</h2>
-        <div className="carte">
-          <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
-        </div>
-        <div className="carte">
-          <Synchronisation />
-          <Sauvegarde />
-        </div>
+      <h2>Données de cet appareil</h2>
+      <div className="carte">
+        <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
+      </div>
+      <div className="carte">
+        <Synchronisation />
+        <Sauvegarde />
+      </div>
 
-        <h2>À propos</h2>
-        <div className="carte">
-          <APropos />
-        </div>
-      </details>
+      <h2>À propos</h2>
+      <div className="carte">
+        <APropos />
+      </div>
     </div>
   )
 }
@@ -162,7 +153,7 @@ function EtrePrevenu({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<Reglag
   )
 }
 
-/** Détail des notifications (Réglages avancés) : essai, appli fermée, genres d’alertes. */
+/** Détail des notifications (section Notifications) : essai, appli fermée, genres d’alertes. */
 function Notifications({ r, maj }: { r: ReglagesAppli; maj: (modif: Partial<ReglagesAppli>) => void }) {
   // undefined : on ne sait pas encore ; null : cet appareil n'en propose pas.
   const [autorisees, setAutorisees] = useState<boolean | null | undefined>(undefined)

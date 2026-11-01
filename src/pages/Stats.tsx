@@ -1,11 +1,9 @@
-// Historique des parties de duplicate et statistiques. En mode simple, « Mes résultats » : face à face et contre
-// l'ordinateur seulement.
+// Historique des parties de duplicate et statistiques : face à face, contre l'ordinateur, duplicate.
 
 import { lazy, Suspense, useState } from 'react'
 import { Entete } from '../composants/Entete'
 import { aides } from '../jeu/contreIA'
 import { configuration } from '../lib/configFirebase'
-import { useReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { lire } from '../lib/stockage'
 import { useSynchro } from '../lib/synchro'
@@ -19,14 +17,13 @@ const FaceAFace = lazy(() => import('../multi/FaceAFace'))
 export function Stats() {
   const [, rafraichir] = useState(0)
   useSynchro()
-  const { simple } = useReglages()
   const s = statistiques()
   const contreIA = bilanParNiveau().filter((b) => b.parties > 0)
   const partiesIA = lirePartiesIA().slice(0, 5)
   const aUnCompte = !!configuration && !!lire('multi.pseudo', null)
   return (
     <div className="contenu">
-      <Entete titre={simple ? 'Mes résultats' : 'Statistiques'} />
+      <Entete titre="Statistiques" />
       {aUnCompte && (
         <>
           <h2>Face à face</h2>
@@ -43,7 +40,7 @@ export function Stats() {
           {contreIA.map((b) => (
             <div className="ligne" key={b.niveau} style={{ cursor: 'default' }}>
               <div className="principal">
-                <div style={{ fontWeight: 700 }}>{nomNiveau(b.niveau, simple)}</div>
+                <div style={{ fontWeight: 700 }}>{nomNiveau(b.niveau)}</div>
                 <div className="note">
                   {b.victoires} victoire{b.victoires > 1 ? 's' : ''} · {b.egalites} égalité{b.egalites > 1 ? 's' : ''} · {b.defaites} défaite
                   {b.defaites > 1 ? 's' : ''}
@@ -57,7 +54,7 @@ export function Stats() {
           ))}
         </div>
       )}
-      {!simple && partiesIA.length > 0 && (
+      {partiesIA.length > 0 && (
         <>
           <h2>Dernières parties contre l’ordinateur</h2>
           <div className="liste">
@@ -65,7 +62,7 @@ export function Stats() {
               <button type="button" className="ligne" key={p.id} onClick={() => naviguer('solo/ia/analyse/' + encodeURIComponent(p.id))}>
                 <div className="principal">
                   <div style={{ fontWeight: 700 }}>
-                    {new Date(p.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {nomNiveau(p.niveau, simple)}
+                    {new Date(p.creeLe).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · {nomNiveau(p.niveau)}
                   </div>
                   <div className="note">
                     {p.fin?.raison === 'abandon' ? 'Abandonnée' : p.fin?.gagnant === 'moi' ? 'Gagnée' : p.fin?.gagnant === 'ia' ? 'Perdue' : 'Égalité'} ·{' '}
@@ -78,9 +75,9 @@ export function Stats() {
           </div>
         </>
       )}
-      {!simple && <h2>Duplicate</h2>}
-      {!simple && s.parties.length === 0 && <div className="vide-etat">Aucune partie terminée. Lance un duplicate dans l’onglet Solo !</div>}
-      {!simple && s.parties.length > 0 && (
+      {<h2>Duplicate</h2>}
+      {s.parties.length === 0 && <div className="vide-etat">Aucune partie terminée. Lance un duplicate dans l’onglet Solo !</div>}
+      {s.parties.length > 0 && (
         <div className="stats">
           <div className="stat">
             <div className="etiquette">Parties</div>
@@ -96,7 +93,7 @@ export function Stats() {
           </div>
         </div>
       )}
-      {!simple && s.meilleure && (
+      {s.meilleure && (
         <div className="carte">
           <div className="note">Meilleure partie</div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{formatPct(s.meilleure.pourcentage)}</div>
@@ -105,7 +102,7 @@ export function Stats() {
           </div>
         </div>
       )}
-      {!simple && s.parties.length > 0 && (
+      {s.parties.length > 0 && (
         <>
           <h2>Historique du duplicate</h2>
           <div className="liste">

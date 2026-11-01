@@ -220,11 +220,6 @@ select {
   color: var(--lien);
   font-weight: 700;
 }
-/* Mode simple : trois onglets, plus grands. */
-:root[data-simple='oui'] .onglets a {
-  font-size: calc(14px * var(--texte));
-  min-width: 96px;
-}
 .onglets a.actif::before {
   content: '';
   position: absolute;
@@ -1330,7 +1325,7 @@ a.bouton {
   white-space: nowrap;
 }
 
-/* Options repliées (« Plus d'options », « Réglages avancés ») : le choix courant suffit presque toujours. */
+/* Options repliées (« Plus d'options ») : le choix courant suffit presque toujours. */
 details.options > summary {
   cursor: pointer;
   font-weight: 700;
