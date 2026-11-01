@@ -1,4 +1,4 @@
-// Partie classique contre l'ordinateur : cinq niveaux, du débutant au champion (trois en mode simple). Tout se passe sur l'appareil (le
+// Partie classique contre l'ordinateur : cinq niveaux, du débutant au champion. Tout se passe sur l'appareil (le
 // choix du coup de l'IA se fait dans le Web Worker du moteur) et marche hors ligne.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -35,7 +35,7 @@ import { reference, type Coup } from '../jeu/coup'
 import { INDICES, NOM_INDICE, texteIndice } from '../jeu/duplicate'
 import { NIVEAUX, PROFILS, type NiveauIA } from '../jeu/ia'
 import { plateauDepuisTexte } from '../jeu/plateau'
-import { lireReglages, useReglages } from '../lib/reglages'
+import { lireReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { chargerDico, chercherCoups, decisionIA } from '../moteur/moteur'
 import {
@@ -88,31 +88,8 @@ export function ContreIA({ id }: { id?: string }) {
   )
 }
 
-/** Mode simple : trois niveaux seulement, aux noms parlants. */
-export const NIVEAUX_SIMPLES: {
-  niveau: NiveauIA
-  nom: string
-  texte: string
-}[] = [
-  {
-    niveau: 'debutant',
-    nom: 'Facile',
-    texte: 'Pour découvrir ou jouer tranquillement.',
-  },
-  {
-    niveau: 'amateur',
-    nom: 'Moyen',
-    texte: 'Un adversaire honnête, qui joue des mots courants.',
-  },
-  {
-    niveau: 'confirme',
-    nom: 'Difficile',
-    texte: 'Il joue de bons coups : il faut s’accrocher.',
-  },
-]
-
-/** Nom d'un niveau à afficher (Facile, Moyen, Difficile en mode simple). */
-export const nomNiveau = (n: NiveauIA, simple: boolean) => (simple && NIVEAUX_SIMPLES.find((x) => x.niveau === n)?.nom) || PROFILS[n].nom
+/** Nom d'un niveau à afficher. */
+export const nomNiveau = (n: NiveauIA) => PROFILS[n].nom
 
 /** Commence une partie avec les réglages donnés (enregistrés pour la prochaine fois) et l'ouvre. */
 export function lancerPartieIA(reglages: ReglagesIA) {
@@ -125,7 +102,6 @@ export function lancerPartieIA(reglages: ReglagesIA) {
 
 /** Accueil : un gros bouton « Jouer » au dernier niveau choisi ; le niveau et qui commence se changent au besoin. */
 function AccueilIA() {
-  const { simple } = useReglages()
   const [reglages, setReglages] = useState<ReglagesIA>(lireReglagesIA)
   const [choixNiveau, setChoixNiveau] = useState(false)
   const [dico, setDico] = useState('')
@@ -137,13 +113,7 @@ function AccueilIA() {
       .catch((e: Error) => setDico('Dictionnaire indisponible : ' + e.message))
   }, [])
 
-  const niveaux = simple
-    ? NIVEAUX_SIMPLES
-    : NIVEAUX.map((n) => ({
-        niveau: n,
-        nom: PROFILS[n].nom,
-        texte: PROFILS[n].description,
-      }))
+  const niveaux = NIVEAUX.map((n) => ({ niveau: n, nom: PROFILS[n].nom, texte: PROFILS[n].description }))
   const choisir = (niveau: NiveauIA) => {
     const suite = { ...reglages, niveau }
     setReglages(suite)
@@ -164,7 +134,7 @@ function AccueilIA() {
         <div className="reglage">
           <div className="texte">
             <div className="titre">
-              Niveau : <b>{nomNiveau(reglages.niveau, simple)}</b>
+              Niveau : <b>{nomNiveau(reglages.niveau)}</b>
             </div>
           </div>
           <button type="button" className="bouton" aria-expanded={choixNiveau} onClick={() => setChoixNiveau(!choixNiveau)}>
@@ -199,33 +169,31 @@ function AccueilIA() {
             })}
           </div>
         )}
-        {!simple && (
-          <details className="options">
-            <summary>Plus d’options</summary>
-            <div className="champ">
-              Qui commence ?
-              <div className="segments">
-                {(
-                  [
-                    ['hasard', 'Au hasard'],
-                    ['moi', 'Moi'],
-                    ['ia', 'L’ordinateur'],
-                  ] as const
-                ).map(([valeur, texte]) => (
-                  <button
-                    key={valeur}
-                    type="button"
-                    className={reglages.premier === valeur ? 'actif' : ''}
-                    onClick={() => setReglages({ ...reglages, premier: valeur })}
-                  >
-                    {texte}
-                  </button>
-                ))}
-              </div>
+        <details className="options">
+          <summary>Plus d’options</summary>
+          <div className="champ">
+            Qui commence ?
+            <div className="segments">
+              {(
+                [
+                  ['hasard', 'Au hasard'],
+                  ['moi', 'Moi'],
+                  ['ia', 'L’ordinateur'],
+                ] as const
+              ).map(([valeur, texte]) => (
+                <button
+                  key={valeur}
+                  type="button"
+                  className={reglages.premier === valeur ? 'actif' : ''}
+                  onClick={() => setReglages({ ...reglages, premier: valeur })}
+                >
+                  {texte}
+                </button>
+              ))}
             </div>
-            <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
-          </details>
-        )}
+          </div>
+          <span className="note">{dico || 'Chargement du dictionnaire…'}</span>
+        </details>
       </div>
     </div>
   )
@@ -260,7 +228,6 @@ function EcranIA({
   const analyse = useAnalyse(plateau, edition.poses)
   const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
   const aMoi = !partie.finie && partie.tour === 'moi'
-  const { simple } = useReglages()
   const [message, setMessage] = useState('')
   const [menu, setMenu] = useState(false)
   const [changement, setChangement] = useState(false)
@@ -360,7 +327,7 @@ function EcranIA({
       <BarreJeu
         onRetour={onQuitter}
         libelleRetour="Retour"
-        titre={simple ? `Niveau ${nomNiveau(partie.niveau, true)}` : `Contre ${profil.nom}`}
+        titre={`Contre ${profil.nom}`}
         pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
         droite={boutons}
       />
@@ -603,11 +570,10 @@ const signe = (n: number) => (n > 0 ? '+' + n : String(n))
 function FinDePartie({ partie, onRevanche, onQuitter }: { partie: PartieIA; onRevanche: () => void; onQuitter: () => void }) {
   const f = partie.fin!
   const profil = PROFILS[partie.niveau]
-  const { simple } = useReglages()
   return (
     <>
       <ContenuPanneau>
-        <b style={{ fontSize: 20 }}>{f.gagnant === 'moi' ? 'Tu as gagné !' : f.gagnant === 'ia' ? (simple ? 'L’ordinateur a gagné' : `${profil.nom} a gagné`) : 'Égalité'}</b>
+        <b style={{ fontSize: 20 }}>{f.gagnant === 'moi' ? 'Tu as gagné !' : f.gagnant === 'ia' ? `${profil.nom} a gagné` : 'Égalité'}</b>
         <span className="note">
           {f.raison === 'abandon'
             ? 'Partie abandonnée.'

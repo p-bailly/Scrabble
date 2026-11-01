@@ -25,11 +25,8 @@ citent son titre : le garder en cas de renommage.
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
 - Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore). En haut l'essentiel
-  (taille du texte, mode simple, thème, être prévenu, compte), le reste replié sous « Réglages avancés ». Taille du texte : `--texte`
+  (taille du texte, thème, être prévenu, compte), puis tout le reste (plateau, notifications, données), sans partie repliée. Taille du texte : `--texte`
   (`data-texte` sur `<html>`, posé aussi par `index.html`), qui multiplie les `font-size` de l'interface, jamais celles du plateau ni des jetons.
-- Mode simple (réglage de l'appareil, pensé pour une personne âgée) : onglets Mes parties / Seul / Dictionnaire (Stats et Réglages par des
-  liens discrets, `LiensModeSimple`), pas de duplicate, contre l'ordinateur en un toucher avec trois niveaux (Facile = Débutant, Moyen =
-  Amateur, Difficile = Confirmé, `NIVEAUX_SIMPLES`), Stats réduites à « Mes résultats ». L'appli dit « l'ordinateur », jamais « l'IA ».
 - Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats. Partie à deux pensée pour une personne âgée : « Nouvelle partie »
   d'un toucher, puis on touche le nom d'un joueur (tous ceux qui acceptent d'être trouvés, récents en tête) ou « Envoyer le lien » ;
   aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.

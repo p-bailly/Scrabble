@@ -23,11 +23,6 @@ export interface Reglages {
   theme: Theme
   /** Taille des textes de l'interface (pas des lettres du plateau). Propre à l'appareil. */
   texte: TailleTexte
-  /**
-   * Mode simple, pour une personne qui découvre (ou une personne âgée) : trois onglets, pas de duplicate, contre
-   * l'ordinateur en un toucher, statistiques et réglages réduits. Propre à l'appareil.
-   */
-  simple: boolean
   /** Libellés des cases bonus sur le plateau (MT, MD, LT, LD). */
   etiquettes: boolean
   /** Notifications (en plus de l'autorisation du système) ; les trois suivants choisissent lesquelles. */
@@ -49,7 +44,6 @@ const CLE = 'reglages'
 const DEFAUT: Reglages = {
   theme: 'auto',
   texte: 'normal',
-  simple: false,
   etiquettes: true,
   notifications: true,
   notifTour: true,
@@ -66,7 +60,6 @@ export function lireReglages(): Reglages {
   return {
     theme: THEMES.some((t) => t.theme === r.theme) ? (r.theme as Theme) : DEFAUT.theme,
     texte: TAILLES.some((t) => t.taille === r.texte) ? (r.texte as TailleTexte) : DEFAUT.texte,
-    simple: booleen(r.simple, DEFAUT.simple),
     etiquettes: booleen(r.etiquettes, DEFAUT.etiquettes),
     notifications: booleen(r.notifications, DEFAUT.notifications),
     notifTour: booleen(r.notifTour, DEFAUT.notifTour),
@@ -93,7 +86,7 @@ const abonnes = new Set<(r: Reglages) => void>()
 // Derniers réglages lus, pour useReglages (React exige le même objet tant que rien ne change).
 let instantane: Reglages | null = null
 
-/** Être prévenu de chaque changement de réglages (le mode simple change les onglets, par exemple). */
+/** Être prévenu de chaque changement de réglages. */
 export function surReglages(rappel: (r: Reglages) => void): () => void {
   abonnes.add(rappel)
   return () => abonnes.delete(rappel)
@@ -140,7 +133,6 @@ function appliquer(r: Reglages) {
   racine.dataset.theme = sombre ? 'dark' : 'light'
   racine.dataset.etiquettes = r.etiquettes ? 'oui' : 'non'
   racine.dataset.texte = r.texte
-  racine.dataset.simple = r.simple ? 'oui' : 'non'
   // Les deux <meta> d'index.html suivent le système ; un thème choisi à la main impose sa couleur aux deux.
   for (const m of document.querySelectorAll('meta[name="theme-color"]')) {
     m.removeAttribute('media')
