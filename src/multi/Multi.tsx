@@ -646,6 +646,9 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   useMasquerOnglets(!!p && p.etat !== 'attente')
   const edition = useEdition(plateau, chevalet)
   const analyse = useAnalyse(plateau, edition.poses)
+  // Brouillon posé pendant le tour de l'adversaire : il saute quand son coup arrive (les cases ont pu changer).
+  const rappelerBrouillon = edition.rappeler
+  useEffect(() => rappelerBrouillon(), [p?.plateau, rappelerBrouillon])
   const nonVues = useMemo(() => lettresNonVues(plateau, chevalet), [plateau, chevalet])
 
   if (p === undefined) return <div className="vide-etat">Chargement…</div>
@@ -660,6 +663,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const adv = autre(p, uid)
   const nomAdv = adv ? p.pseudos[adv] : '…'
   const aMoi = p.etat === 'encours' && p.tour === uid
+  // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
+  const brouillon = p.etat === 'encours' && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
@@ -706,9 +711,9 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             plateau={plateau}
             poses={edition.posesCarte}
             derniers={derniers}
-            curseur={aMoi ? edition.etat.curseur : null}
+            curseur={aMoi || brouillon ? edition.etat.curseur : null}
             cible={edition.cible}
-            onCase={aMoi ? edition.toucherCase : () => false}
+            onCase={aMoi || brouillon ? edition.toucherCase : () => false}
             onAppuiPose={edition.appuiPose}
           />
           <ColonneJeu>
@@ -719,10 +724,10 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
             )}
             <Chevalet edition={edition} />
             {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
-            {p.etat === 'encours' && !aMoi && (
+            {brouillon && (
               <Apercu
-                analyse={null}
-                indice={`${nomAdv} réfléchit… Tu seras prévenu quand ce sera ton tour.`}
+                analyse={analyse}
+                indice={`${nomAdv} réfléchit… Tu peux déjà essayer des mots (brouillon, sans jouer).`}
                 onVerifier={() => setFeuilleVerifier(true)}
               />
             )}
@@ -774,6 +779,11 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                   <button type="button" className="bouton-icone" onClick={edition.melanger} aria-label="Mélanger">
                     <IconeMelanger />
                   </button>
+                  {brouillon && (
+                    <button type="button" className="bouton-icone" onClick={edition.rappeler} aria-label="Reprendre les lettres">
+                      <IconeRappeler />
+                    </button>
+                  )}
                   <button type="button" className="bouton large" onClick={() => naviguer('parties')}>
                     Mes parties
                   </button>
