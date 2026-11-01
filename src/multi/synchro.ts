@@ -14,7 +14,6 @@ import {
   type DocumentDistant,
 } from '../lib/moteurSynchro'
 import { ecrire, lire } from '../lib/stockage'
-import { remettreStatsAZero } from '../solo/remiseAZero'
 import { cleDe, DUREE_JOURNAL, notifierSynchro, surSignal, viderJournal, type Signal, type TypeSynchro } from '../lib/synchro'
 import { adapteurs } from '../lib/synchroTypes'
 import { base, connexion } from './firebase'
@@ -101,32 +100,16 @@ export async function demarrerSynchro(): Promise<void> {
       },
       (e) => console.warn('Synchronisation indisponible', e.message),
     )
-    // Remise à zéro demandée par un joueur pour tous (config/stats) : chaque appareil efface ses propres statistiques.
-    const arreterRemise = onSnapshot(
-      doc(base(), 'config', 'stats'),
-      (d) => {
-        const depuis = d.data()?.depuis
-        if (typeof depuis === 'number' && remettreStatsAZero(depuis)) notifierSynchro()
-      },
-      (e) => console.info('Remise à zéro indisponible', e.message),
-    )
     arret = () => {
       clearTimeout(minuteur)
       arreterSignaux()
       arreterEcoute()
-      arreterRemise()
     }
   } catch {
     /* pas de compte, ou pas de réseau : la synchro repartira au prochain lancement */
   } finally {
     demarrage = false
   }
-}
-
-/** Demande à tous les joueurs de remettre leurs statistiques à zéro (chaque appareil l'applique à son prochain lancement). */
-export async function publierRemiseAZero(depuis: number): Promise<void> {
-  await connexion()
-  await setDoc(doc(base(), 'config', 'stats'), { depuis })
 }
 
 /** Arrête la synchronisation (déconnexion) ; les données restent sur l'appareil. */

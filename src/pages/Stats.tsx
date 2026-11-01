@@ -9,7 +9,6 @@ import { useReglages } from '../lib/reglages'
 import { naviguer } from '../lib/routeur'
 import { lire } from '../lib/stockage'
 import { useSynchro } from '../lib/synchro'
-import { remettreStatsAZero } from '../solo/remiseAZero'
 import { formatPct, formatTemps, statistiques, supprimerDeHistorique } from '../solo/sauvegarde'
 import { bilanParNiveau, lirePartiesIA } from '../solo/sauvegardeIA'
 import { nomNiveau } from './ContreIA'
@@ -19,7 +18,6 @@ const FaceAFace = lazy(() => import('../multi/FaceAFace'))
 
 export function Stats() {
   const [, rafraichir] = useState(0)
-  const [remise, setRemise] = useState(0)
   useSynchro()
   const { simple } = useReglages()
   const s = statistiques()
@@ -33,7 +31,7 @@ export function Stats() {
         <>
           <h2>Face à face</h2>
           <Suspense fallback={<div className="vide-etat">Chargement…</div>}>
-            <FaceAFace key={remise} />
+            <FaceAFace />
           </Suspense>
         </>
       )}
@@ -144,25 +142,6 @@ export function Stats() {
           </div>
         </>
       )}
-      <div style={{ marginTop: 24 }}>
-        <button
-          type="button"
-          className="bouton danger"
-          onClick={() => {
-            const tous = aUnCompte
-              ? 'Remettre à zéro les statistiques de TOUS les joueurs (chacun sur son appareil, à sa prochaine ouverture) ? Les parties en cours sont conservées.'
-              : 'Remettre toutes les statistiques à zéro ? Les parties en cours sont conservées.'
-            if (!confirm(tous)) return
-            const maintenant = Date.now()
-            remettreStatsAZero(maintenant)
-            // Le bilan face à face lit cette date au chargement : on le remonte.
-            setRemise((x) => x + 1)
-            if (aUnCompte) void import('../multi/synchro').then((m) => m.publierRemiseAZero(maintenant)).catch((e: Error) => alert('Remise à zéro des autres joueurs impossible : ' + e.message))
-          }}
-        >
-          {aUnCompte ? 'Remettre à zéro les statistiques de tous les joueurs' : 'Remettre les statistiques à zéro'}
-        </button>
-      </div>
     </div>
   )
 }

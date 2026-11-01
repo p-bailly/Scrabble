@@ -80,7 +80,6 @@ citent son titre : le garder en cas de renommage.
   sans accents ni casse, requêtes limitées à 10 fiches : la liste des joueurs à inviter se lit par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
   partie (celle en attente est lisible par code) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
   directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable.
-- Remise à zéro des stats de tous les joueurs (bouton en bas de Stats) : document `config/stats` (`depuis`, en ms, ne peut qu'avancer) ; chaque appareil connecté efface ses historiques créés avant (`src/solo/remiseAZero.ts`) et le bilan face à face ignore les parties finies avant. Parties en cours intactes. **Republier les règles.**
 - Triche possible, acceptée : le téléphone tire les lettres, calcule le score, et le contenu du sac est lisible ; chaque coup est
   revérifié par le client adverse (mots, score, plateau).
 - Synchro solo (`src/lib/synchro.ts`, `moteurSynchro.ts`, `src/multi/synchro.ts`) : sous `joueurs/{uid}/solo`, en direct. Fusion par

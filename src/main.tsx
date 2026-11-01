@@ -8,11 +8,14 @@ import { demarrerReglages } from './lib/reglages'
 import { naviguer } from './lib/routeur'
 import { demanderStockagePersistant } from './lib/sauvegardeAppareil'
 import { lire } from './lib/stockage'
+
 import { chargerDico } from './moteur/moteur'
+import { remettreStatsAZero, REMISE_A_ZERO } from './solo/remiseAZero'
 import './styles.css'
 
 // Thème, étiquettes du plateau : appliqués avant le premier rendu.
 demarrerReglages()
+remettreStatsAZero(REMISE_A_ZERO)
 
 // L'appli s'ouvre sur « Mes parties », le premier onglet (au premier lancement, c'est là qu'on choisit son nom
 // d'utilisateur, multi/Compte.tsx). Seul celui qui a choisi « Jouer en solo sans compte » et n'a pas de compte arrive
