@@ -91,6 +91,16 @@ export function trouverPartieIA(id: string): PartieIA | null {
   return courante ?? lirePartiesIA().find((p) => p.id === id) ?? null
 }
 
+export function supprimerResumeIA(id: string) {
+  ecrire(HISTORIQUE, lireHistoriqueIA().filter((r) => r.id !== id))
+  signaler('ia-histo', id, null)
+}
+
+export function supprimerPartieIAGardee(id: string) {
+  ecrire(PARTIES, lirePartiesIA().filter((p) => p.id !== id))
+  signaler('ia-partie', id, null)
+}
+
 export function supprimerHistoriqueIA() {
   const resumes = lireHistoriqueIA()
   const parties = lirePartiesIA()

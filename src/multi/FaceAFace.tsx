@@ -2,6 +2,7 @@
 // ne l'ouvre que si cet appareil a un compte.
 
 import { useEffect, useState } from 'react'
+import { depuisRemiseAZero } from '../solo/remiseAZero'
 import { bilansFaceAFace, ecouterMesParties, type Bilan } from './donnees'
 import { utilisateur } from './firebase'
 
@@ -16,7 +17,7 @@ export default function FaceAFace() {
       .then((u) => {
         if (!actif) return
         if (!u) return setBilans([])
-        arreter = ecouterMesParties(u.uid, (parties) => setBilans(bilansFaceAFace(parties, u.uid)), (e) => setErreur(e.message))
+        arreter = ecouterMesParties(u.uid, (parties) => setBilans(bilansFaceAFace(parties, u.uid, depuisRemiseAZero())), (e) => setErreur(e.message))
       })
       .catch((e: Error) => actif && setErreur(e.message))
     return () => {
