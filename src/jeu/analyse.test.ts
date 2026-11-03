@@ -3,6 +3,7 @@ import {
   bilanParJoueur,
   manqueAGagner,
   meilleurScore,
+  scrabbleLoupe,
   plateauxAvant,
   toursDeIA,
   type Meilleurs,
@@ -78,6 +79,29 @@ describe('bilan d’une partie', () => {
     const [a] = bilanParJoueur(tours, [meilleurs(50), undefined], ['a'])
     expect(a).toMatchObject({ tours: 1, points: 30, meilleur: 50 })
     expect(bilanParJoueur(tours, [], ['a'])[0]).toMatchObject({ tours: 0, pourcentage: 100, plusGrosEcart: null })
+  })
+})
+
+describe('Scrabbles loupés', () => {
+  const pose7 = Array.from({ length: 7 }, (_, k) => ({ pos: k, lettre: 'A' }))
+  const scrabble = (points: number): Coup => ({ poses: pose7, mot: 'AAAAAAA', dir: 'H', debut: 0, points })
+  const joue = (numero: number, joueur: string, c: Coup): TourAnalysable => ({ numero, joueur, type: 'mot', chevalet: [], coup: c, points: c.points })
+
+  it('compte les Scrabbles possibles non joués, même hors des meilleurs coups gardés', () => {
+    const tours = [
+      joue(1, 'a', coup(20)), // Scrabble parmi les meilleurs : loupé
+      joue(2, 'a', scrabble(70)), // joué
+      joue(3, 'a', coup(30)), // Scrabble seulement dans `scrabble` (hors des 10 premiers) : loupé
+      joue(4, 'a', coup(30)), // aucun Scrabble possible
+    ]
+    const resultats: Meilleurs[] = [
+      { coups: [scrabble(80), coup(20)], total: 2 },
+      { coups: [scrabble(70)], total: 1, scrabble: scrabble(70) },
+      { coups: [coup(90)], total: 50, scrabble: scrabble(60) },
+      meilleurs(30),
+    ]
+    expect(resultats.map((m, i) => scrabbleLoupe(tours[i], m))).toEqual([true, false, true, false])
+    expect(bilanParJoueur(tours, resultats, ['a'])[0]).toMatchObject({ scrabbles: 1, scrabblesLoupes: 2 })
   })
 })
 

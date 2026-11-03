@@ -17,7 +17,7 @@ export type Requete =
 export type Reponse =
   | { type: 'charge'; nbMots: number; nom: string }
   | { type: 'analyse'; analyse: Analyse }
-  | { type: 'coups'; coups: Coup[]; total: number; duree: number }
+  | { type: 'coups'; coups: Coup[]; total: number; duree: number; scrabble?: Coup }
   | { type: 'contient'; resultats: boolean[] }
   | { type: 'decision'; decision: Decision }
 
@@ -61,6 +61,8 @@ portee.onmessage = async (e: MessageEvent<{ id: number; requete: Requete }>) => 
           type: 'coups',
           coups: requete.limite ? tous.slice(0, requete.limite) : tous,
           total: tous.length,
+          // Le meilleur coup qui pose les 7 lettres, même hors des premiers (pour les « Scrabbles loupés » de l'analyse).
+          scrabble: tous.find((c) => c.poses.length === 7),
           duree: performance.now() - debut,
         }
       }

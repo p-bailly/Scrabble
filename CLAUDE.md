@@ -47,7 +47,7 @@ citent son titre : le garder en cas de renommage.
   des lettres gardées vaut ≈ 35 points par partie au Champion. Les tests vérifient l'ordre des niveaux.
 - Analyse d'une partie (`pages/Analyse.tsx`) : exige le **chevalet de chaque tour** (`PartieIA.coups[].chevalet`, champ `chevalet`
   de `parties/{code}/coups/{n}`) ; les parties plus anciennes ne sont pas analysables. « Meilleur » = le plus de points (lettres gardées
-  et points de fin de partie ignorés). À deux, l'analyse n'ouvre qu'après la fin de partie (elle montre le jeu de l'adversaire).
+  et points de fin de partie ignorés) ; « Scrabble loupé » = un coup posant les 7 lettres était possible (le Worker renvoie le meilleur, même hors des 10 premiers). Plateau qu'on fait défiler tour par tour. À deux, l'analyse n'ouvre qu'après la fin de partie (elle montre le jeu de l'adversaire).
 - Le dictionnaire n'a volontairement **aucune** recherche (début, fin, « avec mes lettres »…) : il vérifie un mot précis.
 - Définitions : Wiktionnaire (`src/lib/definitions.ts`, en-tête `Api-User-Agent`), graphie accentuée retrouvée par `opensearch` ;
   pour une forme fléchie (« Pluriel de chat. »), la définition du mot d'origine suit. Cache sur l'appareil (300 mots).
