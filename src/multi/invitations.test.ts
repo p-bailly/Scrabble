@@ -81,7 +81,7 @@ describe('bilan face à face', () => {
       finie('C', 'marie', 'Marie', moi, 300),
       finie('D', 'paul', 'Paul', null, 400),
     ]
-    expect(bilansFaceAFace(parties, moi)).toEqual([
+    expect(bilansFaceAFace(parties, moi)).toMatchObject([
       { uid: 'marie', pseudo: 'Marie', victoires: 2, defaites: 1, egalites: 0 },
       { uid: 'paul', pseudo: 'Paul', victoires: 0, defaites: 0, egalites: 1 },
     ])
@@ -94,12 +94,41 @@ describe('bilan face à face', () => {
       { ...partie('B', [moi, 'marie'], { marie: 'Marie' }, 200), etat: 'encours' } as Partie,
       { ...partie('C', [moi], { moi: 'Moi' }, 300), etat: 'attente' } as Partie,
     ]
-    expect(bilansFaceAFace(parties, moi)).toEqual([{ uid: 'marie', pseudo: 'Marie', victoires: 0, defaites: 1, egalites: 0 }])
+    expect(bilansFaceAFace(parties, moi)).toMatchObject([{ uid: 'marie', pseudo: 'Marie', victoires: 0, defaites: 1, egalites: 0 }])
   })
 
   it('reprend le pseudo de la partie la plus récente', () => {
     const parties = [finie('A', 'marie', 'Marie', moi, 100), finie('B', 'marie', 'Marie-Claire', moi, 200)]
     expect(bilansFaceAFace(parties, moi)[0].pseudo).toBe('Marie-Claire')
+  })
+
+  it('moyennes, records, plus large victoire et plus lourde défaite, sans compter les abandons', () => {
+    const score = (m: number, l: number) => ({ scores: { moi: m, marie: l } }) as Partial<Partie>
+    const abandon = { fin: { gagnant: moi, raison: 'abandon', ajustements: {} } } as Partial<Partie>
+    const parties = [
+      finie('A', 'marie', 'Marie', moi, 100, score(400, 300)),
+      finie('B', 'marie', 'Marie', 'marie', 200, score(250, 420)),
+      finie('C', 'marie', 'Marie', moi, 300, score(350, 340)),
+      finie('D', 'marie', 'Marie', moi, 400, score(12, 30), abandon),
+    ]
+    const [b] = bilansFaceAFace(parties, moi)
+    expect(b.moyenne).toEqual({ moi: 1000 / 3, lui: 1060 / 3 })
+    expect(b.record).toEqual({ moi: 400, lui: 420 })
+    expect(b.plusLargeVictoire?.code).toBe('A')
+    expect(b.plusLourdeDefaite?.code).toBe('B')
+    expect(b.parties.map((p) => p.code)).toEqual(['D', 'C', 'B', 'A'])
+    expect(b.parties[0].abandon).toBe('lui')
+  })
+
+  it('série en cours et plus longue série de victoires', () => {
+    const r = ['egalite', moi, moi, 'marie', moi, moi, moi] // du plus ancien au plus récent
+    const parties = r.map((g, i) => finie(String(i), 'marie', 'Marie', g === 'egalite' ? null : g, 100 * (i + 1)))
+    const [b] = bilansFaceAFace(parties, moi)
+    expect(b.serie).toEqual({ resultat: 'victoire', nombre: 3 })
+    expect(b.meilleureSerie).toBe(3)
+    const [b2] = bilansFaceAFace(parties.slice(0, 4), moi)
+    expect(b2.serie).toEqual({ resultat: 'defaite', nombre: 1 })
+    expect(b2.meilleureSerie).toBe(2)
   })
 })
 
