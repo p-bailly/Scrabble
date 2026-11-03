@@ -212,6 +212,18 @@ export function adversairesRecents(parties: readonly Partie[], uid: string): Jou
   return [...vus.values()]
 }
 
+/** Une partie terminée, vue par le joueur qui regarde ses statistiques. */
+export interface PartieJouee {
+  code: string
+  /** Fin de la partie (ms), 0 si inconnue. */
+  date: number
+  resultat: 'victoire' | 'defaite' | 'egalite'
+  mesPoints: number
+  sesPoints: number
+  /** Qui a abandonné, si la partie s'est finie ainsi : ses scores ne comptent pas dans les moyennes ni les records. */
+  abandon: 'moi' | 'lui' | null
+}
+
 /** Résultats contre un adversaire, sur les parties terminées. */
 export interface Bilan {
   uid: string
@@ -219,6 +231,59 @@ export interface Bilan {
   victoires: number
   defaites: number
   egalites: number
+  /** Les parties, de la plus récente à la plus ancienne. */
+  parties: PartieJouee[]
+  /** Points moyens par partie (abandons exclus), null s'il n'y en a aucune. */
+  moyenne: { moi: number; lui: number } | null
+  /** Meilleurs scores de chacun (abandons exclus). */
+  record: { moi: number; lui: number }
+  /** Plus large victoire et plus lourde défaite (écart de points, abandons exclus). */
+  plusLargeVictoire: PartieJouee | null
+  plusLourdeDefaite: PartieJouee | null
+  /** Série en cours (résultats identiques d'affilée, en partant de la plus récente). */
+  serie: { resultat: PartieJouee['resultat']; nombre: number } | null
+  /** Plus longue série de victoires. */
+  meilleureSerie: number
+}
+
+/** Les chiffres d'un bilan, calculés à partir de ses parties (de la plus récente à la plus ancienne). */
+export function completerBilan(uid: string, pseudo: string, parties: PartieJouee[]): Bilan {
+  const compte = (r: PartieJouee['resultat']) => parties.filter((p) => p.resultat === r).length
+  const jouees = parties.filter((p) => !p.abandon)
+  const ecart = (p: PartieJouee) => p.mesPoints - p.sesPoints
+  let plusLargeVictoire: PartieJouee | null = null
+  let plusLourdeDefaite: PartieJouee | null = null
+  for (const p of jouees) {
+    if (p.resultat === 'victoire' && (!plusLargeVictoire || ecart(p) > ecart(plusLargeVictoire))) plusLargeVictoire = p
+    if (p.resultat === 'defaite' && (!plusLourdeDefaite || ecart(p) < ecart(plusLourdeDefaite))) plusLourdeDefaite = p
+  }
+  let serie: Bilan['serie'] = null
+  if (parties.length) {
+    const r = parties[0].resultat
+    const n = parties.findIndex((p) => p.resultat !== r)
+    serie = { resultat: r, nombre: n === -1 ? parties.length : n }
+  }
+  let meilleureSerie = 0
+  let enCours = 0
+  for (const p of parties) {
+    enCours = p.resultat === 'victoire' ? enCours + 1 : 0
+    meilleureSerie = Math.max(meilleureSerie, enCours)
+  }
+  const somme = (f: (p: PartieJouee) => number) => jouees.reduce((t, p) => t + f(p), 0)
+  return {
+    uid,
+    pseudo,
+    victoires: compte('victoire'),
+    defaites: compte('defaite'),
+    egalites: compte('egalite'),
+    parties,
+    moyenne: jouees.length ? { moi: somme((p) => p.mesPoints) / jouees.length, lui: somme((p) => p.sesPoints) / jouees.length } : null,
+    record: { moi: Math.max(0, ...jouees.map((p) => p.mesPoints)), lui: Math.max(0, ...jouees.map((p) => p.sesPoints)) },
+    plusLargeVictoire,
+    plusLourdeDefaite,
+    serie,
+    meilleureSerie,
+  }
 }
 
 /**
@@ -227,20 +292,25 @@ export interface Bilan {
  */
 export function bilansFaceAFace(parties: readonly Partie[], uid: string, depuis = 0): Bilan[] {
   const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
-  const bilans = new Map<string, Bilan>()
+  const parAdversaire = new Map<string, { pseudo: string; parties: PartieJouee[] }>()
   for (const p of [...parties].sort((a, b) => date(b) - date(a))) {
     const adv = autre(p, uid)
     // `depuis` : remise à zéro des statistiques sur cet appareil, les parties finies avant ne comptent plus.
     if (p.etat !== 'finie' || !adv || date(p) <= depuis) continue
-    const b = bilans.get(adv) ?? { uid: adv, pseudo: p.pseudos[adv] ?? '?', victoires: 0, defaites: 0, egalites: 0 }
+    const a = parAdversaire.get(adv) ?? { pseudo: p.pseudos[adv] ?? '?', parties: [] }
     const gagnant = p.fin?.gagnant ?? null
-    if (gagnant === null) b.egalites++
-    else if (gagnant === uid) b.victoires++
-    else b.defaites++
-    bilans.set(adv, b)
+    a.parties.push({
+      code: p.code,
+      date: p.majLe?.toMillis?.() ?? 0,
+      resultat: gagnant === null ? 'egalite' : gagnant === uid ? 'victoire' : 'defaite',
+      mesPoints: p.scores?.[uid] ?? 0,
+      sesPoints: p.scores?.[adv] ?? 0,
+      abandon: p.fin?.raison === 'abandon' ? (gagnant === uid ? 'lui' : 'moi') : null,
+    })
+    parAdversaire.set(adv, a)
   }
-  const total = (b: Bilan) => b.victoires + b.defaites + b.egalites
-  return [...bilans.values()].sort((a, b) => total(b) - total(a) || a.pseudo.localeCompare(b.pseudo))
+  const bilans = [...parAdversaire].map(([adv, a]) => completerBilan(adv, a.pseudo, a.parties))
+  return bilans.sort((a, b) => b.parties.length - a.parties.length || a.pseudo.localeCompare(b.pseudo))
 }
 
 /** Crée une partie et renvoie son code ; `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli). */

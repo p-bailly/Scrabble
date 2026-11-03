@@ -1530,3 +1530,90 @@ details.options > :not(summary) {
   font-weight: 800;
   color: var(--ok);
 }
+
+/* Stats : bilan face à face contre un adversaire. */
+.face-a-face {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fa-entete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fa-entete .principal {
+  flex: 1;
+  min-width: 0;
+}
+.fa-nom {
+  font-size: calc(18px * var(--texte));
+  font-weight: 800;
+}
+.fa-score {
+  font-size: calc(26px * var(--texte));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fa-barre {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--line);
+}
+.fa-barre .v {
+  background: var(--ok);
+}
+.fa-barre .e {
+  background: var(--muted);
+}
+.fa-barre .d {
+  background: var(--err);
+}
+.fa-forme {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fa-forme > .note:first-child {
+  margin-right: 2px;
+}
+.fa-serie {
+  font-weight: 700;
+}
+.fa-pion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: calc(12px * var(--texte));
+  font-weight: 800;
+  color: #fff;
+  background: var(--muted);
+}
+.fa-pion.victoire {
+  background: var(--ok);
+}
+.fa-pion.defaite {
+  background: var(--err);
+}
+.fa-chiffres {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: calc(14px * var(--texte));
+}
+.fa-chiffres dt {
+  color: var(--muted);
+}
+.fa-chiffres dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
