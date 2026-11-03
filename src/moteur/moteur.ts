@@ -55,11 +55,11 @@ export async function analyser(plateau: Plateau, poses: Pose[]): Promise<Analyse
   return r.analyse
 }
 
-export async function chercherCoups(plateau: Plateau, tirage: string[], limite?: number): Promise<{ coups: Coup[]; total: number; duree: number }> {
+export async function chercherCoups(plateau: Plateau, tirage: string[], limite?: number): Promise<{ coups: Coup[]; total: number; duree: number; scrabble?: Coup }> {
   await chargerDico()
   const r = await envoyer({ type: 'generer', plateau, tirage, limite })
   if (r.type !== 'coups') throw new Error('Réponse inattendue')
-  return { coups: r.coups, total: r.total, duree: r.duree }
+  return { coups: r.coups, total: r.total, duree: r.duree, scrabble: r.scrabble }
 }
 
 export async function motsConnus(mots: string[]): Promise<boolean[]> {

@@ -24,7 +24,16 @@ export interface TourAnalysable {
 export interface Meilleurs {
   coups: Coup[]
   total: number
+  /** Le meilleur coup posant les 7 lettres (Scrabble), s'il y en avait un, même hors de `coups`. */
+  scrabble?: Coup
 }
+
+/** Le coup pose-t-il les 7 lettres du chevalet ? */
+export const estScrabble = (c: Coup | undefined): boolean => c?.poses.length === 7
+
+/** Un Scrabble était possible à ce tour et le joueur ne l'a pas fait. */
+export const scrabbleLoupe = (t: TourAnalysable, m: Meilleurs): boolean =>
+  !estScrabble(t.coup) && (m.scrabble !== undefined || m.coups.some(estScrabble))
 
 export const toursDeIA = (p: PartieIA): TourAnalysable[] =>
   p.coups.map((c) => ({
@@ -68,6 +77,10 @@ export interface BilanJoueur {
   pourcentage: number
   /** Le tour où le plus de points ont été laissés, s'il y en a un. */
   plusGrosEcart: { numero: number; manque: number } | null
+  /** Scrabbles joués. */
+  scrabbles: number
+  /** Tours où un Scrabble était possible mais n'a pas été joué. */
+  scrabblesLoupes: number
 }
 
 /** Bilan de chaque joueur (dans l'ordre donné) ; `resultats[i]` est ce que l'analyse a trouvé pour `tours[i]`. */
@@ -77,7 +90,7 @@ export function bilanParJoueur(
   joueurs: readonly string[],
 ): BilanJoueur[] {
   return joueurs.map((joueur) => {
-    const b: BilanJoueur = { joueur, tours: 0, points: 0, meilleur: 0, parfaits: 0, pourcentage: 100, plusGrosEcart: null }
+    const b: BilanJoueur = { joueur, tours: 0, points: 0, meilleur: 0, parfaits: 0, pourcentage: 100, plusGrosEcart: null, scrabbles: 0, scrabblesLoupes: 0 }
     tours.forEach((t, i) => {
       const m = resultats[i]
       if (t.joueur !== joueur || !m) return
@@ -85,6 +98,8 @@ export function bilanParJoueur(
       b.tours++
       b.points += t.points
       b.meilleur += meilleurScore(m)
+      if (estScrabble(t.coup)) b.scrabbles++
+      else if (scrabbleLoupe(t, m)) b.scrabblesLoupes++
       if (manque === 0) b.parfaits++
       else if (!b.plusGrosEcart || manque > b.plusGrosEcart.manque) b.plusGrosEcart = { numero: t.numero, manque }
     })
