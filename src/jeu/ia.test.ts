@@ -8,6 +8,7 @@ import {
   jouerMotIA,
   nouvellePartieIA,
   passerIA,
+  premierCamp,
   resumeIA,
   type Camp,
   type PartieIA,
@@ -170,6 +171,20 @@ describe('partie contre l’IA', () => {
     // Le champion bat le débutant.
     expect(p.fin!.gagnant).toBe('moi')
     expect(resumeIA(p)).toMatchObject({ niveau: 'champion', moi: p.scores.moi, ia: p.scores.ia, gagnant: 'moi' })
+    // Celui qui n'a pas commencé joue le dernier tour (ce qu'annonce l'écran de jeu en fin de partie).
+    expect(premierCamp(p)).toBe('moi')
+    expect(p.coups.at(-1)!.camp).toBe('ia')
+  })
+
+  it('premierCamp : celui qui a joué le premier tour, avant comme après les coups', () => {
+    let p = nouvellePartieIA('amateur', 'ia', hasardDe('premier'), 'premier')
+    expect(premierCamp(p)).toBe('ia')
+    for (let i = 0; i < 3; i++) {
+      const r = passerIA(p, p.tour)
+      if ('erreur' in r) throw new Error(r.erreur)
+      p = r
+      expect(premierCamp(p)).toBe('ia')
+    }
   })
 
   it('chaque coup posé respecte le règlement sur le plateau de l’époque', () => {

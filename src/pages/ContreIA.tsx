@@ -7,7 +7,7 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, texteDernierTour, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -27,6 +27,8 @@ import {
   nouvellePartieIA,
   passerIA,
   peutAnnuler,
+  peutChangerIA,
+  premierCamp,
   type Camp,
   type CoupIA,
   type PartieIA,
@@ -308,6 +310,7 @@ function EcranIA({
   const derniers = useMemo(() => new Set(dernier?.coup ? dernier.coup.poses.map((p) => p.pos) : []), [dernier])
   const { moi, ia } = partie.scores
   const profil = PROFILS[partie.niveau]
+  const dernierTour = texteDernierTour(premierCamp(partie) === 'moi', 'l’ordinateur')
 
   const boutons = (
     <>
@@ -372,6 +375,8 @@ function EcranIA({
             })()}
           </div>
         )}
+        {/* Plus assez de lettres pour changer : la fin approche, on rappelle qui jouera le dernier tour. */}
+        {!partie.finie && !peutChangerIA(partie) && <div className="note note-centree">{dernierTour}</div>}
         {message && <div className="note note-centree ecart-neg">{message}</div>}
         <PanneauBas
           statut={
@@ -515,6 +520,9 @@ function EcranIA({
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
           Contre <b>{profil.nom}</b> · toi {moi}, ordinateur {ia} · sac : {nonVues.length} lettres
+        </p>
+        <p style={{ margin: 0 }} className="note">
+          {dernierTour}
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre

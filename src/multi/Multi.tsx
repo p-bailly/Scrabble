@@ -7,12 +7,12 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, texteDernierTour, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
 import { FeuilleVerifier } from '../composants/VerifierMot'
-import { lettresNonVues } from '../jeu/classique'
+import { MIN_SAC_POUR_CHANGER, lettresNonVues } from '../jeu/classique'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
@@ -664,6 +664,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
   const brouillon = p.etat === 'encours' && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
+  // Le créateur joue toujours le premier tour (`rejoindre`).
+  const dernierTour = texteDernierTour(p.createur === uid, nomAdv)
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
     const err = jouerCoup(p, uid, chevalet, action, setMessage)
@@ -729,6 +731,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 onVerifier={() => setFeuilleVerifier(true)}
               />
             )}
+            {/* Plus assez de lettres pour changer : la fin approche, on rappelle qui jouera le dernier tour. */}
+            {p.etat === 'encours' && p.sac.length < MIN_SAC_POUR_CHANGER && <div className="note note-centree">{dernierTour}</div>}
             {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
             {message && <div className="apercu erreur">{message}</div>}
             <PanneauBas
@@ -842,6 +846,9 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
           Contre <b>{nomAdv}</b> · toi {moi}, {nomAdv} {lui}
+        </p>
+        <p style={{ margin: 0 }} className="note">
+          {dernierTour}
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre

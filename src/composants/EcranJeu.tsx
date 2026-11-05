@@ -100,6 +100,17 @@ export function BarreStatut({ chrono, texte, part }: PropsStatut) {
   )
 }
 
+/**
+ * Qui a commencé, et ce que ça annonce pour la fin : la partie ne s'arrête que lorsque les deux joueurs ont joué autant
+ * de tours (classique.ts), donc celui qui n'a pas commencé joue toujours le dernier tour. `adversaire` : « Paul »,
+ * « l’ordinateur ».
+ */
+export function texteDernierTour(moiPremier: boolean, adversaire: string): string {
+  return moiPremier
+    ? `Tu as commencé : ${adversaire} jouera le dernier tour.`
+    : `${adversaire.charAt(0).toUpperCase() + adversaire.slice(1)} a commencé : c’est toi qui joueras le dernier tour.`
+}
+
 /** Texte placé dans le panneau du bas (avec les mêmes marges que la ligne de boutons). */
 export function ContenuPanneau({ children }: { children: ReactNode }) {
   return <div className="contenu-panneau">{children}</div>
