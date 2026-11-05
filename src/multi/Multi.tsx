@@ -7,12 +7,12 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, texteDernierTour, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, NomJoueur, PanneauBas, texteDernierTour, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
 import { FeuilleVerifier } from '../composants/VerifierMot'
-import { MIN_SAC_POUR_CHANGER, lettresNonVues } from '../jeu/classique'
+import { lettresNonVues } from '../jeu/classique'
 import { plateauDepuisTexte } from '../jeu/plateau'
 import { ADRESSE_WEB, URL_APK } from '../lib/adresses'
 import { demanderPermission, natif, notificationsAutorisees } from '../lib/notifications'
@@ -665,7 +665,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const brouillon = p.etat === 'encours' && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
   // Le créateur joue toujours le premier tour (`rejoindre`).
-  const dernierTour = texteDernierTour(p.createur === uid, nomAdv)
+  const moiPremier = p.createur === uid
+  const dernierTour = texteDernierTour(moiPremier, nomAdv)
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
     const err = jouerCoup(p, uid, chevalet, action, setMessage)
@@ -731,8 +732,6 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 onVerifier={() => setFeuilleVerifier(true)}
               />
             )}
-            {/* Plus assez de lettres pour changer : la fin approche, on rappelle qui jouera le dernier tour. */}
-            {p.etat === 'encours' && p.sac.length < MIN_SAC_POUR_CHANGER && <div className="note note-centree">{dernierTour}</div>}
             {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
             {message && <div className="apercu erreur">{message}</div>}
             <PanneauBas
@@ -740,7 +739,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 <BarreStatut
                   texte={
                     <>
-                      Moi <b>{moi}</b> · <b>{lui}</b> {nomAdv}
+                      <NomJoueur nom="Moi" premier={moiPremier} /> <b>{moi}</b> · <b>{lui}</b>{' '}
+                      <NomJoueur nom={nomAdv} premier={!moiPremier} />
                     </>
                   }
                   part={moi + lui ? moi / (moi + lui) : 0.5}

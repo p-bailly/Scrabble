@@ -171,7 +171,7 @@ describe('partie contre l’IA', () => {
     // Le champion bat le débutant.
     expect(p.fin!.gagnant).toBe('moi')
     expect(resumeIA(p)).toMatchObject({ niveau: 'champion', moi: p.scores.moi, ia: p.scores.ia, gagnant: 'moi' })
-    // Celui qui n'a pas commencé joue le dernier tour (ce qu'annonce l'écran de jeu en fin de partie).
+    // Celui qui n'a pas commencé joue le dernier tour (ce que dit le menu de la partie).
     expect(premierCamp(p)).toBe('moi')
     expect(p.coups.at(-1)!.camp).toBe('ia')
   })

@@ -111,6 +111,17 @@ export function texteDernierTour(moiPremier: boolean, adversaire: string): strin
     : `${adversaire.charAt(0).toUpperCase() + adversaire.slice(1)} a commencé : c’est toi qui joueras le dernier tour.`
 }
 
+/** Nom d'un joueur dans la barre de statut, surligné en couleur pour celui qui a commencé (`texteDernierTour`). */
+export function NomJoueur({ nom, premier }: { nom: string; premier: boolean }) {
+  return premier ? (
+    <span className="a-commence" title="A commencé la partie">
+      {nom}
+    </span>
+  ) : (
+    <>{nom}</>
+  )
+}
+
 /** Texte placé dans le panneau du bas (avec les mêmes marges que la ligne de boutons). */
 export function ContenuPanneau({ children }: { children: ReactNode }) {
   return <div className="contenu-panneau">{children}</div>
