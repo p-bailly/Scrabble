@@ -7,7 +7,16 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { EnteteRetour, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ColonneJeu, ContenuPanneau, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import {
+  BarreJeu,
+  BarreStatut,
+  ColonneJeu,
+  ContenuPanneau,
+  NomJoueur,
+  PanneauBas,
+  texteDernierTour,
+  useMasquerOnglets,
+} from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconeOk, IconeRappeler } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -27,6 +36,7 @@ import {
   nouvellePartieIA,
   passerIA,
   peutAnnuler,
+  premierCamp,
   type Camp,
   type CoupIA,
   type PartieIA,
@@ -308,6 +318,8 @@ function EcranIA({
   const derniers = useMemo(() => new Set(dernier?.coup ? dernier.coup.poses.map((p) => p.pos) : []), [dernier])
   const { moi, ia } = partie.scores
   const profil = PROFILS[partie.niveau]
+  const moiPremier = premierCamp(partie) === 'moi'
+  const dernierTour = texteDernierTour(moiPremier, 'l’ordinateur')
 
   const boutons = (
     <>
@@ -378,7 +390,8 @@ function EcranIA({
             <BarreStatut
               texte={
                 <>
-                  Toi <b>{moi}</b> · <b>{ia}</b> Ordinateur
+                  <NomJoueur nom="Toi" premier={moiPremier} /> <b>{moi}</b> · <b>{ia}</b>{' '}
+                  <NomJoueur nom="Ordinateur" premier={!moiPremier} />
                 </>
               }
               part={moi + ia ? moi / (moi + ia) : 0.5}
@@ -515,6 +528,9 @@ function EcranIA({
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
           Contre <b>{profil.nom}</b> · toi {moi}, ordinateur {ia} · sac : {nonVues.length} lettres
+        </p>
+        <p style={{ margin: 0 }} className="note">
+          {dernierTour}
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre

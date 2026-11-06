@@ -1211,6 +1211,14 @@ a.bouton {
 .statut .texte b {
   font-weight: 800;
 }
+/* Nom de celui qui a commencé la partie (NomJoueur, EcranJeu.tsx) : l'autre jouera le dernier tour. */
+.statut .a-commence {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
 .jauge {
   height: 9px;
   border-radius: 2px;

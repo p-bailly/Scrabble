@@ -84,6 +84,9 @@ export function nouvellePartieIA(
   }
 }
 
+/** Qui a joué le premier tour (avant tout coup : celui dont c'est le tour). */
+export const premierCamp = (p: PartieIA): Camp => p.coups[0]?.camp ?? p.tour
+
 /** Vérifie la fin de partie après un coup, et la prononce s'il y a lieu. */
 function conclure(p: PartieIA): PartieIA {
   const fin = finDePartie(p.sac, [p.chevalets.moi, p.chevalets.ia], p.passes, p.coups.length)

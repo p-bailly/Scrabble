@@ -7,7 +7,7 @@ import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
 import { Entete, Feuille } from '../composants/Entete'
-import { BarreJeu, BarreStatut, ColonneJeu, PanneauBas, useMasquerOnglets } from '../composants/EcranJeu'
+import { BarreJeu, BarreStatut, ColonneJeu, NomJoueur, PanneauBas, texteDernierTour, useMasquerOnglets } from '../composants/EcranJeu'
 import { IconeHistorique, IconeMelanger, IconeMenu, IconePartager, IconePlus, IconeRappeler, IconeRetour } from '../composants/Icones'
 import { Plateau } from '../composants/Plateau'
 import { BoutonSac, Sac } from '../composants/Sac'
@@ -664,6 +664,9 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
   const brouillon = p.etat === 'encours' && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
+  // Le créateur joue toujours le premier tour (`rejoindre`).
+  const moiPremier = p.createur === uid
+  const dernierTour = texteDernierTour(moiPremier, nomAdv)
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {
     const err = jouerCoup(p, uid, chevalet, action, setMessage)
@@ -736,7 +739,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 <BarreStatut
                   texte={
                     <>
-                      Moi <b>{moi}</b> · <b>{lui}</b> {nomAdv}
+                      <NomJoueur nom="Moi" premier={moiPremier} /> <b>{moi}</b> · <b>{lui}</b>{' '}
+                      <NomJoueur nom={nomAdv} premier={!moiPremier} />
                     </>
                   }
                   part={moi + lui ? moi / (moi + lui) : 0.5}
@@ -842,6 +846,9 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
         <h3>Partie en cours</h3>
         <p style={{ margin: 0 }} className="note">
           Contre <b>{nomAdv}</b> · toi {moi}, {nomAdv} {lui}
+        </p>
+        <p style={{ margin: 0 }} className="note">
+          {dernierTour}
         </p>
         <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
           Reprendre

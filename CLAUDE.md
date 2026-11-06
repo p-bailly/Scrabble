@@ -37,7 +37,9 @@ citent son titre : le garder en cas de renommage.
 ## Règles du jeu (choix non évidents)
 - Plateau classique, 102 jetons français (`lettres.ts`), 50 points pour 7 lettres posées d'un coup. Échange seulement s'il reste
   ≥ 7 jetons dans le sac ; fin : sac vide + chevalet vidé, ou 6 passes de suite, **à condition que les deux joueurs aient joué autant de tours** (si le premier
-  joueur finit, l'autre joue un dernier tour : règle maison, `finDePartie` reçoit le nombre de tours joués). Mot absent du dictionnaire : refusé à la pose.
+  joueur finit, l'autre joue un dernier tour : règle maison, `finDePartie` reçoit le nombre de tours joués). Celui qui n'a pas commencé joue donc
+  toujours le dernier tour : son adversaire, celui qui a commencé, a le nom surligné dans la barre des scores (`NomJoueur`), et le menu de la partie
+  le dit en toutes lettres (`texteDernierTour`). Mot absent du dictionnaire : refusé à la pose.
 - Duplicate (FISF + modes « Entraînement » et « Topping » de DupliJeu ; les modes Joker, 7 sur 8, 7 et 8 ne sont pas repris).
   Validation du **tirage** (jamais du mot posé) : ≥ 2 voyelles et 2 consonnes jusqu'au 15e coup, puis ≥ 1 et ≥ 1 ; sinon tout
   retourne au sac. Conventions : **Y = voyelle**, **joker = voyelle et consonne à la fois**. Égalité de score : le top retenu a le
