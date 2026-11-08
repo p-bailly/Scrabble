@@ -185,7 +185,8 @@ export async function listerJoueurs(moi: string, max = 100): Promise<{ joueurs: 
   const joueurs: JoueurTrouve[] = []
   let apres: Parameters<typeof startAfter>[0] | undefined
   for (let lus = 0; lus < max; lus += 10) {
-    const parametres = [orderBy('recherche'), ...(apres ? [startAfter(apres)] : []), limit(10)]
+    // La borne sur `recherche` est exigée par les règles Firestore (« Firebase (parties à deux) » dans CLAUDE.md) : seules les fiches qui en ont une se lisent.
+    const parametres = [where('recherche', '>=', ''), orderBy('recherche'), ...(apres ? [startAfter(apres)] : []), limit(10)]
     const s = await getDocs(query(collection(base(), 'joueurs'), ...parametres))
     if (s.metadata.fromCache) throw new Error('Pas de connexion : la liste des joueurs demande Internet.')
     for (const d of s.docs) if (d.id !== moi) joueurs.push({ uid: d.id, pseudo: d.data().pseudo as string })
