@@ -33,15 +33,19 @@ service cloud.firestore {
       }
 
       allow get: if connecte();
-      // Chercher un joueur à inviter (par sa clé de recherche) : 10 fiches au plus par requête, et une requête sans
-      // `limit` est refusée, pour qu'on ne puisse pas tout lister d'un coup.
-      allow list: if connecte() && request.query.limit <= 10;
+      // Chercher un joueur à inviter : seulement les fiches qui ont une clé de recherche, c'est-à-dire les joueurs qui
+      // acceptent d'être trouvés. Le pseudo vaut souvent le nom du compte, qui suffit pour s'y connecter : lister les
+      // autres permettrait d'ouvrir leur compte. Une requête doit donc borner `recherche` (`where('recherche', '>=', …)`,
+      // une simple requête triée ne suffit pas), et lire 10 fiches au plus (sans `limit`, refusée).
+      allow list: if connecte() && request.query.limit <= 10 && resource.data.recherche >= '';
       allow write: if connecte() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['pseudo', 'visible', 'recherche'])
         && request.resource.data.pseudo is string
         && request.resource.data.pseudo.size() > 0 && request.resource.data.pseudo.size() <= 20
         // La clé de recherche (le pseudo simplifié) n'est écrite que si le joueur accepte d'être trouvé.
         && (!('recherche' in request.resource.data)
-          || (request.resource.data.recherche is string && request.resource.data.recherche.size() <= 20))
+          || (request.resource.data.recherche is string && request.resource.data.recherche.size() <= 20
+            && request.resource.data.get('visible', true) == true))
         && (!('visible' in request.resource.data) || request.resource.data.visible is bool);
     }
 
@@ -66,8 +70,13 @@ service cloud.firestore {
         return request.auth.uid in d.get('invites', []);
       }
 
-      // Lecture : les deux joueurs ; le joueur invité ; une partie en attente d'adversaire est lisible par qui a le code.
-      allow read: if connecte() && (joueur(resource.data) || invite(resource.data) || resource.data.etat == 'attente');
+      // Lecture d'une partie par son code : les deux joueurs ; le joueur invité ; une partie en attente d'adversaire est
+      // lisible par qui a le code (le lien d'invitation).
+      allow get: if connecte() && (joueur(resource.data) || invite(resource.data) || resource.data.etat == 'attente');
+      // Listes (« Mes parties », invitations reçues) : seulement ses parties et celles où l'on est invité. Les parties en
+      // attente ne se listent pas : leur code reste connu de ceux qui ont le lien (sinon on pourrait toutes les trouver et
+      // prendre une invitation destinée à un autre).
+      allow list: if connecte() && (joueur(resource.data) || invite(resource.data));
 
       // Création : par son créateur, seul joueur inscrit, en attente d'un adversaire (et d'un invité au plus).
       allow create: if connecte()

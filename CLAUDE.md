@@ -77,8 +77,8 @@ citent son titre : le garder en cas de renommage.
   (n'existe pas) et le mot de passe `scrabble-<nom>`. Le nom ignore accents, casse et ponctuation. **Le nom n'est pas secret** (qui le
   connaît ouvre le compte, lit les parties et les données de synchro) : accepté entre proches ; durcissement possible = code à 4 chiffres mêlé au mot de passe.
 - Données : `parties/{code}` (+ `coups/{n}`, `chevalets/{uid}` lisible par son seul joueur), `joueurs/{uid}` (clé `recherche` = pseudo
-  sans accents ni casse, requêtes limitées à 10 fiches : la liste des joueurs à inviter se lit par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
-  partie (celle en attente est lisible par code) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
+  sans accents ni casse, requêtes limitées à 10 fiches et bornées sur `recherche` : seuls ceux qui acceptent d'être trouvés se listent, par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
+  partie (celle en attente est lisible par code, mais ne se liste pas : seules ses parties et ses invitations se listent) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
   directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable.
 - Triche possible, acceptée : le téléphone tire les lettres, calcule le score, et le contenu du sac est lisible ; chaque coup est
   revérifié par le client adverse (mots, score, plateau).
