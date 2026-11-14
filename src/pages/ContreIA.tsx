@@ -2,7 +2,7 @@
 // choix du coup de l'IA se fait dans le Web Worker du moteur) et marche hors ligne.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Apercu, Loupe, Mot, useAnalyse } from '../composants/Apercu'
+import { Apercu, Loupe, Mot, SaisieVerifier, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
@@ -243,7 +243,8 @@ function EcranIA({
   const [changement, setChangement] = useState(false)
   const [historique, setHistorique] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
-  const [feuilleVerifier, setFeuilleVerifier] = useState(false)
+  // Mot de la fenêtre « Vérifier un mot » ; null = fermée.
+  const [feuilleVerifier, setFeuilleVerifier] = useState<string | null>(null)
   // Coup de l'historique dont on lit la définition (numéro du coup).
   const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
@@ -355,19 +356,17 @@ function EcranIA({
       />
       <ColonneJeu>
         <Chevalet edition={edition} />
-        {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
-        {!partie.finie && !aMoi && (
+        {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, ou vérifie-en un ici" onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />}
+        {!partie.finie && !aMoi && !erreurIA && (
+          <SaisieVerifier indice="L’ordinateur réfléchit…" onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />
+        )}
+        {!partie.finie && !aMoi && erreurIA && (
           <div className="apercu avec-loupe">
-            <span className="indice">{erreurIA ? '' : 'L’ordinateur réfléchit…'}</span>
-            {erreurIA && (
-              <>
-                <span className="mots ecart-neg">L’ordinateur ne peut pas jouer : {erreurIA}</span>
-                <button type="button" className="bouton" onClick={() => setEssai((n) => n + 1)}>
-                  Réessayer
-                </button>
-              </>
-            )}
-            <Loupe onVerifier={() => setFeuilleVerifier(true)} />
+            <span className="mots ecart-neg">L’ordinateur ne peut pas jouer : {erreurIA}</span>
+            <button type="button" className="bouton" onClick={() => setEssai((n) => n + 1)}>
+              Réessayer
+            </button>
+            <Loupe onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />
           </div>
         )}
         {dernier && !partie.finie && (
@@ -445,7 +444,7 @@ function EcranIA({
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={partie.sac.length} adversaire="l’ordinateur" />
-      <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
+      <FeuilleVerifier mot={feuilleVerifier} onFermer={() => setFeuilleVerifier(null)} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}

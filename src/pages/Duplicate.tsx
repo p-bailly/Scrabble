@@ -254,7 +254,8 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
   const [coup, setCoup] = useState<EtatCoup>(() => lireCoup(partie.id, numero))
   const [menu, setMenu] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
-  const [feuilleVerifier, setFeuilleVerifier] = useState(false)
+  // Mot de la fenêtre « Vérifier un mot » ; null = fermée.
+  const [feuilleVerifier, setFeuilleVerifier] = useState<string | null>(null)
   const [feuilleIndices, setFeuilleIndices] = useState(false)
   const [calcul, setCalcul] = useState(false)
   const [message, setMessage] = useState('')
@@ -475,7 +476,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
         ) : (
           <>
             <Chevalet edition={edition} />
-            <Apercu analyse={analyse} indice="" onVerifier={() => setFeuilleVerifier(true)} />
+            <Apercu analyse={analyse} indice="Écris ici un mot à vérifier" onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />
             {message && <div className="note note-centree ecart-neg">{message}</div>}
             {topping && coup.essais.length > 0 && <HistoriqueEssais essais={coup.essais} />}
             {topping && coup.indices.length > 0 && topConnu && (
@@ -516,7 +517,7 @@ function EcranDuplicate({ partie, resultat, onFinCoup, onSuivant, onAbandon, onP
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={partie.sac} sac={partie.sac.length} />
-      <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
+      <FeuilleVerifier mot={feuilleVerifier} onFermer={() => setFeuilleVerifier(null)} />
 
       <Feuille ouvert={feuilleIndices && !resultat} onFermer={() => setFeuilleIndices(false)}>
         <h3>Indices</h3>

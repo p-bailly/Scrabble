@@ -651,6 +651,37 @@ select {
 .apercu .indice {
   color: var(--muted);
 }
+/* Saisie directe d'un mot à vérifier dans la ligne d'aperçu (SaisieVerifier) : sans cadre, l'indice en texte d'attente.
+   16 px au moins, sinon Safari (iPhone) zoome sur le champ. */
+.apercu .saisie-apercu {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: max(16px, 1em);
+  font-weight: 700;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  outline: none;
+}
+.apercu:has(.saisie-apercu:focus) {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.apercu .saisie-apercu::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: none;
+  opacity: 1;
+}
+.apercu .verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  white-space: nowrap;
+}
 .inconnu {
   color: var(--err);
   text-decoration: line-through;
