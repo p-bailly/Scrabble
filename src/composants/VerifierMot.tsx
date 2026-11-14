@@ -8,12 +8,10 @@ import { DefinitionMot } from './Definition'
 import { Feuille } from './Entete'
 
 /** Lettres A à Z d'une saisie (accents et casse ignorés). */
-const nettoyer = (saisie: string) => saisie.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z]/g, '')
+export const nettoyer = (saisie: string) => saisie.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z]/g, '')
 
-export function VerifierMot({ autoFocus }: { autoFocus?: boolean }) {
-  const [saisie, setSaisie] = useState('')
-  const mot = nettoyer(saisie)
-  // Réponse pour le mot en cours de saisie ; null tant qu'elle n'est pas arrivée.
+/** Le mot (déjà nettoyé) est-il dans le dictionnaire ? null tant que la réponse du worker n'est pas arrivée. */
+export function useValable(mot: string): boolean | null {
   const [reponse, setReponse] = useState<{ mot: string; valable: boolean } | null>(null)
   useEffect(() => {
     if (!mot) return
@@ -25,7 +23,14 @@ export function VerifierMot({ autoFocus }: { autoFocus?: boolean }) {
       actuel = false
     }
   }, [mot])
-  const valable = reponse?.mot === mot ? reponse.valable : null
+  return reponse?.mot === mot ? reponse.valable : null
+}
+
+/** `initial` : mot déjà tapé dans la ligne d'aperçu des écrans de jeu. */
+export function VerifierMot({ autoFocus, initial = '' }: { autoFocus?: boolean; initial?: string }) {
+  const [saisie, setSaisie] = useState(initial)
+  const mot = nettoyer(saisie)
+  const valable = useValable(mot)
 
   return (
     <>
@@ -57,12 +62,13 @@ export function VerifierMot({ autoFocus }: { autoFocus?: boolean }) {
   )
 }
 
-/** Fenêtre « Vérifier un mot » des écrans de jeu : on teste un mot sans toucher au plateau ni au chevalet. */
-export function FeuilleVerifier({ ouvert, onFermer }: { ouvert: boolean; onFermer: () => void }) {
+/** Fenêtre « Vérifier un mot » des écrans de jeu : on teste un mot sans toucher au plateau ni au chevalet.
+ * `mot` : null = fermée ; sinon le mot déjà tapé dans la ligne d'aperçu (vide si on a seulement touché la loupe). */
+export function FeuilleVerifier({ mot, onFermer }: { mot: string | null; onFermer: () => void }) {
   return (
-    <Feuille ouvert={ouvert} onFermer={onFermer}>
+    <Feuille ouvert={mot !== null} onFermer={onFermer}>
       <h3>Vérifier un mot</h3>
-      <VerifierMot autoFocus />
+      <VerifierMot autoFocus initial={mot ?? ''} />
       <button type="button" className="bouton principal" onClick={onFermer}>
         Fermer
       </button>

@@ -29,7 +29,8 @@ citent son titre : le garder en cas de renommage.
   (`data-texte` sur `<html>`, posé aussi par `index.html`), qui multiplie les `font-size` de l'interface, jamais celles du plateau ni des jetons.
 - Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats (par adversaire : résultats, 5 dernières parties, séries, scores moyens et records hors abandons, parties à analyser). Partie à deux pensée pour une personne âgée : « Nouvelle partie »
   d'un toucher, puis on touche le nom d'un joueur (tous ceux qui acceptent d'être trouvés, récents en tête) ou « Envoyer le lien » ;
-  aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, la loupe sous le chevalet ouvre le même outil.
+  aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, on tape un mot directement
+  dans la ligne sous le chevalet tant qu'aucune lettre n'est posée (`SaisieVerifier`, verdict au bout de la ligne) ; Entrée ou la loupe ouvrent le même outil, avec la définition.
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
   aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).

@@ -619,7 +619,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const [historique, setHistorique] = useState(false)
   const [changement, setChangement] = useState(false)
   const [feuilleSac, setFeuilleSac] = useState(false)
-  const [feuilleVerifier, setFeuilleVerifier] = useState(false)
+  // Mot de la fenêtre « Vérifier un mot » ; null = fermée.
+  const [feuilleVerifier, setFeuilleVerifier] = useState<string | null>(null)
   // Coup de l'historique dont on lit la définition (numéro du coup).
   const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
@@ -724,12 +725,14 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
               </div>
             )}
             <Chevalet edition={edition} />
-            {aMoi && <Apercu analyse={analyse} indice="Pose ton mot, puis « Jouer »." onVerifier={() => setFeuilleVerifier(true)} />}
+            {aMoi && (
+              <Apercu analyse={analyse} indice="Pose ton mot, ou vérifie-en un ici" onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />
+            )}
             {brouillon && (
               <Apercu
                 analyse={analyse}
-                indice={`${nomAdv} réfléchit… Tu peux déjà essayer des mots (brouillon, sans jouer).`}
-                onVerifier={() => setFeuilleVerifier(true)}
+                indice="Écris ici un mot à vérifier"
+                onVerifier={(mot) => setFeuilleVerifier(mot ?? '')}
               />
             )}
             {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
@@ -795,7 +798,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
       <TuileVolante glisse={edition.glisse} />
       <ChoixJoker ouvert={!!edition.etat.joker} onChoix={edition.choisirLettreJoker} />
       <Sac ouvert={feuilleSac} onFermer={() => setFeuilleSac(false)} lettres={nonVues} sac={p.sac.length} adversaire={nomAdv} />
-      <FeuilleVerifier ouvert={feuilleVerifier} onFermer={() => setFeuilleVerifier(false)} />
+      <FeuilleVerifier mot={feuilleVerifier} onFermer={() => setFeuilleVerifier(null)} />
       <Changement
         ouvert={changement}
         chevalet={chevalet}
