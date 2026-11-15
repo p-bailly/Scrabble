@@ -119,6 +119,30 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: false, recherche: 'moi' }))
       await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', role: 'admin' }))
     })
+
+    it('pseudo verrouillé par l’administrateur : le joueur le garde et ne lève pas le verrou', async () => {
+      // Le verrou se pose dans la console Firebase, hors des règles.
+      await env.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'joueurs', 'moi'), { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true })
+      })
+      const fiche = doc(moi(), 'joueurs', 'moi')
+      await assertFails(setDoc(fiche, { pseudo: 'Grossier', visible: true, recherche: 'grossier', verrouille: true }))
+      await assertFails(setDoc(fiche, { pseudo: 'Grossier', visible: true, recherche: 'grossier' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: false }))
+      // Être trouvé ou non reste son choix.
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Joueur 7', visible: false, verrouille: true }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true }))
+    })
+
+    it('un joueur ne verrouille pas lui-même son pseudo', async () => {
+      const fiche = doc(moi(), 'joueurs', 'moi')
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: true }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: true }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: 'oui' }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Toi', visible: true, recherche: 'toi' }))
+    })
   })
 
   describe('parties', () => {

@@ -1,12 +1,13 @@
-// Section « compte » des réglages : pseudo, visibilité dans la recherche de joueurs, déconnexion. Chargée à la demande
-// (elle dépend de Firebase), seulement quand un compte existe sur l'appareil.
+// Section « compte » des réglages : pseudo (en lecture seule si l'administrateur l'a verrouillé), visibilité dans la
+// recherche de joueurs, déconnexion. Chargée à la demande (elle dépend de Firebase), seulement quand un compte existe sur
+// l'appareil.
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { Interrupteur, Rangee } from '../composants/Reglage'
 import { pushActif } from '../lib/notifications'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
-import { enregistrerJoueur, lireJoueur, type Joueur } from './donnees'
+import { enregistrerJoueur, lireJoueur, PSEUDO_VERROUILLE, type Joueur } from './donnees'
 import { configuration, deconnexion, utilisateur } from './firebase'
 import { arreterSynchro } from './synchro'
 import { arreterVeille } from './veille'
@@ -27,7 +28,13 @@ function Compte() {
     utilisateur()
       .then(async (u) => {
         setUid(u?.uid ?? null)
-        setJoueur(u ? await lireJoueur(u.uid).catch(() => null) : null)
+        const j = u ? await lireJoueur(u.uid).catch(() => null) : null
+        setJoueur(j)
+        // La fiche fait foi : le pseudo a pu changer sur un autre appareil, ou être remplacé par l'administrateur.
+        if (j) {
+          setPseudo(j.pseudo)
+          ecrire('multi.pseudo', j.pseudo)
+        }
       })
       .catch(() => setUid(null))
   }, [])
@@ -49,11 +56,12 @@ function Compte() {
   // Une erreur d'écriture (hors ligne, règles pas à jour) est dite telle quelle, le réglage reste comme il était.
   const enregistrer = async (nouveau: string, visible: boolean) => {
     setMessage('')
+    const verrouille = joueur?.verrouille ?? false
     try {
-      await enregistrerJoueur(uid, nouveau, visible)
+      await enregistrerJoueur(uid, nouveau, visible, verrouille)
       ecrire('multi.pseudo', nouveau)
       setPseudo(nouveau)
-      setJoueur({ pseudo: nouveau, visible })
+      setJoueur({ pseudo: nouveau, visible, verrouille })
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e))
     }
@@ -76,22 +84,28 @@ function Compte() {
 
   return (
     <>
-      <Rangee titre="Pseudo" texte="Le nom que voient les autres joueurs.">
-        <form className="actions" onSubmit={changerPseudo}>
-          <input
-            className="champ-code libre"
-            value={pseudo}
-            onChange={(e) => setPseudo(e.target.value)}
-            maxLength={20}
-            aria-label="Pseudo"
-            autoCapitalize="words"
-          />
-          {/* Sans la fiche (hors ligne), on ne sait pas si le joueur a choisi d'être caché : on n'écrit pas par-dessus. */}
-          <button type="submit" className="bouton" disabled={!joueur || !pseudo.trim() || pseudo.trim() === joueur.pseudo}>
-            Enregistrer
-          </button>
-        </form>
-      </Rangee>
+      {joueur?.verrouille ? (
+        <Rangee titre="Pseudo" texte={PSEUDO_VERROUILLE}>
+          <b>{joueur.pseudo}</b>
+        </Rangee>
+      ) : (
+        <Rangee titre="Pseudo" texte="Le nom que voient les autres joueurs.">
+          <form className="actions" onSubmit={changerPseudo}>
+            <input
+              className="champ-code libre"
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value)}
+              maxLength={20}
+              aria-label="Pseudo"
+              autoCapitalize="words"
+            />
+            {/* Sans la fiche (hors ligne), on ne sait pas si le joueur a choisi d'être caché : on n'écrit pas par-dessus. */}
+            <button type="submit" className="bouton" disabled={!joueur || !pseudo.trim() || pseudo.trim() === joueur.pseudo}>
+              Enregistrer
+            </button>
+          </form>
+        </Rangee>
+      )}
       <Interrupteur
         titre="Être trouvé par les autres joueurs"
         texte="Ton pseudo apparaît dans la liste des joueurs qu’on peut inviter. Désactivé, seul le lien d’une partie permet de te faire jouer."

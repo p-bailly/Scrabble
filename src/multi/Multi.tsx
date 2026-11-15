@@ -83,21 +83,26 @@ function NonConfigure() {
 function AvecSession({ chemin }: { chemin: string[] }) {
   const [moi, setMoi] = useState<User | null>(null)
   const [pseudo, setPseudo] = useState<string | null>(() => lire<string | null>('multi.pseudo', null))
+  // Pseudo imposé par l'administrateur : on ne propose plus d'en changer.
+  const [verrouille, setVerrouille] = useState(false)
   const [erreur, setErreur] = useState('')
 
   useEffect(() => {
     connexion()
       .then(async (u) => {
         setMoi(u)
-        if (!lire('multi.pseudo', null)) {
-          const j = await lireJoueur(u.uid).catch(() => null)
-          if (j) {
-            ecrire('multi.pseudo', j.pseudo)
-            setPseudo(j.pseudo)
-          }
-        }
         void demarrerVeille()
         void demarrerSynchro()
+        // Le pseudo gardé sur l'appareil n'est qu'une copie, la fiche fait foi : il a pu changer sur un autre appareil, ou
+        // être remplacé par l'administrateur (voir CLAUDE.md, « Firebase (parties à deux) »). Sans cette relecture,
+        // l'ancien reviendrait dans chaque partie créée ou rejointe d'ici.
+        const j = await lireJoueur(u.uid).catch(() => null)
+        if (!j) return
+        setVerrouille(j.verrouille)
+        if (j.pseudo !== lire('multi.pseudo', null)) {
+          ecrire('multi.pseudo', j.pseudo)
+          setPseudo(j.pseudo)
+        }
       })
       .catch((e: Error) => setErreur('Connexion impossible : ' + e.message))
   }, [])
@@ -116,20 +121,24 @@ function AvecSession({ chemin }: { chemin: string[] }) {
   if (chemin[0] === 'partie' && chemin[1] && chemin[2] === 'analyse') return <AnalyseMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'partie' && chemin[1]) return <PartieMulti code={chemin[1]} uid={moi.uid} />
   if (chemin[0] === 'rejoindre' && chemin[1]) return <Rejoindre code={normaliserCode(chemin[1])} uid={moi.uid} pseudo={pseudo} />
-  return <ListeParties uid={moi.uid} pseudo={pseudo} onPseudo={() => setPseudo(null)} />
+  return <ListeParties uid={moi.uid} pseudo={pseudo} onPseudo={verrouille ? undefined : () => setPseudo(null)} />
 }
 
 function ChoixPseudo({ uid, onFini }: { uid: string; onFini: (p: string) => void }) {
   const [texte, setTexte] = useState(() => lire('multi.pseudo', ''))
   const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
   const valider = async () => {
     const p = texte.trim().slice(0, 20)
     if (!p) return
     setEnvoi(true)
+    setErreur('')
     try {
       await enregistrerPseudo(uid, p)
       ecrire('multi.pseudo', p)
       onFini(p)
+    } catch (e) {
+      setErreur(messageErreur(e))
     } finally {
       setEnvoi(false)
     }
@@ -147,12 +156,14 @@ function ChoixPseudo({ uid, onFini }: { uid: string; onFini: (p: string) => void
         <button type="button" className="bouton principal" disabled={!texte.trim() || envoi} onClick={() => void valider()}>
           Continuer
         </button>
+        {erreur && <div className="apercu erreur">{erreur}</div>}
       </div>
     </div>
   )
 }
 
-function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; onPseudo: () => void }) {
+/** `onPseudo` : ouvre le choix du pseudo (absent quand l'administrateur l'a verrouillé). */
+function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; onPseudo?: () => void }) {
   const [parties, setParties] = useState<Partie[] | null>(null)
   const [recues, setRecues] = useState<Partie[]>([])
   const [occupe, setOccupe] = useState(false)
@@ -196,9 +207,13 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
       <Entete
         titre="Mes parties"
         droite={
-          <button type="button" className="puce" onClick={onPseudo} aria-label="Changer de pseudo">
-            {pseudo}
-          </button>
+          onPseudo ? (
+            <button type="button" className="puce" onClick={onPseudo} aria-label="Changer de pseudo">
+              {pseudo}
+            </button>
+          ) : (
+            <span className="puce">{pseudo}</span>
+          )
         }
       />
       <div className="actions">
@@ -884,13 +899,15 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
   const adv = autre(p, uid)
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
-  // Revanche : une nouvelle partie, avec la même personne déjà invitée.
+  // Revanche : une nouvelle partie, avec la même personne déjà invitée. Sous mon pseudo actuel, pas celui de cette
+  // partie : il a pu changer depuis.
   const revanche = async () => {
     if (!adv) return
     setOccupe(true)
     setErreur('')
     try {
-      naviguer('partie/' + (await creerPartie(uid, p.pseudos[uid] ?? '?', { uid: adv, pseudo: nomAdv })))
+      const pseudo = lire<string | null>('multi.pseudo', null) ?? p.pseudos[uid] ?? '?'
+      naviguer('partie/' + (await creerPartie(uid, pseudo, { uid: adv, pseudo: nomAdv })))
     } catch (e) {
       setErreur(messageErreur(e))
       setOccupe(false)

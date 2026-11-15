@@ -83,7 +83,13 @@ citent son titre : le garder en cas de renommage.
 - Données : `parties/{code}` (+ `coups/{n}`, `chevalets/{uid}` lisible par son seul joueur), `joueurs/{uid}` (clé `recherche` = pseudo
   sans accents ni casse, requêtes limitées à 10 fiches et bornées sur `recherche` : seuls ceux qui acceptent d'être trouvés se listent, par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
   partie (celle en attente est lisible par code, mais ne se liste pas : seules ses parties et ses invitations se listent) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
-  directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable.
+  directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable ; pseudo
+  verrouillé (`verrouille: true` dans la fiche) que le joueur ne peut ni changer ni déverrouiller.
+- **Renommer un joueur** (pseudo inapproprié) : console → Firestore, collection `joueurs` (filtre sur `pseudo`) : nouveau `pseudo`
+  (≤ 20 caractères), `recherche` = le même simplifié (`identifiant` de `firebase.ts` : minuscules sans accents, tirets, ex. `joueur-7`),
+  et `verrouille` (booléen) à `true` pour qu'il ne puisse plus en changer (supprimer le champ lève le verrou). Puis `pseudos.<uid>` dans ses
+  parties (`parties`, filtres `joueurs` et `invites` array-contains l'uid), où le nom est recopié sans mise à jour. L'appli relit la fiche
+  en ouvrant « Mes parties » et les Réglages (`multi.pseudo` n'en est qu'une copie). Le nom de connexion, lui, ne change pas.
 - Triche possible, acceptée : le téléphone tire les lettres, calcule le score, et le contenu du sac est lisible ; chaque coup est
   revérifié par le client adverse (mots, score, plateau).
 - Synchro solo (`src/lib/synchro.ts`, `moteurSynchro.ts`, `src/multi/synchro.ts`) : sous `joueurs/{uid}/solo`, en direct. Fusion par

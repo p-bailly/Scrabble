@@ -1,7 +1,8 @@
 // Parties à deux stockées dans Firestore.
 //
-//   joueurs/{uid}                      { pseudo, visible, recherche } ; `recherche` (le pseudo simplifié) n'est écrit que si
-//                                      le joueur accepte d'être trouvé : c'est ce qu'interroge la recherche de joueurs
+//   joueurs/{uid}                      { pseudo, visible, recherche, verrouille } ; `recherche` (le pseudo simplifié) n'est
+//                                      écrit que si le joueur accepte d'être trouvé : c'est ce qu'interroge la recherche
+//                                      de joueurs ; `verrouille` : pseudo imposé par l'administrateur, que le joueur garde
 //   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour, qui a commencé…) ;
 //                                      `invites` est le joueur invité directement (il y voit l'invitation), `refus` ceux
 //                                      qui ont dit non
@@ -89,6 +90,11 @@ export interface Joueur {
   visible: boolean
   /** Clé de recherche enregistrée (absente si le joueur n'est pas visible, ou si la fiche date d'avant les invitations). */
   recherche?: string
+  /**
+   * Pseudo imposé par l'administrateur (champ posé dans la console Firebase, voir CLAUDE.md, « Firebase (parties à
+   * deux) ») : le joueur ne peut plus en changer.
+   */
+  verrouille: boolean
 }
 
 /** Un joueur trouvé, qu'on peut inviter. */
@@ -162,25 +168,40 @@ export const MIN_RECHERCHE = 2
 export async function lireJoueur(uid: string): Promise<Joueur | null> {
   const d = await getDoc(doc(base(), 'joueurs', uid))
   if (!d.exists()) return null
-  const { pseudo, visible, recherche } = d.data()
-  return { pseudo: pseudo as string, visible: visible !== false, recherche: recherche as string | undefined }
+  const { pseudo, visible, recherche, verrouille } = d.data()
+  return { pseudo: pseudo as string, visible: visible !== false, recherche: recherche as string | undefined, verrouille: verrouille === true }
 }
 
-/** Écrit la fiche du joueur. Visible, elle porte la clé de recherche : les autres peuvent l'inviter en tapant son nom. */
-export async function enregistrerJoueur(uid: string, pseudo: string, visible: boolean) {
-  await setDoc(doc(base(), 'joueurs', uid), { pseudo, visible, ...(visible ? { recherche: cleRecherche(pseudo) } : {}) })
+/** Dit au joueur pourquoi il ne peut plus changer son pseudo. */
+export const PSEUDO_VERROUILLE = 'Ce pseudo a été choisi par l’administrateur de l’appli : tu ne peux plus le changer.'
+
+/**
+ * Écrit la fiche du joueur. Visible, elle porte la clé de recherche : les autres peuvent l'inviter en tapant son nom.
+ * `verrouille` : la fiche l'était déjà. setDoc remplace toute la fiche, et les règles Firestore exigent que le verrou reste.
+ */
+export async function enregistrerJoueur(uid: string, pseudo: string, visible: boolean, verrouille = false) {
+  await setDoc(doc(base(), 'joueurs', uid), {
+    pseudo,
+    visible,
+    ...(visible ? { recherche: cleRecherche(pseudo) } : {}),
+    ...(verrouille ? { verrouille: true } : {}),
+  })
 }
 
 /** Change le pseudo en gardant le choix « visible » déjà enregistré (visible par défaut). */
 export async function enregistrerPseudo(uid: string, pseudo: string) {
   const j = await lireJoueur(uid).catch(() => null)
-  await enregistrerJoueur(uid, pseudo, j?.visible ?? true)
+  if (j?.verrouille && pseudo !== j.pseudo) throw new Error(PSEUDO_VERROUILLE)
+  await enregistrerJoueur(uid, pseudo, j?.visible ?? true, j?.verrouille)
 }
 
-/** Remet la fiche à jour si besoin : celles d'avant les invitations n'ont pas de clé de recherche. */
+/**
+ * Remet la fiche à jour si besoin : celles d'avant les invitations n'ont pas de clé de recherche, et l'administrateur a
+ * pu changer le pseudo sans changer la clé.
+ */
 export async function synchroniserJoueur(uid: string): Promise<Joueur | null> {
   const j = await lireJoueur(uid)
-  if (j?.visible && j.recherche !== cleRecherche(j.pseudo)) await enregistrerJoueur(uid, j.pseudo, true)
+  if (j?.visible && j.recherche !== cleRecherche(j.pseudo)) await enregistrerJoueur(uid, j.pseudo, true, j.verrouille)
   return j
 }
 
