@@ -34,11 +34,14 @@ describe('notifications d’une partie qui change', () => {
     expect(passe[0].texte).toBe('Moi a passé son tour.')
   })
 
-  it('l’adversaire qui rejoint la partie prévient le créateur, qui joue en premier', () => {
+  it('l’adversaire qui rejoint la partie prévient le créateur, qu’il commence ou non', () => {
     const avant = partie({ etat: 'attente', joueurs: ['moi'], tour: null, nbCoups: 0, dernier: null })
-    const apres = partie({ nbCoups: 0, tour: 'moi', dernier: null })
-    expect(notificationsPartie(avant, apres)).toEqual([
+    expect(notificationsPartie(avant, partie({ nbCoups: 0, tour: 'moi', premier: 'moi', dernier: null }))).toEqual([
       { uid: 'moi', genre: 'tour', titre: 'À toi de jouer', texte: 'Léa a rejoint ta partie.', hash: '#/partie/K7P2QX', tag: 'K7P2QX' },
+    ])
+    // C'est à elle de commencer (on alterne d'une partie à l'autre) : le créateur l'apprend, sans « à toi de jouer ».
+    expect(notificationsPartie(avant, partie({ nbCoups: 0, tour: 'lui', premier: 'lui', dernier: null }))).toEqual([
+      { uid: 'moi', genre: 'tour', titre: 'Partie commencée', texte: 'Léa a rejoint ta partie et commence.', hash: '#/partie/K7P2QX', tag: 'K7P2QX' },
     ])
   })
 

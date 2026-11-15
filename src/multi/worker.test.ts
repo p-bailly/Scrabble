@@ -35,9 +35,14 @@ describe('notifications depuis l’état actuel (Worker)', () => {
     expect(notificationsDepuisEtat(refusee, 'moi')).toEqual([])
   })
 
-  it('l’invité qui rejoint prévient le créateur ; la fin de partie prévient l’adversaire du dernier joueur', () => {
-    const rejoint = partie({ tour: 'moi', nbCoups: 0, dernier: null })
+  it('l’invité qui rejoint prévient le créateur, qu’il commence ou non ; la fin de partie prévient l’adversaire du dernier joueur', () => {
+    const rejoint = partie({ tour: 'moi', premier: 'moi', nbCoups: 0, dernier: null })
     expect(notificationsDepuisEtat(rejoint, 'lui').map((n) => [n.uid, n.texte])).toEqual([['moi', 'Léa a rejoint ta partie.']])
+    const ilCommence = partie({ tour: 'lui', premier: 'lui', nbCoups: 0, dernier: null })
+    expect(notificationsDepuisEtat(ilCommence, 'lui').map((n) => [n.uid, n.texte])).toEqual([['moi', 'Léa a rejoint ta partie et commence.']])
+    // Le créateur n'a rejoint personne : rien à envoyer de sa part, que ce soit son tour ou non.
+    expect(notificationsDepuisEtat(rejoint, 'moi')).toEqual([])
+    expect(notificationsDepuisEtat(ilCommence, 'moi')).toEqual([])
     const finie = partie({ etat: 'finie', tour: null, scores: { moi: 300, lui: 280 } })
     expect(notificationsDepuisEtat(finie, 'moi').map((n) => [n.uid, n.genre])).toEqual([['lui', 'fin']])
     expect(notificationsDepuisEtat(finie, 'lui')).toEqual([])

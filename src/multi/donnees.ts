@@ -2,8 +2,9 @@
 //
 //   joueurs/{uid}                      { pseudo, visible, recherche } ; `recherche` (le pseudo simplifié) n'est écrit que si
 //                                      le joueur accepte d'être trouvé : c'est ce qu'interroge la recherche de joueurs
-//   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour…) ; `invites`
-//                                      est le joueur invité directement (il y voit l'invitation), `refus` ceux qui ont dit non
+//   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour, qui a commencé…) ;
+//                                      `invites` est le joueur invité directement (il y voit l'invitation), `refus` ceux
+//                                      qui ont dit non
 
 //   parties/{code}/chevalets/{uid}     les lettres d'un joueur, lisibles par lui seul
 //   parties/{code}/coups/{n}           historique des coups (mot, position, points)
@@ -72,6 +73,11 @@ export interface Partie {
   invites?: string[]
   /** Joueurs qui ont refusé l'invitation. */
   refus?: string[]
+  /**
+   * Joueur qui joue le premier tour, choisi quand l'adversaire rejoint (`quiCommence`). Absent des parties d'avant
+   * l'alternance, où le créateur commençait toujours : lire `premierJoueur`.
+   */
+  premier?: string
   /** Écriture locale pas encore envoyée (hors ligne). */
   enAttente?: boolean
 }
@@ -119,6 +125,24 @@ export function nouveauCode(): string {
 export const normaliserCode = (c: string) => c.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
 
 export const autre = (p: Partie, uid: string) => p.joueurs.find((j) => j !== uid) ?? null
+
+/** Qui joue (ou a joué) le premier tour d'une partie commencée. */
+export const premierJoueur = (p: Partie) => p.premier ?? p.createur
+
+/**
+ * Qui commence une partie entre `createur` et `adversaire` : on alterne, c'est celui qui n'a pas commencé leur partie
+ * précédente (la dernière créée parmi celles qui ont commencé) ; leur toute première, c'est le créateur. `parties` : les
+ * parties de l'un des deux, `code` : celle qui va commencer (écartée).
+ */
+export function quiCommence(parties: readonly Partie[], createur: string, adversaire: string, code?: string): string {
+  const date = (p: Partie) => p.creeLe?.toMillis?.() ?? Date.now()
+  let precedente: Partie | null = null
+  for (const p of parties) {
+    if (p.code === code || p.etat === 'attente' || !p.joueurs.includes(createur) || !p.joueurs.includes(adversaire)) continue
+    if (!precedente || date(p) > date(precedente)) precedente = p
+  }
+  return precedente && premierJoueur(precedente) === createur ? adversaire : createur
+}
 
 /** Message lisible pour une erreur Firestore (hors ligne, règles de sécurité pas à jour…). */
 export function messageErreur(e: unknown): string {
@@ -345,7 +369,7 @@ export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTr
   return code
 }
 
-/** Rejoint une partie en attente (il faut être en ligne). */
+/** Rejoint une partie en attente (il faut être en ligne). Qui commence alterne d'une partie à l'autre (`quiCommence`). */
 export async function rejoindre(code: string, uid: string, pseudo: string): Promise<void> {
   const ref = doc(base(), 'parties', code)
   const d = await getDoc(ref)
@@ -353,6 +377,9 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
   const p = d.data() as Partie
   if (p.joueurs.includes(uid)) return
   if (p.etat !== 'attente') throw new Error('Cette partie a déjà deux joueurs')
+  // Mes parties, pour retrouver la précédente contre le créateur ; illisibles, la partie commence quand même (par le créateur).
+  const miennes = await getDocs(query(collection(base(), 'parties'), where('joueurs', 'array-contains', uid))).catch(() => null)
+  const premier = quiCommence(miennes?.docs.map((m) => m.data() as Partie) ?? [], p.createur, uid, code)
   const { tires, sac } = piocher([...p.sac], 7)
   const b = writeBatch(base())
   b.update(ref, {
@@ -360,7 +387,8 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
     [`pseudos.${uid}`]: pseudo,
     [`scores.${uid}`]: 0,
     etat: 'encours',
-    tour: p.createur,
+    tour: premier,
+    premier,
     invites: [],
     sac: sac.join(''),
     majLe: serverTimestamp(),

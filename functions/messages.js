@@ -53,10 +53,18 @@ export function notificationsPartie(avant, apres) {
 
   const adversaireDe = (uid) => (apres.joueurs ?? []).find((j) => j !== uid)
 
-  // L'adversaire rejoint la partie : le créateur joue en premier.
+  // L'adversaire rejoint la partie : le créateur l'apprend, qu'il commence ou non (on alterne d'une partie à l'autre).
   if (avant?.etat === 'attente' && apres.etat === 'encours' && apres.tour) {
     const nouveau = (apres.joueurs ?? []).find((j) => j !== apres.createur)
-    envois.push({ uid: apres.tour, genre: 'tour', titre: 'À toi de jouer', texte: `${nom(nouveau)} a rejoint ta partie.`, hash: lien, tag: apres.code })
+    const aLui = apres.tour === apres.createur
+    envois.push({
+      uid: apres.createur,
+      genre: 'tour',
+      titre: aLui ? 'À toi de jouer' : 'Partie commencée',
+      texte: `${nom(nouveau)} a rejoint ta partie${aLui ? '' : ' et commence'}.`,
+      hash: lien,
+      tag: apres.code,
+    })
     return envois
   }
 
@@ -122,9 +130,9 @@ export function notificationsDepuisEtat(partie, appelant) {
   }
   if (!joueurs.includes(appelant)) return []
   if (partie.etat === 'encours') {
-    if (partie.tour === appelant) return []
-    if (partie.nbCoups === 0) return notificationsPartie({ etat: 'attente' }, partie)
-    if (partie.dernier?.uid !== appelant) return []
+    // Partie qui vient de commencer : l'auteur est celui qui a rejoint, qu'il commence ou non.
+    if (partie.nbCoups === 0) return partie.createur === appelant ? [] : notificationsPartie({ etat: 'attente' }, partie)
+    if (partie.tour === appelant || partie.dernier?.uid !== appelant) return []
     return notificationsPartie({ etat: 'encours', nbCoups: partie.nbCoups - 1 }, partie)
   }
   if (partie.etat === 'finie' && partie.dernier?.uid === appelant) return notificationsPartie({ etat: 'encours' }, partie)

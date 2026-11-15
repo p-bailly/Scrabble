@@ -147,5 +147,13 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertFails(getDoc(doc(anonyme(), 'parties', 'ABCD12')))
       await assertFails(getDoc(doc(env.authenticatedContext('tiers').firestore(), 'parties', 'ABCD12')))
     })
+
+    it('celui qui rejoint peut jouer le premier tour (on alterne d’une partie à l’autre), puis le tour passe', async () => {
+      await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'parties', 'ABCD12'), enAttente({ invites: ['moi'] })))
+      const partie = doc(moi(), 'parties', 'ABCD12')
+      await assertSucceeds(updateDoc(partie, { joueurs: ['autre', 'moi'], etat: 'encours', invites: [], tour: 'moi', premier: 'moi' }))
+      await assertFails(updateDoc(doc(autre(), 'parties', 'ABCD12'), { nbCoups: 1, tour: 'moi' }))
+      await assertSucceeds(updateDoc(partie, { nbCoups: 1, tour: 'autre' }))
+    })
   })
 })
