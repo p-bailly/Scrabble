@@ -45,6 +45,18 @@ describe('notifications d’une partie qui change', () => {
     ])
   })
 
+  it('le premier coup joué dès l’invitation ne prévient personne ; l’arrivée de l’invité prévient le créateur', () => {
+    const attente = { etat: 'attente', joueurs: ['moi'], invites: ['lui'], scores: { moi: 0 } }
+    const avant = partie({ ...attente, tour: 'moi', nbCoups: 0, dernier: null })
+    const joue = partie({ ...attente, tour: null, nbCoups: 1, scores: { moi: 12 } })
+    // L'invité a déjà reçu l'invitation : rien de plus à lui dire.
+    expect(notificationsPartie(avant, joue)).toEqual([])
+    // Il rejoint : c'est à lui de répondre au premier coup, le créateur l'apprend.
+    expect(notificationsPartie(joue, partie({ premier: 'moi' }))).toEqual([
+      { uid: 'moi', genre: 'tour', titre: 'Partie commencée', texte: 'Léa a rejoint ta partie : à son tour de jouer.', hash: '#/partie/K7P2QX', tag: 'K7P2QX' },
+    ])
+  })
+
   it('la fin de partie prévient celui qui n’a pas joué le dernier coup, avec les scores', () => {
     const avant = partie({ nbCoups: 9, tour: 'lui' })
     const apres = partie({ etat: 'finie', tour: null, nbCoups: 10, scores: { moi: 310, lui: 288 }, dernier: { uid: 'lui', type: 'mot', mot: 'x', points: 8 }, fin: { raison: 'chevalet-vide' } })

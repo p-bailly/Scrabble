@@ -45,7 +45,7 @@ service cloud.firestore {
       // une simple requête triée ne suffit pas), et lire 10 fiches au plus (sans `limit`, refusée).
       allow list: if connecte() && request.query.limit <= 10 && resource.data.recherche >= '';
       allow write: if connecte() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['pseudo', 'visible', 'recherche', 'verrouille'])
+        && request.resource.data.keys().hasOnly(['pseudo', 'visible', 'recherche', 'verrouille', 'icone'])
         && request.resource.data.pseudo is string
         && request.resource.data.pseudo.size() > 0 && request.resource.data.pseudo.size() <= 20
         // La clé de recherche (le pseudo simplifié) n'est écrite que si le joueur accepte d'être trouvé.
@@ -53,6 +53,9 @@ service cloud.firestore {
           || (request.resource.data.recherche is string && request.resource.data.recherche.size() <= 20
             && request.resource.data.get('visible', true) == true))
         && (!('visible' in request.resource.data) || request.resource.data.visible is bool)
+        // Icône : un identifiant court (src/multi/icones.ts) que l'appli traduit en dessin ; inconnu, elle montre l'initiale.
+        && (!('icone' in request.resource.data)
+          || (request.resource.data.icone is string && request.resource.data.icone.size() <= 12))
         // Le joueur ne pose ni ne lève le verrou ; verrouillé, il garde son pseudo (être trouvé ou non reste son choix).
         && (!('verrouille' in request.resource.data) || request.resource.data.verrouille is bool)
         && verrouille(request.resource.data) == (resource != null && verrouille(resource.data))
@@ -88,6 +91,13 @@ service cloud.firestore {
       // prendre une invitation destinée à un autre).
       allow list: if connecte() && (joueur(resource.data) || invite(resource.data));
 
+      // Partie en attente : personne n'a le tour, sauf le créateur qui commence contre son invité (on alterne d'une partie à
+      // l'autre) : il joue alors son premier coup sans attendre que l'invité accepte.
+      function tourEnAttente(d) {
+        return d.get('tour', null) == null
+          || (d.tour == d.createur && d.nbCoups == 0 && d.get('invites', []).size() == 1);
+      }
+
       // Création : par son créateur, seul joueur inscrit, en attente d'un adversaire (et d'un invité au plus).
       allow create: if connecte()
         && request.resource.data.createur == request.auth.uid
@@ -95,16 +105,30 @@ service cloud.firestore {
         && request.resource.data.etat == 'attente'
         && request.resource.data.nbCoups == 0
         && request.resource.data.get('invites', []).size() <= 1
-        && !invite(request.resource.data);
+        && !invite(request.resource.data)
+        && tourEnAttente(request.resource.data);
 
       allow update: if connecte() && (
-        // Rejoindre une partie en attente : on s'ajoute comme second joueur, la partie commence.
+        // Rejoindre une partie en attente : on s'ajoute comme second joueur, la partie commence. Si le créateur a déjà
+        // joué son premier coup, c'est à celui qui rejoint de jouer.
         (resource.data.etat == 'attente'
           && request.auth.uid != resource.data.createur
           && request.resource.data.joueurs == [resource.data.createur, request.auth.uid]
           && request.resource.data.etat == 'encours'
-          && request.resource.data.nbCoups == 0
+          && request.resource.data.nbCoups == resource.data.nbCoups
+          && (resource.data.nbCoups == 0 || request.resource.data.tour == request.auth.uid)
           && inchange(['createur', 'code', 'creeLe', 'plateau']))
+        ||
+        // Premier coup du créateur avant l'arrivée de l'invité (l'invitation lui a donné le tour) : la partie reste en
+        // attente, et plus personne n'a la main jusqu'à ce que l'invité rejoigne.
+        (resource.data.etat == 'attente'
+          && resource.data.createur == request.auth.uid
+          && resource.data.tour == request.auth.uid
+          && tourEnAttente(resource.data)
+          && request.resource.data.etat == 'attente'
+          && request.resource.data.nbCoups == 1
+          && request.resource.data.tour == null
+          && inchange(['createur', 'code', 'creeLe', 'joueurs', 'invites', 'refus', 'pseudos']))
         ||
         // Jouer : seulement le joueur dont c'est le tour, un coup à la fois.
         (resource.data.etat == 'encours'
@@ -119,12 +143,14 @@ service cloud.firestore {
           && request.resource.data.nbCoups == resource.data.nbCoups
           && inchange(['createur', 'code', 'creeLe', 'joueurs', 'plateau', 'sac', 'scores']))
         ||
-        // Inviter un joueur, ou annuler l'invitation : le créateur, tant que personne n'a rejoint (un invité au plus).
+        // Inviter un joueur, ou annuler l'invitation : le créateur, tant que personne n'a rejoint (un invité au plus). Le
+        // tour suit l'invitation (`tourEnAttente`) : jamais de second coup avant l'arrivée de l'invité.
         (resource.data.etat == 'attente'
           && resource.data.createur == request.auth.uid
-          && seulementChange(['invites', 'refus', 'pseudos', 'majLe'])
+          && seulementChange(['invites', 'refus', 'pseudos', 'majLe', 'tour'])
           && request.resource.data.invites.size() <= 1
-          && !invite(request.resource.data))
+          && !invite(request.resource.data)
+          && tourEnAttente(request.resource.data))
         ||
         // Refuser une invitation : on se retire des invités et le créateur le voit dans « refus ».
         (resource.data.etat == 'attente'

@@ -1,14 +1,16 @@
-// Section « compte » des réglages : pseudo (en lecture seule si l'administrateur l'a verrouillé), visibilité dans la
-// recherche de joueurs, déconnexion. Chargée à la demande (elle dépend de Firebase), seulement quand un compte existe sur
-// l'appareil.
+// Section « compte » des réglages : pseudo (en lecture seule si l'administrateur l'a verrouillé), icône, visibilité dans
+// la recherche de joueurs, déconnexion. Chargée à la demande (elle dépend de Firebase), seulement quand un compte existe
+// sur l'appareil.
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { Interrupteur, Rangee } from '../composants/Reglage'
 import { pushActif } from '../lib/notifications'
 import { naviguer } from '../lib/routeur'
 import { ecrire, lire } from '../lib/stockage'
-import { enregistrerJoueur, lireJoueur, PSEUDO_VERROUILLE, type Joueur } from './donnees'
+import { retenirIcone } from './Avatar'
+import { enregistrerJoueur, lireJoueur, messageErreur, PSEUDO_VERROUILLE, type Joueur } from './donnees'
 import { configuration, deconnexion, utilisateur } from './firebase'
+import { ICONES } from './icones'
 import { arreterSynchro } from './synchro'
 import { arreterVeille } from './veille'
 
@@ -31,9 +33,10 @@ function Compte() {
         const j = u ? await lireJoueur(u.uid).catch(() => null) : null
         setJoueur(j)
         // La fiche fait foi : le pseudo a pu changer sur un autre appareil, ou être remplacé par l'administrateur.
-        if (j) {
+        if (u && j) {
           setPseudo(j.pseudo)
           ecrire('multi.pseudo', j.pseudo)
+          retenirIcone(u.uid, j.icone)
         }
       })
       .catch(() => setUid(null))
@@ -53,18 +56,35 @@ function Compte() {
       />
     )
 
-  // Une erreur d'écriture (hors ligne, règles pas à jour) est dite telle quelle, le réglage reste comme il était.
+  // Une erreur d'écriture (hors ligne, règles pas à jour) est dite telle quelle, le réglage reste comme il était. Sans
+  // la fiche, on n'écrit rien : setDoc la remplacerait, et ce qu'on ne connaît pas (visibilité, verrou, icône) serait perdu.
   const enregistrer = async (nouveau: string, visible: boolean) => {
+    if (!joueur) return
     setMessage('')
-    const verrouille = joueur?.verrouille ?? false
+    const suite: Joueur = { ...joueur, pseudo: nouveau, visible }
     try {
-      await enregistrerJoueur(uid, nouveau, visible, verrouille)
+      await enregistrerJoueur(uid, suite)
       ecrire('multi.pseudo', nouveau)
       setPseudo(nouveau)
-      setJoueur({ pseudo: nouveau, visible, verrouille })
+      setJoueur(suite)
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e))
     }
+  }
+
+  // L'icône change tout de suite à l'écran (et partout dans l'appli) ; un refus du serveur la remet comme avant.
+  const choisirIcone = (icone: string | undefined) => {
+    if (!joueur || icone === joueur.icone) return
+    const avant = joueur
+    const suite: Joueur = { ...joueur, icone }
+    setMessage('')
+    setJoueur(suite)
+    retenirIcone(uid, icone)
+    enregistrerJoueur(uid, suite).catch((e) => {
+      setJoueur(avant)
+      retenirIcone(uid, avant.icone)
+      setMessage(messageErreur(e))
+    })
   }
 
   const changerPseudo = (e: FormEvent) => {
@@ -106,6 +126,35 @@ function Compte() {
           </form>
         </Rangee>
       )}
+      <Rangee titre="Icône" texte="Elle remplace l’initiale de ton pseudo, chez tous les joueurs.">
+        <div className="choix-icones" role="radiogroup" aria-label="Icône">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!joueur?.icone}
+            aria-label="Aucune : l’initiale de ton pseudo"
+            className={'choix-icone initiale' + (joueur && !joueur.icone ? ' choisie' : '')}
+            disabled={!joueur}
+            onClick={() => choisirIcone(undefined)}
+          >
+            {(joueur?.pseudo ?? pseudo).slice(0, 1).toUpperCase()}
+          </button>
+          {ICONES.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              role="radio"
+              aria-checked={joueur?.icone === i.id}
+              aria-label={i.nom}
+              className={'choix-icone' + (joueur?.icone === i.id ? ' choisie' : '')}
+              disabled={!joueur}
+              onClick={() => choisirIcone(i.id)}
+            >
+              {i.emoji}
+            </button>
+          ))}
+        </div>
+      </Rangee>
       <Interrupteur
         titre="Être trouvé par les autres joueurs"
         texte="Ton pseudo apparaît dans la liste des joueurs qu’on peut inviter. Désactivé, seul le lien d’une partie permet de te faire jouer."

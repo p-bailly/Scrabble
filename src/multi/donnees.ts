@@ -1,8 +1,9 @@
 // Parties à deux stockées dans Firestore.
 //
-//   joueurs/{uid}                      { pseudo, visible, recherche, verrouille } ; `recherche` (le pseudo simplifié) n'est
-//                                      écrit que si le joueur accepte d'être trouvé : c'est ce qu'interroge la recherche
-//                                      de joueurs ; `verrouille` : pseudo imposé par l'administrateur, que le joueur garde
+//   joueurs/{uid}                      { pseudo, visible, recherche, verrouille, icone } ; `recherche` (le pseudo simplifié)
+//                                      n'est écrit que si le joueur accepte d'être trouvé : c'est ce qu'interroge la
+//                                      recherche de joueurs ; `verrouille` : pseudo imposé par l'administrateur, que le
+//                                      joueur garde ; `icone` : identifiant de son icône (icones.ts)
 //   parties/{code}                     état public de la partie (plateau, sac, scores, à qui le tour, qui a commencé…) ;
 //                                      `invites` est le joueur invité directement (il y voit l'invitation), `refus` ceux
 //                                      qui ont dit non
@@ -95,12 +96,19 @@ export interface Joueur {
    * deux) ») : le joueur ne peut plus en changer.
    */
   verrouille: boolean
+  /** Icône choisie dans les Réglages (identifiant de `ICONES`), absente : l'initiale du pseudo. */
+  icone?: string
 }
+
+/** Ce que le joueur écrit dans sa fiche (la clé de recherche s'en déduit). */
+export type FicheJoueur = Pick<Joueur, 'pseudo' | 'visible'> & Partial<Pick<Joueur, 'verrouille' | 'icone'>>
 
 /** Un joueur trouvé, qu'on peut inviter. */
 export interface JoueurTrouve {
   uid: string
   pseudo: string
+  /** Lue avec la fiche (liste des joueurs) ; absente pour un adversaire repris d'une partie. */
+  icone?: string
 }
 
 export interface CoupMulti {
@@ -136,6 +144,17 @@ export const autre = (p: Partie, uid: string) => p.joueurs.find((j) => j !== uid
 export const premierJoueur = (p: Partie) => p.premier ?? p.createur
 
 /**
+ * Le créateur joue son premier coup sans attendre son invité : il a invité un joueur de l'appli et l'alternance le
+ * désigne pour commencer (`inviter` lui a donné le tour). La partie reste en attente jusqu'à l'arrivée de l'invité, qui
+ * jouera le coup suivant.
+ */
+export const premierCoupAvantArrivee = (p: Partie, uid: string): boolean =>
+  p.etat === 'attente' && p.createur === uid && p.tour === uid && p.nbCoups === 0 && (p.invites?.length ?? 0) > 0
+
+/** Est-ce à moi de jouer : dans une partie commencée, ou pour un premier coup avant l'arrivée de l'invité ? */
+export const aMoiDeJouer = (p: Partie, uid: string): boolean => (p.etat === 'encours' && p.tour === uid) || premierCoupAvantArrivee(p, uid)
+
+/**
  * Qui commence une partie entre `createur` et `adversaire` : on alterne, c'est celui qui n'a pas commencé leur partie
  * précédente (la dernière créée parmi celles qui ont commencé) ; leur toute première, c'est le créateur. `parties` : les
  * parties de l'un des deux, `code` : celle qui va commencer (écartée).
@@ -168,8 +187,14 @@ export const MIN_RECHERCHE = 2
 export async function lireJoueur(uid: string): Promise<Joueur | null> {
   const d = await getDoc(doc(base(), 'joueurs', uid))
   if (!d.exists()) return null
-  const { pseudo, visible, recherche, verrouille } = d.data()
-  return { pseudo: pseudo as string, visible: visible !== false, recherche: recherche as string | undefined, verrouille: verrouille === true }
+  const { pseudo, visible, recherche, verrouille, icone } = d.data()
+  return {
+    pseudo: pseudo as string,
+    visible: visible !== false,
+    recherche: recherche as string | undefined,
+    verrouille: verrouille === true,
+    icone: typeof icone === 'string' ? icone : undefined,
+  }
 }
 
 /** Dit au joueur pourquoi il ne peut plus changer son pseudo. */
@@ -177,22 +202,24 @@ export const PSEUDO_VERROUILLE = 'Ce pseudo a été choisi par l’administrateu
 
 /**
  * Écrit la fiche du joueur. Visible, elle porte la clé de recherche : les autres peuvent l'inviter en tapant son nom.
- * `verrouille` : la fiche l'était déjà. setDoc remplace toute la fiche, et les règles Firestore exigent que le verrou reste.
+ * setDoc remplace toute la fiche : on y repasse donc ce qu'elle a déjà (le verrou, que les règles Firestore exigent de
+ * garder, et l'icône).
  */
-export async function enregistrerJoueur(uid: string, pseudo: string, visible: boolean, verrouille = false) {
+export async function enregistrerJoueur(uid: string, { pseudo, visible, verrouille, icone }: FicheJoueur) {
   await setDoc(doc(base(), 'joueurs', uid), {
     pseudo,
     visible,
     ...(visible ? { recherche: cleRecherche(pseudo) } : {}),
     ...(verrouille ? { verrouille: true } : {}),
+    ...(icone ? { icone } : {}),
   })
 }
 
-/** Change le pseudo en gardant le choix « visible » déjà enregistré (visible par défaut). */
+/** Change le pseudo en gardant le reste de la fiche (visible par défaut). */
 export async function enregistrerPseudo(uid: string, pseudo: string) {
   const j = await lireJoueur(uid).catch(() => null)
   if (j?.verrouille && pseudo !== j.pseudo) throw new Error(PSEUDO_VERROUILLE)
-  await enregistrerJoueur(uid, pseudo, j?.visible ?? true, j?.verrouille)
+  await enregistrerJoueur(uid, { ...j, pseudo, visible: j?.visible ?? true })
 }
 
 /**
@@ -201,8 +228,14 @@ export async function enregistrerPseudo(uid: string, pseudo: string) {
  */
 export async function synchroniserJoueur(uid: string): Promise<Joueur | null> {
   const j = await lireJoueur(uid)
-  if (j?.visible && j.recherche !== cleRecherche(j.pseudo)) await enregistrerJoueur(uid, j.pseudo, true, j.verrouille)
+  if (j?.visible && j.recherche !== cleRecherche(j.pseudo)) await enregistrerJoueur(uid, j)
   return j
+}
+
+/** Un joueur lu dans la liste des fiches, avec son icône s'il en a une. */
+function joueurTrouve(uid: string, donnees: Record<string, unknown>): JoueurTrouve {
+  const icone = typeof donnees.icone === 'string' ? donnees.icone : undefined
+  return { uid, pseudo: donnees.pseudo as string, ...(icone ? { icone } : {}) }
 }
 
 /**
@@ -219,7 +252,7 @@ export async function chercherJoueurs(texte: string, moi: string): Promise<Joueu
   return s.docs
     .filter((d) => d.id !== moi)
     .slice(0, 8)
-    .map((d) => ({ uid: d.id, pseudo: d.data().pseudo as string }))
+    .map((d) => joueurTrouve(d.id, d.data()))
 }
 
 /**
@@ -234,7 +267,7 @@ export async function listerJoueurs(moi: string, max = 100): Promise<{ joueurs: 
     const parametres = [where('recherche', '>=', ''), orderBy('recherche'), ...(apres ? [startAfter(apres)] : []), limit(10)]
     const s = await getDocs(query(collection(base(), 'joueurs'), ...parametres))
     if (s.metadata.fromCache) throw new Error('Pas de connexion : la liste des joueurs demande Internet.')
-    for (const d of s.docs) if (d.id !== moi) joueurs.push({ uid: d.id, pseudo: d.data().pseudo as string })
+    for (const d of s.docs) if (d.id !== moi) joueurs.push(joueurTrouve(d.id, d.data()))
     if (s.docs.length < 10) return { joueurs, complet: true }
     apres = s.docs[s.docs.length - 1]
   }
@@ -359,8 +392,11 @@ export function bilansFaceAFace(parties: readonly Partie[], uid: string, depuis 
   return bilans.sort((a, b) => b.parties.length - a.parties.length || a.pseudo.localeCompare(b.pseudo))
 }
 
-/** Crée une partie et renvoie son code ; `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli). */
-export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTrouve): Promise<string> {
+/**
+ * Crée une partie et renvoie son code. `invite` : joueur à inviter tout de suite (il voit l'invitation dans l'appli) ;
+ * `commence` : c'est au créateur de commencer contre lui (`quiCommence`), il joue alors sans attendre qu'il accepte.
+ */
+export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTrouve, commence = false): Promise<string> {
   const code = nouveauCode()
   const { tires, sac } = piocher(tousLesJetons(), 7)
   const b = writeBatch(base())
@@ -372,7 +408,7 @@ export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTr
     invites: invite ? [invite.uid] : [],
     refus: [],
     etat: 'attente',
-    tour: null,
+    tour: invite && commence ? uid : null,
     plateau: plateauEnTexte(plateauVide()),
     sac: sac.join(''),
     scores: { [uid]: 0 },
@@ -390,7 +426,10 @@ export async function creerPartie(uid: string, pseudo: string, invite?: JoueurTr
   return code
 }
 
-/** Rejoint une partie en attente (il faut être en ligne). Qui commence alterne d'une partie à l'autre (`quiCommence`). */
+/**
+ * Rejoint une partie en attente (il faut être en ligne). Qui commence alterne d'une partie à l'autre (`quiCommence`) ;
+ * si le créateur a déjà joué son premier coup (`premierCoupAvantArrivee`), c'est lui qui a commencé : à moi de jouer.
+ */
 export async function rejoindre(code: string, uid: string, pseudo: string): Promise<void> {
   const ref = doc(base(), 'parties', code)
   const d = await getDoc(ref)
@@ -398,9 +437,13 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
   const p = d.data() as Partie
   if (p.joueurs.includes(uid)) return
   if (p.etat !== 'attente') throw new Error('Cette partie a déjà deux joueurs')
-  // Mes parties, pour retrouver la précédente contre le créateur ; illisibles, la partie commence quand même (par le créateur).
-  const miennes = await getDocs(query(collection(base(), 'parties'), where('joueurs', 'array-contains', uid))).catch(() => null)
-  const premier = quiCommence(miennes?.docs.map((m) => m.data() as Partie) ?? [], p.createur, uid, code)
+  let premier = p.createur
+  if (p.nbCoups === 0) {
+    // Mes parties, pour retrouver la précédente contre le créateur ; illisibles, la partie commence quand même (par le créateur).
+    const miennes = await getDocs(query(collection(base(), 'parties'), where('joueurs', 'array-contains', uid))).catch(() => null)
+    premier = quiCommence(miennes?.docs.map((m) => m.data() as Partie) ?? [], p.createur, uid, code)
+  }
+  // Mes lettres se tirent maintenant, dans le sac tel qu'il est (après le premier coup du créateur, s'il a déjà joué).
   const { tires, sac } = piocher([...p.sac], 7)
   const b = writeBatch(base())
   b.update(ref, {
@@ -408,7 +451,7 @@ export async function rejoindre(code: string, uid: string, pseudo: string): Prom
     [`pseudos.${uid}`]: pseudo,
     [`scores.${uid}`]: 0,
     etat: 'encours',
-    tour: premier,
+    tour: p.nbCoups > 0 ? uid : premier,
     premier,
     invites: [],
     sac: sac.join(''),
@@ -431,15 +474,22 @@ function exigerConnexion() {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('Pas de connexion à Internet.')
 }
 
-/** Invite un joueur de l'appli à une partie en attente (un seul invité à la fois : le nouveau remplace l'ancien). */
-export async function inviter(p: Partie, invite: JoueurTrouve) {
+/**
+ * Invite un joueur de l'appli à une partie en attente (un seul invité à la fois : le nouveau remplace l'ancien). Tant
+ * que le créateur n'a pas joué, on regarde qui commence contre ce joueur (on alterne, `quiCommence`) : si c'est le
+ * créateur, il a le tour tout de suite et joue sans attendre que l'invité accepte (`premierCoupAvantArrivee`).
+ * `parties` : celles du créateur ; null tant qu'elles ne sont pas lues (l'invité décidera alors en rejoignant).
+ */
+export async function inviter(p: Partie, invite: JoueurTrouve, parties: readonly Partie[] | null) {
   exigerConnexion()
   const ancien = p.invites?.[0]
+  const commence = !!parties && quiCommence(parties, p.createur, invite.uid, p.code) === p.createur
   await updateDoc(doc(base(), 'parties', p.code), {
     invites: [invite.uid],
     refus: [],
     [`pseudos.${invite.uid}`]: invite.pseudo,
     ...(ancien && ancien !== invite.uid ? { [`pseudos.${ancien}`]: deleteField() } : {}),
+    ...(p.nbCoups === 0 ? { tour: commence ? p.createur : null } : {}),
     majLe: serverTimestamp(),
   })
   prevenir(p.code)
@@ -453,6 +503,8 @@ export async function annulerInvitation(p: Partie) {
     invites: [],
     refus: [],
     ...(ancien ? { [`pseudos.${ancien}`]: deleteField() } : {}),
+    // Le premier coup sans attendre allait avec cette invitation.
+    ...(p.nbCoups === 0 ? { tour: null } : {}),
     majLe: serverTimestamp(),
   })
 }
@@ -528,8 +580,11 @@ type Action = { type: 'mot'; analyse: Analyse } | { type: 'change'; lettres: str
  * sécurité, par exemple), `surRefus` en reçoit la raison, car l'écran revient alors à l'état d'avant le coup.
  */
 export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Action, surRefus?: (message: string) => void): string | null {
-  if (p.etat !== 'encours' || p.tour !== uid) return 'Ce n’est pas ton tour'
-  const adversaire = autre(p, uid)!
+  // Premier coup du créateur avant l'arrivée de son invité : la partie reste en attente, et personne n'a plus la main
+  // jusqu'à ce qu'il rejoigne (c'est alors son tour, `rejoindre`).
+  const avantArrivee = premierCoupAvantArrivee(p, uid)
+  if (!avantArrivee && (p.etat !== 'encours' || p.tour !== uid)) return 'Ce n’est pas ton tour'
+  const adversaire = autre(p, uid)
   const plateau = plateauDepuisTexte(p.plateau)
   const sac = [...p.sac]
   const n = p.nbCoups + 1
@@ -568,12 +623,12 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   coup.chevalet = chevalet.join('')
 
   const scores = { ...p.scores, [uid]: (p.scores[uid] ?? 0) + points }
-  // Les lettres de l'adversaire se déduisent du reste (utile pour les points de fin de partie).
-  const lettresAutre = lettresAdversaire(nouveauPlateau, nouveauSac, nouveauChevalet)
-  const fin = finDePartie(nouveauSac, [nouveauChevalet, lettresAutre], passes, n)
-  let etat: Etat = 'encours'
+  // Les lettres de l'adversaire se déduisent du reste (utile pour les points de fin de partie). Avant son arrivée, il
+  // n'en a pas encore, et la partie ne peut pas finir sur un seul coup.
+  const fin = adversaire ? finDePartie(nouveauSac, [nouveauChevalet, lettresAdversaire(nouveauPlateau, nouveauSac, nouveauChevalet)], passes, n) : null
+  let etat: Etat = avantArrivee ? 'attente' : 'encours'
   let finPartie: Partie['fin'] = null
-  if (fin) {
+  if (fin && adversaire) {
     etat = 'finie'
     scores[uid] += fin.ajustements[0]
     scores[adversaire] = (scores[adversaire] ?? 0) + fin.ajustements[1]
@@ -596,7 +651,8 @@ export function jouerCoup(p: Partie, uid: string, chevalet: string[], action: Ac
   })
   b.set(doc(base(), 'parties', p.code, 'chevalets', uid), { lettres: nouveauChevalet.join('') })
   b.set(doc(base(), 'parties', p.code, 'coups', String(n)), { ...coup, le: serverTimestamp() })
-  b.commit().then(() => prevenir(p.code)).catch((e) => {
+  // Avant l'arrivée de l'invité, rien de plus à lui dire : il a déjà reçu l'invitation.
+  b.commit().then(() => avantArrivee || prevenir(p.code)).catch((e) => {
     console.error('Coup refusé par le serveur', e)
     surRefus?.('Coup non enregistré : ' + messageErreur(e))
   })

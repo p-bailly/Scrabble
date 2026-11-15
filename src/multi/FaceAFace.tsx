@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { depuisRemiseAZero } from '../solo/remiseAZero'
 import { naviguer } from '../lib/routeur'
+import { Avatar } from './Avatar'
 import { bilansFaceAFace, ecouterMesParties, type Bilan, type PartieJouee } from './donnees'
 import { utilisateur } from './firebase'
 
@@ -71,6 +72,7 @@ function Adversaire({ b }: { b: Bilan }) {
   return (
     <div className="carte face-a-face">
       <div className="fa-entete">
+        <Avatar uid={b.uid} nom={b.pseudo} fond="var(--accent)" />
         <div className="principal">
           <div className="fa-nom">{b.pseudo}</div>
           <div className="note">

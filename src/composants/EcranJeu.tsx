@@ -111,14 +111,18 @@ export function texteDernierTour(moiPremier: boolean, adversaire: string): strin
     : `${adversaire.charAt(0).toUpperCase() + adversaire.slice(1)} a commencé : c’est toi qui joueras le dernier tour.`
 }
 
-/** Nom d'un joueur dans la barre de statut, surligné en couleur pour celui qui a commencé (`texteDernierTour`). */
-export function NomJoueur({ nom, premier }: { nom: string; premier: boolean }) {
+/**
+ * Nom d'un joueur dans la barre de statut, surligné en couleur pour celui qui a commencé (`texteDernierTour`). `icone` :
+ * l'emoji choisi par le joueur (parties à deux), devant son nom.
+ */
+export function NomJoueur({ nom, premier, icone }: { nom: string; premier: boolean; icone?: string }) {
+  const texte = icone ? `${icone} ${nom}` : nom
   return premier ? (
     <span className="a-commence" title="A commencé la partie">
-      {nom}
+      {texte}
     </span>
   ) : (
-    <>{nom}</>
+    <>{texte}</>
   )
 }
 

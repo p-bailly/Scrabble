@@ -71,7 +71,7 @@ function Connexion({ onConnecte }: { onConnecte: (u: User) => void }) {
       const u = await connecterNom(n)
       // Le nom sert de pseudo ; un compte déjà connu garde le pseudo enregistré (même écriture sur tous les appareils).
       const existant = await lireJoueur(u.uid).catch(() => null)
-      if (!existant) await enregistrerJoueur(u.uid, n, true)
+      if (!existant) await enregistrerJoueur(u.uid, { pseudo: n, visible: true })
       ecrire('multi.pseudo', existant?.pseudo ?? n)
       onConnecte(u)
     } catch (err) {

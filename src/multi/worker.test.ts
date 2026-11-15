@@ -22,8 +22,20 @@ const partie = (modif: Record<string, unknown> = {}) => ({
 describe('notifications depuis l’état actuel (Worker)', () => {
   it('prévient l’adversaire de l’auteur du dernier coup, et lui seul', () => {
     expect(notificationsDepuisEtat(partie(), 'moi').map((n) => [n.uid, n.genre, n.texte])).toEqual([['lui', 'tour', 'Moi a joué MAISON (12 pts).']])
-    expect(notificationsDepuisEtat(partie(), 'lui')).toEqual([])
+    const suite = partie({ nbCoups: 3 })
+    expect(notificationsDepuisEtat(suite, 'lui')).toEqual([])
     expect(notificationsDepuisEtat(partie(), 'intrus')).toEqual([])
+  })
+
+  it('l’invité qui rejoint après le premier coup du créateur (joué dès l’invitation) le prévient de son arrivée', () => {
+    // Juste après son arrivée : le créateur a joué MAISON en l'attendant, c'est à elle. L'état est celui d'un premier coup
+    // ordinaire : c'est l'appelant qui dit lequel des deux vient d'arriver.
+    const arrivee = partie({ premier: 'moi' })
+    expect(notificationsDepuisEtat(arrivee, 'lui').map((n) => [n.uid, n.titre, n.texte])).toEqual([
+      ['moi', 'Partie commencée', 'Léa a rejoint ta partie : à son tour de jouer.'],
+    ])
+    // Elle ne fait pas croire pour autant que le coup du créateur vient d'être joué.
+    expect(notificationsDepuisEtat(arrivee, 'lui').some((n) => n.uid === 'lui')).toBe(false)
   })
 
   it('invitation : seul le créateur peut la faire envoyer ; refus : seul celui qui a refusé', () => {

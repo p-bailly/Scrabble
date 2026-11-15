@@ -24,12 +24,15 @@ citent son titre : le garder en cas de renommage.
 - Jetons : `?` = joker sur le chevalet ou dans le sac, **minuscule** = joker posé sur le plateau (« e » = joker joué en E).
 - Autres dossiers : `pages/` (écrans solo), `solo/` (sauvegardes, historiques), `multi/` (Firebase, parties à deux, invitations,
   veille des coups), `lib/` (routage par hash, stockage local, réglages, synchro, notifications), `functions/` (Cloud Function push).
-- Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf « être trouvé par les autres joueurs » (Firestore). En haut l'essentiel
+- Réglages : tout est sur l'appareil (`src/lib/reglages.ts`) sauf le pseudo, « être trouvé par les autres joueurs » et l'icône
+  (fiche Firestore). Icône : un emoji d'un catalogue fixe (`src/multi/icones.ts`, la fiche n'en garde que l'identifiant) qui remplace
+  l'initiale du pseudo partout (`Avatar.tsx`) ; elle se lit dans la fiche du joueur, pas dans les parties, et suit donc ses changements. En haut l'essentiel
   (taille du texte, thème, être prévenu, compte), puis tout le reste (plateau, notifications, données), sans partie repliée. Taille du texte : `--texte`
   (`data-texte` sur `<html>`, posé aussi par `index.html`), qui multiplie les `font-size` de l'interface, jamais celles du plateau ni des jetons.
 - Écran d'ouverture : « Mes parties » (premier onglet) ; seul qui a choisi de jouer sans compte arrive sur le menu Solo. Le bilan face à face est dans l'onglet Stats (par adversaire : résultats, 5 dernières parties, séries, scores moyens et records hors abandons, parties à analyser). Partie à deux pensée pour une personne âgée : « Nouvelle partie »
   d'un toucher, puis on touche le nom d'un joueur (tous ceux qui acceptent d'être trouvés, récents en tête) ou « Envoyer le lien » ;
-  aucun code affiché ni à saisir (il reste dans le lien). L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, on tape un mot directement
+  aucun code affiché ni à saisir (il reste dans le lien). Invité directement, si l'alternance désigne le créateur, le plateau s'ouvre
+  aussitôt et il joue son premier coup sans attendre l'acceptation (`premierCoupAvantArrivee`) ; par le lien seul, on attend. L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, on tape un mot directement
   dans la ligne sous le chevalet tant qu'aucune lettre n'est posée (`SaisieVerifier`, verdict au bout de la ligne) ; Entrée ou la loupe ouvrent le même outil, avec la définition.
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
@@ -41,8 +44,8 @@ citent son titre : le garder en cas de renommage.
   joueur finit, l'autre joue un dernier tour : règle maison, `finDePartie` reçoit le nombre de tours joués). Celui qui n'a pas commencé joue donc
   toujours le dernier tour : son adversaire, celui qui a commencé, a le nom surligné dans la barre des scores (`NomJoueur`), et le menu de la partie
   le dit en toutes lettres (`texteDernierTour`). À deux, qui commence **alterne** : celui qui n'a pas commencé la partie précédente entre
-  ces deux joueurs (la dernière créée parmi celles commencées), le créateur pour leur première ; choisi quand l'adversaire rejoint
-  (`quiCommence`), gardé dans `premier` (absent des parties d'avant, où le créateur commençait toujours : `premierJoueur`). Mot absent
+  ces deux joueurs (la dernière créée parmi celles commencées), le créateur pour leur première ; regardé dès l'invitation directe
+  (`inviter` donne le tour au créateur qui commence) et quand l'adversaire rejoint (`quiCommence`), gardé dans `premier` (absent des parties d'avant, où le créateur commençait toujours : `premierJoueur`). Mot absent
   du dictionnaire : refusé à la pose.
 - Duplicate (FISF + modes « Entraînement » et « Topping » de DupliJeu ; les modes Joker, 7 sur 8, 7 et 8 ne sont pas repris).
   Validation du **tirage** (jamais du mot posé) : ≥ 2 voyelles et 2 consonnes jusqu'au 15e coup, puis ≥ 1 et ≥ 1 ; sinon tout
@@ -84,7 +87,8 @@ citent son titre : le garder en cas de renommage.
   sans accents ni casse, requêtes limitées à 10 fiches et bornées sur `recherche` : seuls ceux qui acceptent d'être trouvés se listent, par pages ; + `solo/{element}`, `appareils/{jeton}`). Règles : seuls les 2 joueurs lisent une
   partie (celle en attente est lisible par code, mais ne se liste pas : seules ses parties et ses invitations se listent) ; coup seulement à son tour, numéro +1 ; joueurs figés après le début ; invitation
   directe créée/annulée par le créateur, 1 invité au plus, refus possible par l'invité ; historique des coups immuable ; pseudo
-  verrouillé (`verrouille: true` dans la fiche) que le joueur ne peut ni changer ni déverrouiller.
+  verrouillé (`verrouille: true` dans la fiche) que le joueur ne peut ni changer ni déverrouiller ; en attente, un seul coup du
+  créateur, s'il a le tour (donné par l'invitation, `tourEnAttente`), puis la main à l'invité qui rejoint.
 - **Renommer un joueur** (pseudo inapproprié) : console → Firestore, collection `joueurs` (filtre sur `pseudo`) : nouveau `pseudo`
   (≤ 20 caractères), `recherche` = le même simplifié (`identifiant` de `firebase.ts` : minuscules sans accents, tirets, ex. `joueur-7`),
   et `verrouille` (booléen) à `true` pour qu'il ne puisse plus en changer (supprimer le champ lève le verrou). Puis `pseudos.<uid>` dans ses

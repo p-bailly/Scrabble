@@ -23,6 +23,7 @@ import { ilYa, joursEcoules } from '../lib/temps'
 import { analyser } from '../moteur/moteur'
 import {
   abandonner,
+  aMoiDeJouer,
   adversairesRecents,
   annulerInvitation,
   autre,
@@ -43,6 +44,7 @@ import {
   messageErreur,
   MIN_RECHERCHE,
   normaliserCode,
+  premierCoupAvantArrivee,
   premierJoueur,
   quiCommence,
   refuserInvitation,
@@ -55,6 +57,7 @@ import {
 } from './donnees'
 import { configuration, connexion } from './firebase'
 import AnalyseMulti from './AnalyseMulti'
+import { Avatar, retenirIcone, useIcone } from './Avatar'
 import { demarrerSynchro } from './synchro'
 import { demarrerVeille } from './veille'
 
@@ -99,6 +102,7 @@ function AvecSession({ chemin }: { chemin: string[] }) {
         const j = await lireJoueur(u.uid).catch(() => null)
         if (!j) return
         setVerrouille(j.verrouille)
+        retenirIcone(u.uid, j.icone)
         if (j.pseudo !== lire('multi.pseudo', null)) {
           ecrire('multi.pseudo', j.pseudo)
           setPseudo(j.pseudo)
@@ -176,6 +180,9 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
     ecrire('multi.masquees', suite)
   }
 
+  const monIcone = useIcone(uid)
+  const monNom = monIcone ? `${monIcone} ${pseudo}` : pseudo
+
   useEffect(() => ecouterMesParties(uid, setParties, (e) => setErreur(e.message)), [uid])
   // Une erreur ici (règles Firestore pas encore à jour) ne doit pas gâcher le reste de l'écran : pas d'invitations, c'est tout.
   useEffect(() => ecouterInvitations(uid, setRecues, (e) => console.warn('Invitations indisponibles', e)), [uid])
@@ -197,9 +204,10 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const date = (p: Partie) => p.majLe?.toMillis?.() ?? Date.now()
   const tri = (a: Partie, b: Partie) => date(b) - date(a)
   const liste = parties ?? []
-  const aMoi = liste.filter((p) => p.etat === 'encours' && p.tour === uid).sort(tri)
+  // « À toi de jouer » compte aussi la partie où je commence sans attendre que mon invité accepte.
+  const aMoi = liste.filter((p) => aMoiDeJouer(p, uid)).sort(tri)
   const attente = liste.filter((p) => p.etat === 'encours' && p.tour !== uid).sort(tri)
-  const invitations = liste.filter((p) => p.etat === 'attente').sort(tri)
+  const invitations = liste.filter((p) => p.etat === 'attente' && !aMoiDeJouer(p, uid)).sort(tri)
   const finies = liste.filter((p) => p.etat === 'finie').sort(tri)
 
   return (
@@ -209,10 +217,10 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
         droite={
           onPseudo ? (
             <button type="button" className="puce" onClick={onPseudo} aria-label="Changer de pseudo">
-              {pseudo}
+              {monNom}
             </button>
           ) : (
-            <span className="puce">{pseudo}</span>
+            <span className="puce">{monNom}</span>
           )
         }
       />
@@ -338,13 +346,13 @@ function LigneInvitation({ p, uid, pseudo, parties }: { p: Partie; uid: string; 
   return (
     <div className="ligne choisie" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'default' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div className="avatar" style={{ background: 'var(--accent)' }}>
-          {nom.slice(0, 1).toUpperCase()}
-        </div>
+        <Avatar uid={p.createur} nom={nom} fond="var(--accent)" />
         <div className="principal">
           <div style={{ fontWeight: 700 }}>{nom} t’invite à jouer</div>
           <div className="note">
-            Partie à deux{premier && ` · ${premier === uid ? 'tu commences' : nom + ' commence'}`}
+            {p.nbCoups > 0
+              ? `${nom} a déjà joué son premier coup : à toi dès que tu acceptes`
+              : `Partie à deux${premier ? ` · ${premier === uid ? 'tu commences' : nom + ' commence'}` : ''}`}
           </div>
         </div>
       </div>
@@ -367,13 +375,21 @@ const JOURS_SANS_REPONSE = 14
 function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string } & ActionsListe) {
   const adv = autre(p, uid)
   const nom = adv ? p.pseudos[adv] : null
-  const aMoi = p.etat === 'encours' && p.tour === uid
+  const aMoi = aMoiDeJouer(p, uid)
   // Partie en attente : l'invité, s'il y en a un, a un nom ; sinon on attend quelqu'un qui aura reçu le lien.
   const invite = p.etat === 'attente' ? p.invites?.[0] : undefined
   const nomInvite = invite ? p.pseudos[invite] : undefined
   let sousTitre = ''
   if (p.etat === 'attente')
-    sousTitre = nomInvite ? 'En attente de sa réponse' : p.refus?.length ? 'Invitation refusée · touche pour inviter quelqu’un d’autre' : 'Touche pour inviter quelqu’un'
+    sousTitre = nomInvite
+      ? aMoi
+        ? 'Invitation envoyée · tu commences sans attendre'
+        : p.nbCoups > 0
+          ? 'Ton premier coup est joué · en attente de sa réponse'
+          : 'En attente de sa réponse'
+      : p.refus?.length
+        ? 'Invitation refusée · touche pour inviter quelqu’un d’autre'
+        : 'Touche pour inviter quelqu’un'
   else if (p.dernier) {
     const qui = p.dernier.uid === uid ? 'Tu as' : (p.pseudos[p.dernier.uid] ?? '?') + ' a'
     sousTitre =
@@ -395,7 +411,9 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
         ? nom
         : 'En attente de ' + nom
     : nomInvite
-      ? 'Invitation envoyée à ' + nomInvite
+      ? aMoi
+        ? nomInvite
+        : 'Invitation envoyée à ' + nomInvite
       : 'Nouvelle partie'
   if (p.enAttente) titre += ' · envoi en attente'
 
@@ -412,9 +430,7 @@ function LignePartie({ p, uid, onErreur, onMasquer }: { p: Partie; uid: string }
   return (
     <div style={{ display: 'flex', gap: 6 }}>
       <button type="button" className={'ligne' + (aMoi ? ' choisie' : '')} onClick={() => naviguer('partie/' + p.code)}>
-        <div className="avatar" style={{ background: aMoi ? 'var(--accent)' : 'var(--muted)' }}>
-          {(nom ?? nomInvite ?? '?').slice(0, 1).toUpperCase()}
-        </div>
+        <Avatar uid={adv ?? invite} nom={nom ?? nomInvite ?? '?'} fond={aMoi ? 'var(--accent)' : 'var(--muted)'} />
         <div className="principal">
           <div style={{ fontWeight: 700 }}>{titre}</div>
           <div className={'note' + (sansReponse ? ' ecart-neg' : '')}>{sousTitre}</div>
@@ -466,16 +482,25 @@ const FILTRE_DES = 8
  * l'accepte ou la refuse. Un seul invité à la fois : un nouveau remplace l'ancien.
  */
 function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
-  const [recents, setRecents] = useState<JoueurTrouve[]>([])
+  // Mes parties : les adversaires récents, et qui commence contre chacun (on alterne) ; null tant qu'elles se chargent.
+  const [mesParties, setMesParties] = useState<Partie[] | null>(null)
   const [tous, setTous] = useState<{ joueurs: JoueurTrouve[]; complet: boolean } | null>(null)
   const [texte, setTexte] = useState('')
   const [trouves, setTrouves] = useState<JoueurTrouve[]>([])
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  useEffect(() => ecouterMesParties(uid, (parties) => setRecents(adversairesRecents(parties, uid))), [uid])
+  useEffect(() => ecouterMesParties(uid, setMesParties), [uid])
+  const recents = useMemo(() => adversairesRecents(mesParties ?? [], uid), [mesParties, uid])
   useEffect(() => {
-    listerJoueurs(uid).then(setTous, (e) => setErreur(messageErreur(e)))
+    listerJoueurs(uid).then(
+      (r) => {
+        // Les fiches lues donnent déjà les icônes : inutile de les relire une à une.
+        for (const j of r.joueurs) retenirIcone(j.uid, j.icone)
+        setTous(r)
+      },
+      (e) => setErreur(messageErreur(e)),
+    )
   }, [uid])
 
   // Liste incomplète (beaucoup de joueurs) : le nom tapé est aussi cherché sur le serveur.
@@ -486,7 +511,13 @@ function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
     }
     let actuel = true
     const minuteur = setTimeout(() => {
-      chercherJoueurs(texte, uid).then((r) => actuel && setTrouves(r), () => {})
+      chercherJoueurs(texte, uid).then(
+        (r) => {
+          for (const j of r) retenirIcone(j.uid, j.icone)
+          if (actuel) setTrouves(r)
+        },
+        () => {},
+      )
     }, 300)
     return () => {
       actuel = false
@@ -495,7 +526,10 @@ function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
   }, [texte, uid, tous])
 
   const invite = p.invites?.[0]
+  const nomInvite = invite ? (p.pseudos[invite] ?? 'ce joueur') : ''
   const refuse = p.refus?.[p.refus.length - 1]
+  // C'est à l'invité de commencer (on alterne) : je l'attends. Sinon `inviter` m'a donné le tour, et le plateau s'ouvre.
+  const ilCommence = !!invite && p.nbCoups === 0 && p.tour !== uid && !!mesParties && quiCommence(mesParties, uid, invite, p.code) === invite
   const agir = async (action: () => Promise<void>) => {
     setOccupe(true)
     setErreur('')
@@ -518,9 +552,13 @@ function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
       {invite ? (
         <div className="apercu" role="status">
           <span>
-            <b>Invitation envoyée à {p.pseudos[invite] ?? '?'} ✓</b>
+            <b>Invitation envoyée à {nomInvite} ✓</b>
             <br />
-            La partie commence dès que {p.pseudos[invite] ?? 'ce joueur'} accepte. Tu seras prévenu.
+            {p.nbCoups > 0
+              ? `Ton premier coup est joué. Dès que ${nomInvite} accepte, c’est à son tour. Tu seras prévenu.`
+              : p.tour === uid
+                ? 'Tu commences : joue ton premier coup sans attendre sa réponse.'
+                : `La partie commence dès que ${nomInvite} accepte${ilCommence ? ` : c’est à ${nomInvite} de commencer (vous alternez)` : ''}. Tu seras prévenu.`}
           </span>
           <button type="button" className="bouton discret" disabled={occupe} onClick={() => void agir(() => annulerInvitation(p))}>
             Annuler
@@ -544,11 +582,9 @@ function InviterJoueur({ p, uid }: { p: Partie; uid: string }) {
             type="button"
             className={'ligne' + (j.uid === invite ? ' choisie' : '')}
             disabled={occupe}
-            onClick={() => j.uid !== invite && void agir(() => inviter(p, j))}
+            onClick={() => j.uid !== invite && void agir(() => inviter(p, j, mesParties))}
           >
-            <div className="avatar" style={{ background: j.uid === invite ? 'var(--accent)' : 'var(--muted)' }}>
-              {j.pseudo.slice(0, 1).toUpperCase()}
-            </div>
+            <Avatar uid={j.uid} nom={j.pseudo} fond={j.uid === invite ? 'var(--accent)' : 'var(--muted)'} />
             <div className="principal" style={{ fontWeight: 700, fontSize: 18 }}>
               {j.pseudo}
             </div>
@@ -647,6 +683,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   // Coup de l'historique dont on lit la définition (numéro du coup).
   const [defOuverte, setDefOuverte] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
+  // Choix d'un autre invité, depuis le plateau d'une partie qui attend encore son adversaire.
+  const [inviterOuvert, setInviterOuvert] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => ecouterPartie(code, setP), [code])
@@ -664,8 +702,13 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   }, [coups, p])
 
   const plateau = useMemo(() => plateauDepuisTexte(p?.plateau ?? '.'.repeat(225)), [p?.plateau])
-  // Pas d'onglets pendant une partie commencée (ils restent pour l'invitation).
-  useMasquerOnglets(!!p && p.etat !== 'attente')
+  // Le plateau s'ouvre pour une partie commencée, et pour le créateur qui commence sans attendre son invité
+  // (`premierCoupAvantArrivee`) : son premier coup joué, il attend devant le plateau. Sinon, on choisit qui inviter.
+  const auPlateau = !!p && (p.etat !== 'attente' || (p.createur === uid && (premierCoupAvantArrivee(p, uid) || p.nbCoups > 0)))
+  // Pas d'onglets devant le plateau (ils restent pour l'invitation).
+  useMasquerOnglets(auPlateau)
+  const monIcone = useIcone(uid)
+  const iconeAdv = useIcone(p ? (autre(p, uid) ?? (p.etat === 'attente' ? p.invites?.[0] : undefined)) : undefined)
   const edition = useEdition(plateau, chevalet, undefined, 'multi.' + code)
   const analyse = useAnalyse(plateau, edition.poses)
   // Brouillon posé pendant le tour de l'adversaire : il saute quand son coup arrive (les cases ont pu changer).
@@ -683,10 +726,12 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
     )
 
   const adv = autre(p, uid)
-  const nomAdv = adv ? p.pseudos[adv] : '…'
-  const aMoi = p.etat === 'encours' && p.tour === uid
+  // Avant l'arrivée de l'adversaire, c'est l'invité qu'on attend.
+  const invite = p.etat === 'attente' ? p.invites?.[0] : undefined
+  const nomAdv = adv ? p.pseudos[adv] : invite ? (p.pseudos[invite] ?? '…') : '…'
+  const aMoi = aMoiDeJouer(p, uid)
   // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
-  const brouillon = p.etat === 'encours' && !aMoi
+  const brouillon = (p.etat === 'encours' || (p.etat === 'attente' && auPlateau)) && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
   // Qui commence alterne d'une partie à l'autre avec le même adversaire (`rejoindre`).
   const moiPremier = premierJoueur(p) === uid
@@ -708,7 +753,7 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
 
   return (
     <>
-      {p.etat === 'attente' ? (
+      {!auPlateau ? (
         <div className="contenu">
           <Retour droite={boutonHistorique} />
           {p.createur === uid ? <ChoisirAdversaire p={p} uid={uid} /> : <PartagerLien p={p} />}
@@ -718,12 +763,20 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           <BarreJeu
             onRetour={() => naviguer('parties')}
             libelleRetour="Mes parties"
-            titre={p.etat === 'finie' ? 'Terminée' : aMoi ? 'À toi de jouer' : `Tour de ${nomAdv}`}
+            titre={
+              p.etat === 'finie'
+                ? 'Terminée'
+                : aMoi
+                  ? 'À toi de jouer'
+                  : p.etat === 'attente'
+                    ? 'En attente' // le nom de l'invité est juste en dessous, au-dessus du chevalet
+                    : `Tour de ${nomAdv}`
+            }
             pastille={<BoutonSac sac={nonVues.length} onClick={() => setFeuilleSac(true)} />}
             droite={
               <>
                 {boutonHistorique}
-                {p.etat === 'encours' && (
+                {p.etat !== 'finie' && (
                   <button type="button" className="bouton-icone" onClick={() => setMenu(true)} aria-label="Menu de la partie">
                     <IconeMenu />
                   </button>
@@ -747,6 +800,11 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 <Fin p={p} uid={uid} nomAdv={nomAdv} />
               </div>
             )}
+            {p.etat === 'attente' && (
+              <div className="encart-jeu">
+                <AttenteInvite p={p} onInviter={() => setInviterOuvert(true)} />
+              </div>
+            )}
             <Chevalet edition={edition} />
             {aMoi && (
               <Apercu analyse={analyse} indice="Pose ton mot, ou vérifie-en un ici" onVerifier={(mot) => setFeuilleVerifier(mot ?? '')} />
@@ -765,8 +823,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 <BarreStatut
                   texte={
                     <>
-                      <NomJoueur nom="Moi" premier={moiPremier} /> <b>{moi}</b> · <b>{lui}</b>{' '}
-                      <NomJoueur nom={nomAdv} premier={!moiPremier} />
+                      <NomJoueur nom="Moi" icone={monIcone} premier={moiPremier} /> <b>{moi}</b> · <b>{lui}</b>{' '}
+                      <NomJoueur nom={nomAdv} icone={iconeAdv} premier={!moiPremier} />
                     </>
                   }
                   part={moi + lui ? moi / (moi + lui) : 0.5}
@@ -890,7 +948,65 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
           Abandonner la partie
         </button>
       </Feuille>
+      <Feuille ouvert={menu && p.etat === 'attente'} onFermer={() => setMenu(false)}>
+        <h3>Partie en attente</h3>
+        <p style={{ margin: 0 }} className="note">
+          {invite ? `${nomAdv} n’a pas encore accepté l’invitation.` : 'Personne n’a encore rejoint la partie.'}
+        </p>
+        <button type="button" className="bouton principal" onClick={() => setMenu(false)}>
+          Reprendre
+        </button>
+        <button
+          type="button"
+          className="bouton"
+          onClick={() => {
+            setMenu(false)
+            setInviterOuvert(true)
+          }}
+        >
+          {invite ? 'Inviter quelqu’un d’autre' : 'Inviter quelqu’un'}
+        </button>
+        <button
+          type="button"
+          className="bouton danger"
+          onClick={() => {
+            setMenu(false)
+            if (confirm('Supprimer cette partie ?')) void supprimerPartie(p.code).then(() => naviguer('parties'))
+          }}
+        >
+          Supprimer la partie
+        </button>
+      </Feuille>
+      <Feuille ouvert={inviterOuvert && p.etat === 'attente'} onFermer={() => setInviterOuvert(false)}>
+        <ChoisirAdversaire p={p} uid={uid} />
+      </Feuille>
     </>
+  )
+}
+
+/**
+ * Au-dessus du chevalet, tant que l'invité n'a pas rejoint : à qui l'invitation est partie, ou son refus. Le créateur y
+ * joue son premier coup sans attendre (`premierCoupAvantArrivee`), puis peut inviter quelqu'un d'autre.
+ */
+function AttenteInvite({ p, onInviter }: { p: Partie; onInviter: () => void }) {
+  const invite = p.invites?.[0]
+  const nom = invite ? (p.pseudos[invite] ?? 'ton invité') : null
+  const refuse = p.refus?.[p.refus.length - 1]
+  const texte = nom
+    ? p.nbCoups === 0
+      ? `Invitation envoyée à ${nom} : tu commences sans attendre sa réponse.`
+      : `Invitation envoyée à ${nom} : dès qu’elle est acceptée, c’est à son tour.`
+    : refuse
+      ? `${p.pseudos[refuse] ?? 'Ton invité'} a refusé l’invitation : invite quelqu’un d’autre.`
+      : 'Personne n’est invité : invite quelqu’un, ou envoie le lien.'
+  return (
+    <div className="apercu" role="status">
+      <span>{texte}</span>
+      {/* Pas « Changer » : c'est déjà le bouton qui change des lettres, juste en dessous. */}
+      <button type="button" className="bouton discret" onClick={onInviter}>
+        {nom ? 'Autre joueur' : 'Inviter'}
+      </button>
+    </div>
   )
 }
 
@@ -900,14 +1016,16 @@ function Fin({ p, uid, nomAdv }: { p: Partie; uid: string; nomAdv: string }) {
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
   // Revanche : une nouvelle partie, avec la même personne déjà invitée. Sous mon pseudo actuel, pas celui de cette
-  // partie : il a pu changer depuis.
+  // partie : il a pu changer depuis. Celui qui n'a pas commencé celle-ci commence la revanche (on alterne) : si c'est
+  // moi, je joue sans attendre qu'elle soit acceptée.
   const revanche = async () => {
     if (!adv) return
     setOccupe(true)
     setErreur('')
     try {
       const pseudo = lire<string | null>('multi.pseudo', null) ?? p.pseudos[uid] ?? '?'
-      naviguer('partie/' + (await creerPartie(uid, pseudo, { uid: adv, pseudo: nomAdv })))
+      const commence = quiCommence([p], uid, adv) === uid
+      naviguer('partie/' + (await creerPartie(uid, pseudo, { uid: adv, pseudo: nomAdv }, commence)))
     } catch (e) {
       setErreur(messageErreur(e))
       setOccupe(false)
