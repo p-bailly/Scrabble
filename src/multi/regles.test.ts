@@ -3,7 +3,7 @@
 // (sans lui, ils sont ignorés : un simple « npm test » reste possible).
 
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -119,6 +119,41 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: false, recherche: 'moi' }))
       await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', role: 'admin' }))
     })
+
+    it('pseudo verrouillé par l’administrateur : le joueur le garde et ne lève pas le verrou', async () => {
+      // Le verrou se pose dans la console Firebase, hors des règles.
+      await env.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'joueurs', 'moi'), { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true })
+      })
+      const fiche = doc(moi(), 'joueurs', 'moi')
+      await assertFails(setDoc(fiche, { pseudo: 'Grossier', visible: true, recherche: 'grossier', verrouille: true }))
+      await assertFails(setDoc(fiche, { pseudo: 'Grossier', visible: true, recherche: 'grossier' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: false }))
+      // Être trouvé ou non reste son choix.
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Joueur 7', visible: false, verrouille: true }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true }))
+    })
+
+    it('icône : un identifiant court, que le joueur change même quand son pseudo est verrouillé', async () => {
+      const fiche = doc(moi(), 'joueurs', 'moi')
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', icone: 'renard' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', icone: 'un-nom-trop-long' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', icone: 7 }))
+      await env.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'joueurs', 'moi'), { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true })
+      })
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Joueur 7', visible: true, recherche: 'joueur-7', verrouille: true, icone: 'hibou' }))
+    })
+
+    it('un joueur ne verrouille pas lui-même son pseudo', async () => {
+      const fiche = doc(moi(), 'joueurs', 'moi')
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: true }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi' }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: true }))
+      await assertFails(setDoc(fiche, { pseudo: 'Moi', visible: true, recherche: 'moi', verrouille: 'oui' }))
+      await assertSucceeds(setDoc(fiche, { pseudo: 'Toi', visible: true, recherche: 'toi' }))
+    })
   })
 
   describe('parties', () => {
@@ -154,6 +189,55 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)('règles Firestore', () =>
       await assertSucceeds(updateDoc(partie, { joueurs: ['autre', 'moi'], etat: 'encours', invites: [], tour: 'moi', premier: 'moi' }))
       await assertFails(updateDoc(doc(autre(), 'parties', 'ABCD12'), { nbCoups: 1, tour: 'moi' }))
       await assertSucceeds(updateDoc(partie, { nbCoups: 1, tour: 'autre' }))
+    })
+
+    // Ma partie en attente (je l'ai créée), sans invité.
+    const maPartie = (plus: Record<string, unknown> = {}) => enAttente({ createur: 'moi', joueurs: ['moi'], pseudos: { moi: 'Moi' }, tour: null, ...plus })
+    const premierCoup = (db: ReturnType<typeof moi>) => {
+      const b = writeBatch(db)
+      b.update(doc(db, 'parties', 'ABCD12'), {
+        plateau: 'P', sac: 'XY', scores: { moi: 12 }, passes: 0, nbCoups: 1, tour: null, etat: 'attente', fin: null,
+        dernier: { uid: 'moi', type: 'mot', mot: 'maison', points: 12 },
+      })
+      b.set(doc(db, 'parties', 'ABCD12', 'coups', '1'), { n: 1, uid: 'moi', type: 'mot', points: 12 })
+      b.set(doc(db, 'parties', 'ABCD12', 'chevalets', 'moi'), { lettres: 'ABCDEFG' })
+      return b.commit()
+    }
+
+    it('le créateur qui commence joue dès l’invitation, puis attend : l’invité qui rejoint a la main', async () => {
+      await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'parties', 'ABCD12'), maPartie()))
+      const partie = doc(moi(), 'parties', 'ABCD12')
+      // L'invitation me donne le tour (on alterne d'une partie à l'autre, et c'est à moi).
+      await assertSucceeds(updateDoc(partie, { invites: ['autre'], refus: [], 'pseudos.autre': 'Autre', tour: 'moi' }))
+      // Mon premier coup : la partie reste en attente, et plus personne n'a la main.
+      await assertSucceeds(premierCoup(moi()))
+      // Ni second coup, ni tour repris avant l'arrivée de l'invité.
+      await assertFails(updateDoc(partie, { nbCoups: 2, tour: null }))
+      await assertFails(updateDoc(partie, { tour: 'moi' }))
+      // L'invité qui rejoint répond à mon coup : c'est forcément à lui.
+      const chezLui = doc(autre(), 'parties', 'ABCD12')
+      await assertFails(updateDoc(chezLui, { joueurs: ['moi', 'autre'], etat: 'encours', invites: [], tour: 'moi', premier: 'moi' }))
+      await assertSucceeds(updateDoc(chezLui, { joueurs: ['moi', 'autre'], etat: 'encours', invites: [], tour: 'autre', premier: 'moi', sac: 'Y' }))
+      await assertSucceeds(updateDoc(chezLui, { nbCoups: 2, tour: 'moi' }))
+    })
+
+    it('sans invité, ou quand c’est à l’invité de commencer, le créateur attend son arrivée', async () => {
+      await env.withSecurityRulesDisabled((c) => setDoc(doc(c.firestore(), 'parties', 'ABCD12'), maPartie()))
+      const partie = doc(moi(), 'parties', 'ABCD12')
+      // Le lien seul ne dit pas contre qui je joue : pas de tour.
+      await assertFails(updateDoc(partie, { tour: 'moi' }))
+      await assertFails(premierCoup(moi()))
+      // Invité qui commence (on alterne) : pas de tour pour moi non plus.
+      await assertSucceeds(updateDoc(partie, { invites: ['autre'], tour: null }))
+      await assertFails(premierCoup(moi()))
+      // Un tour donné à quelqu'un d'autre que le créateur est refusé.
+      await assertFails(updateDoc(partie, { tour: 'autre' }))
+    })
+
+    it('une partie peut naître avec le tour à son créateur, s’il a un invité (revanche)', async () => {
+      await assertSucceeds(setDoc(doc(moi(), 'parties', 'NOUV01'), maPartie({ code: 'NOUV01', invites: ['autre'], tour: 'moi' })))
+      await assertFails(setDoc(doc(moi(), 'parties', 'NOUV02'), maPartie({ code: 'NOUV02', invites: [], tour: 'moi' })))
+      await assertFails(setDoc(doc(moi(), 'parties', 'NOUV03'), maPartie({ code: 'NOUV03', invites: ['autre'], tour: 'autre' })))
     })
   })
 })

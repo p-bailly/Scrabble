@@ -917,6 +917,50 @@ h2 {
   font-size: 17px;
   flex: none;
 }
+/* Icône choisie par le joueur (emoji) à la place de son initiale. */
+.avatar.avatar-icone {
+  font-size: 24px;
+  line-height: 1;
+}
+/* Choix de son icône dans les Réglages : une grille de cases à toucher. */
+.choix-icones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+.choix-icone {
+  height: 46px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.choix-icone.initiale {
+  font-size: 18px;
+  font-weight: 800;
+  background: var(--muted);
+  color: #fff;
+}
+.choix-icone.choisie {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+  background: var(--surface-2);
+}
+.choix-icone.initiale.choisie {
+  background: var(--accent);
+}
+.choix-icone:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .champ-code {
   flex: 1;
   min-width: 0;

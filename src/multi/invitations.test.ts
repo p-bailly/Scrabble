@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { reference } from '../jeu/coup'
 import {
   adversairesRecents,
+  aMoiDeJouer,
   bilansFaceAFace,
   cleRecherche,
   joueursAInviter,
   MIN_RECHERCHE,
+  premierCoupAvantArrivee,
   premierJoueur,
   quiCommence,
   toursDeMulti,
@@ -102,6 +104,30 @@ describe('qui commence une partie à deux', () => {
     const parties = [enCours, entre('A', 1), enAttente]
     expect(quiCommence(parties, 'moi', 'lea')).toBe('moi')
     expect(quiCommence([...parties, entre('D', 4, { etat: 'encours', premier: 'moi' })], 'moi', 'lea', 'D')).toBe('moi')
+  })
+})
+
+describe('premier coup avant l’arrivée de l’invité', () => {
+  // Ma partie en attente, Léa invitée, et l'invitation m'a donné le tour (l'alternance me désigne).
+  const attente = (plus: Partial<Partie> = {}) =>
+    ({ code: 'C', createur: 'moi', joueurs: ['moi'], etat: 'attente', tour: 'moi', nbCoups: 0, invites: ['lea'], ...plus }) as Partie
+
+  it('le créateur à qui l’invitation a donné le tour joue sans attendre', () => {
+    expect(premierCoupAvantArrivee(attente(), 'moi')).toBe(true)
+    expect(aMoiDeJouer(attente(), 'moi')).toBe(true)
+    expect(aMoiDeJouer(attente(), 'lea')).toBe(false)
+  })
+
+  it('pas sans invité, ni quand l’invité commence, ni pour un second coup', () => {
+    expect(premierCoupAvantArrivee(attente({ invites: [] }), 'moi')).toBe(false) // invitation refusée ou annulée
+    expect(premierCoupAvantArrivee(attente({ tour: null }), 'moi')).toBe(false) // c'est à Léa de commencer
+    expect(aMoiDeJouer(attente({ tour: null, nbCoups: 1 }), 'moi')).toBe(false) // mon premier coup est joué
+  })
+
+  it('la partie commencée, c’est le tour qui décide', () => {
+    const encours = attente({ etat: 'encours', joueurs: ['moi', 'lea'], invites: [], tour: 'lea', nbCoups: 1 })
+    expect(aMoiDeJouer(encours, 'lea')).toBe(true)
+    expect(aMoiDeJouer(encours, 'moi')).toBe(false)
   })
 })
 

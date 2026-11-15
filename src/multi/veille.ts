@@ -4,7 +4,7 @@
 import type { Unsubscribe } from 'firebase/firestore'
 import { ecrire, lire } from '../lib/stockage'
 import { notifier } from '../lib/notifications'
-import { ecouterInvitations, ecouterMesParties, synchroniserJoueur, type Partie } from './donnees'
+import { aMoiDeJouer, ecouterInvitations, ecouterMesParties, synchroniserJoueur, type Partie } from './donnees'
 import { connexion } from './firebase'
 
 export const EVENEMENT_TOUR = 'scrabble:tour'
@@ -25,7 +25,7 @@ export async function demarrerVeille() {
     const compter = () => window.dispatchEvent(new CustomEvent(EVENEMENT_TOUR, { detail: aMoi + invitations }))
     ecoutes = [
       ecouterMesParties(moi.uid, (parties) => {
-        aMoi = parties.filter((p) => p.etat === 'encours' && p.tour === moi.uid).length
+        aMoi = parties.filter((p) => aMoiDeJouer(p, moi.uid)).length
         compter()
         for (const p of parties) signaler(p, moi.uid)
       }),
@@ -73,14 +73,20 @@ function signaler(p: Partie, uid: string) {
   if (!adversaire) return
   const nom = p.pseudos[adversaire] ?? 'Ton adversaire'
   const hash = '#/partie/' + p.code
+  // La partie vient de commencer : l'adversaire a rejoint ma partie, qu'il commence (on alterne) ou qu'il réponde à mon
+  // premier coup, joué dès l'invitation (je l'ai vue en attente, ou cet appareil la découvre).
+  const rejointe =
+    p.etat === 'encours' &&
+    (p.nbCoups === 0 || (p.nbCoups === 1 && vu?.startsWith('attente:') !== false && p.dernier?.uid === p.createur && p.tour !== p.createur))
   if (p.etat === 'finie' && p.dernier?.uid !== uid) {
     if (p.fin?.raison === 'abandon') notifier(p.code, 'Partie abandonnée', `${nom} a abandonné : tu gagnes la partie.`, hash, 'fin')
     else notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash, 'fin')
-  } else if (p.etat === 'encours' && p.nbCoups === 0) {
-    // L'adversaire vient de rejoindre ma partie, et commence peut-être (on alterne) ; celui qui a rejoint le sait déjà.
+  } else if (rejointe) {
+    // Celui qui a rejoint le sait déjà.
     if (p.createur !== uid) return
     if (p.tour === uid) notifier(p.code, 'À toi de jouer', `${nom} a rejoint ta partie.`, hash, 'tour')
-    else notifier(p.code, 'Partie commencée', `${nom} a rejoint ta partie et commence.`, hash, 'tour')
+    else
+      notifier(p.code, 'Partie commencée', p.nbCoups ? `${nom} a rejoint ta partie : à son tour de jouer.` : `${nom} a rejoint ta partie et commence.`, hash, 'tour')
   } else if (p.etat === 'encours' && p.tour === uid && p.dernier) {
     const d = p.dernier
     const texte =

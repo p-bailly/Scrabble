@@ -53,7 +53,8 @@ export function notificationsPartie(avant, apres) {
 
   const adversaireDe = (uid) => (apres.joueurs ?? []).find((j) => j !== uid)
 
-  // L'adversaire rejoint la partie : le créateur l'apprend, qu'il commence ou non (on alterne d'une partie à l'autre).
+  // L'adversaire rejoint la partie : le créateur l'apprend, qu'il commence ou non (on alterne d'une partie à l'autre), ou
+  // qu'il ait à répondre au premier coup que le créateur a joué dès l'invitation.
   if (avant?.etat === 'attente' && apres.etat === 'encours' && apres.tour) {
     const nouveau = (apres.joueurs ?? []).find((j) => j !== apres.createur)
     const aLui = apres.tour === apres.createur
@@ -61,7 +62,7 @@ export function notificationsPartie(avant, apres) {
       uid: apres.createur,
       genre: 'tour',
       titre: aLui ? 'À toi de jouer' : 'Partie commencée',
-      texte: `${nom(nouveau)} a rejoint ta partie${aLui ? '' : ' et commence'}.`,
+      texte: `${nom(nouveau)} a rejoint ta partie${aLui ? '' : apres.nbCoups > 0 ? ' : à son tour de jouer' : ' et commence'}.`,
       hash: lien,
       tag: apres.code,
     })
@@ -130,8 +131,10 @@ export function notificationsDepuisEtat(partie, appelant) {
   }
   if (!joueurs.includes(appelant)) return []
   if (partie.etat === 'encours') {
-    // Partie qui vient de commencer : l'auteur est celui qui a rejoint, qu'il commence ou non.
-    if (partie.nbCoups === 0) return partie.createur === appelant ? [] : notificationsPartie({ etat: 'attente' }, partie)
+    // Partie qui vient de commencer : l'auteur est celui qui a rejoint, qu'il commence ou non, ou qu'il ait à répondre au
+    // premier coup que le créateur a joué dès l'invitation (seul cas où il a la main après un coup du créateur).
+    const rejointe = partie.nbCoups === 0 || (partie.nbCoups === 1 && partie.dernier?.uid === partie.createur && partie.tour === appelant)
+    if (rejointe) return partie.createur === appelant ? [] : notificationsPartie({ etat: 'attente' }, partie)
     if (partie.tour === appelant || partie.dernier?.uid !== appelant) return []
     return notificationsPartie({ etat: 'encours', nbCoups: partie.nbCoups - 1 }, partie)
   }
