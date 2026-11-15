@@ -43,6 +43,8 @@ import {
   messageErreur,
   MIN_RECHERCHE,
   normaliserCode,
+  premierJoueur,
+  quiCommence,
   refuserInvitation,
   rejoindre,
   supprimerPartie,
@@ -215,7 +217,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
           <h2>Invitations reçues</h2>
           <div className="liste">
             {recues.map((p) => (
-              <LigneInvitation key={p.code} p={p} uid={uid} pseudo={pseudo} />
+              <LigneInvitation key={p.code} p={p} uid={uid} pseudo={pseudo} parties={parties} />
             ))}
           </div>
         </>
@@ -293,11 +295,15 @@ function Section({ titre, parties, uid, ...actions }: { titre: string; parties: 
   )
 }
 
-/** Invitation reçue : on l'accepte (la partie commence) ou on la refuse (le créateur en est informé). */
-function LigneInvitation({ p, uid, pseudo }: { p: Partie; uid: string; pseudo: string }) {
+/**
+ * Invitation reçue : on l'accepte (la partie commence) ou on la refuse (le créateur en est informé). `parties` : les
+ * miennes, pour dire qui commencera (on alterne avec ce joueur), null tant qu'elles se chargent.
+ */
+function LigneInvitation({ p, uid, pseudo, parties }: { p: Partie; uid: string; pseudo: string; parties: Partie[] | null }) {
   const [occupe, setOccupe] = useState(false)
   const [erreur, setErreur] = useState('')
   const nom = p.pseudos[p.createur] ?? 'Un joueur'
+  const premier = parties && quiCommence(parties, p.createur, uid, p.code)
   const repondre = async (action: () => Promise<void>) => {
     setOccupe(true)
     setErreur('')
@@ -322,7 +328,9 @@ function LigneInvitation({ p, uid, pseudo }: { p: Partie; uid: string; pseudo: s
         </div>
         <div className="principal">
           <div style={{ fontWeight: 700 }}>{nom} t’invite à jouer</div>
-          <div className="note">Partie à deux · {nom} commence</div>
+          <div className="note">
+            Partie à deux{premier && ` · ${premier === uid ? 'tu commences' : nom + ' commence'}`}
+          </div>
         </div>
       </div>
       <div className="actions">
@@ -665,8 +673,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
   const brouillon = p.etat === 'encours' && !aMoi
   const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
-  // Le créateur joue toujours le premier tour (`rejoindre`).
-  const moiPremier = p.createur === uid
+  // Qui commence alterne d'une partie à l'autre avec le même adversaire (`rejoindre`).
+  const moiPremier = premierJoueur(p) === uid
   const dernierTour = texteDernierTour(moiPremier, nomAdv)
 
   const jouer = (action: Parameters<typeof jouerCoup>[3]) => {

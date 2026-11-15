@@ -1,7 +1,18 @@
 import type { Timestamp } from 'firebase/firestore'
 import { describe, expect, it } from 'vitest'
 import { reference } from '../jeu/coup'
-import { adversairesRecents, bilansFaceAFace, cleRecherche, joueursAInviter, MIN_RECHERCHE, toursDeMulti, type CoupMulti, type Partie } from './donnees'
+import {
+  adversairesRecents,
+  bilansFaceAFace,
+  cleRecherche,
+  joueursAInviter,
+  MIN_RECHERCHE,
+  premierJoueur,
+  quiCommence,
+  toursDeMulti,
+  type CoupMulti,
+  type Partie,
+} from './donnees'
 
 const instant = (ms: number) => ({ toMillis: () => ms }) as unknown as Timestamp
 
@@ -61,6 +72,36 @@ describe('adversaires récents', () => {
   it('une partie dont l’écriture n’est pas encore partie (date inconnue) passe pour la plus récente', () => {
     const parties = [partie('A', [moi, 'marie'], { marie: 'Marie' }, 100), partie('B', [moi, 'paul'], { paul: 'Paul' }, null)]
     expect(adversairesRecents(parties, moi).map((j) => j.uid)).toEqual(['paul', 'marie'])
+  })
+})
+
+describe('qui commence une partie à deux', () => {
+  // Une partie entre moi et Léa, créée par moi à l'instant `creeLe`, terminée sauf mention contraire.
+  const entre = (code: string, creeLe: number, plus: Partial<Partie> = {}) =>
+    ({ code, createur: 'moi', joueurs: ['moi', 'lea'], etat: 'finie', creeLe: instant(creeLe), ...plus }) as Partie
+
+  it('leur toute première partie : le créateur, les parties contre d’autres joueurs ne comptent pas', () => {
+    expect(quiCommence([], 'moi', 'lea')).toBe('moi')
+    expect(quiCommence([entre('A', 1, { joueurs: ['moi', 'paul'] })], 'lea', 'moi')).toBe('lea')
+  })
+
+  it('ensuite on alterne : celui qui n’a pas commencé la précédente, quel que soit le créateur', () => {
+    // Avant l'alternance, `premier` n'était pas écrit : le créateur commençait toujours.
+    const ancienne = entre('A', 1)
+    expect(premierJoueur(ancienne)).toBe('moi')
+    expect(quiCommence([ancienne], 'moi', 'lea')).toBe('lea')
+    expect(quiCommence([ancienne], 'lea', 'moi')).toBe('lea')
+    const revanche = entre('B', 2, { createur: 'lea', premier: 'lea' })
+    expect(quiCommence([revanche, ancienne], 'moi', 'lea')).toBe('moi')
+    expect(quiCommence([ancienne, revanche], 'lea', 'moi')).toBe('moi')
+  })
+
+  it('la précédente est la dernière créée des parties commencées, sans l’invitation en attente ni celle qui commence', () => {
+    const enCours = entre('B', 2, { etat: 'encours', premier: 'lea' })
+    const enAttente = entre('C', 3, { etat: 'attente', joueurs: ['moi'], invites: ['lea'] })
+    const parties = [enCours, entre('A', 1), enAttente]
+    expect(quiCommence(parties, 'moi', 'lea')).toBe('moi')
+    expect(quiCommence([...parties, entre('D', 4, { etat: 'encours', premier: 'moi' })], 'moi', 'lea', 'D')).toBe('moi')
   })
 })
 

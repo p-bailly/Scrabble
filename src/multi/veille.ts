@@ -76,16 +76,19 @@ function signaler(p: Partie, uid: string) {
   if (p.etat === 'finie' && p.dernier?.uid !== uid) {
     if (p.fin?.raison === 'abandon') notifier(p.code, 'Partie abandonnée', `${nom} a abandonné : tu gagnes la partie.`, hash, 'fin')
     else notifier(p.code, 'Partie terminée', `${nom} : ${p.scores[adversaire]} – toi : ${p.scores[uid]}`, hash, 'fin')
-  } else if (p.etat === 'encours' && p.tour === uid) {
+  } else if (p.etat === 'encours' && p.nbCoups === 0) {
+    // L'adversaire vient de rejoindre ma partie, et commence peut-être (on alterne) ; celui qui a rejoint le sait déjà.
+    if (p.createur !== uid) return
+    if (p.tour === uid) notifier(p.code, 'À toi de jouer', `${nom} a rejoint ta partie.`, hash, 'tour')
+    else notifier(p.code, 'Partie commencée', `${nom} a rejoint ta partie et commence.`, hash, 'tour')
+  } else if (p.etat === 'encours' && p.tour === uid && p.dernier) {
     const d = p.dernier
     const texte =
-      !d || p.nbCoups === 0
-        ? `${nom} a rejoint ta partie.`
-        : d.type === 'mot'
-          ? `${nom} a joué ${d.mot?.toUpperCase()} (${d.points} pts).`
-          : d.type === 'change'
-            ? `${nom} a changé des lettres.`
-            : `${nom} a passé son tour.`
+      d.type === 'mot'
+        ? `${nom} a joué ${d.mot?.toUpperCase()} (${d.points} pts).`
+        : d.type === 'change'
+          ? `${nom} a changé des lettres.`
+          : `${nom} a passé son tour.`
     notifier(p.code, 'À toi de jouer', texte, hash, 'tour')
   }
 }
