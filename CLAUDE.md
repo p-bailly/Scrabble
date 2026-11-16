@@ -34,7 +34,7 @@ citent son titre : le garder en cas de renommage.
   aucun code affiché ni à saisir (il reste dans le lien). Invité directement, si l'alternance désigne le créateur, le plateau s'ouvre
   aussitôt et il joue son premier coup sans attendre l'acceptation (`premierCoupAvantArrivee`) ; par le lien seul, on attend. L'onglet Dictionnaire ne fait que vérifier un mot (`VerifierMot`) ; en partie, on tape un mot directement
   dans la ligne sous le chevalet tant qu'aucune lettre n'est posée (`SaisieVerifier`, verdict au bout de la ligne) ; Entrée ou la loupe ouvrent le même outil, avec la définition. Lettres posées, la ligne liste
-  tous les mots formés (sur plusieurs lignes s'il le faut, jamais coupée) ; dessous, le dernier coup joué et ses points (`DernierCoup`).
+  tous les mots formés (sur plusieurs lignes s'il le faut, jamais coupée) ; dessous, sur deux lignes, le dernier coup joué et ses points (`DernierCoup`).
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
   d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
   aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).

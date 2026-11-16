@@ -1190,11 +1190,21 @@ a.bouton {
   text-align: center;
   padding: 8px 16px 0;
 }
-/* Dernier coup joué (DernierCoup, Apercu.tsx), dans la place libre sous la ligne d'aperçu. */
+/* Dernier coup joué (DernierCoup, Apercu.tsx), dans la place libre sous la ligne d'aperçu : qui, puis le coup en grand. */
 .dernier-coup {
   text-align: center;
   padding: 10px 16px 0;
   font-size: calc(15px * var(--texte));
+}
+.dernier-coup .qui {
+  color: var(--muted);
+}
+.dernier-coup .quoi {
+  font-size: calc(20px * var(--texte));
+  line-height: 1.3;
+}
+.dernier-coup .ref {
+  color: var(--muted);
 }
 /* Bouton « Vérifier un mot » : collé au bord droit de la ligne d'aperçu, sur toute sa hauteur. */
 .ecran-jeu .apercu.avec-loupe:not(.jeton) {

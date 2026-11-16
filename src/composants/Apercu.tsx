@@ -145,8 +145,8 @@ export function Apercu({ analyse, indice, onVerifier }: { analyse: Analyse | nul
 }
 
 /**
- * Dernier coup joué, rappelé sous la ligne d'aperçu : qui, le mot et sa position, les points. `qui` : « Tu as »,
- * « Paul a », « L’ordinateur a ».
+ * Dernier coup joué, rappelé sous la ligne d'aperçu, sur deux lignes : qui a joué, puis en grand le mot, sa position et
+ * les points. `qui` : « Tu as », « Paul a », « L’ordinateur a ».
  */
 export function DernierCoup({
   qui,
@@ -166,18 +166,23 @@ export function DernierCoup({
 }) {
   return (
     <div className="dernier-coup">
-      {type === 'mot' ? (
-        <>
-          {qui} joué{' '}
+      <div className="qui">
+        {qui} {type === 'mot' ? 'joué' : type === 'change' ? 'changé' : 'passé'}
+      </div>
+      {type === 'mot' && (
+        <div className="quoi">
           <b>
             <Mot mot={mot ?? ''} />
           </b>{' '}
-          {position} · <b>{points} pts</b>
-        </>
-      ) : type === 'change' ? (
-        `${qui} changé ${nbChanges} lettre${nbChanges > 1 ? 's' : ''}`
-      ) : (
-        `${qui} passé`
+          <span className="ref">{position}</span> · <b>{points} pts</b>
+        </div>
+      )}
+      {type === 'change' && (
+        <div className="quoi">
+          <b>
+            {nbChanges} lettre{nbChanges > 1 ? 's' : ''}
+          </b>
+        </div>
       )}
     </div>
   )
