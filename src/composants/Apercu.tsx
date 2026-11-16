@@ -123,9 +123,10 @@ export function Apercu({ analyse, indice, onVerifier }: { analyse: Analyse | nul
       )}
       <span className="mots" style={{ color: 'var(--text)' }}>
         {analyse.mots.map((m, i) => (
+          // Un mot et ses points ne se séparent pas ; la ligne passe à la suivante entre deux mots, sans rien couper.
           <span key={i}>
             {i > 0 && ' + '}
-            <span className={inconnus.has(m.mot) ? 'inconnu' : ''}>
+            <span className={'mot-points' + (inconnus.has(m.mot) ? ' inconnu' : '')}>
               <b>
                 <Mot mot={m.affichage} />
               </b>{' '}
@@ -133,12 +134,51 @@ export function Apercu({ analyse, indice, onVerifier }: { analyse: Analyse | nul
             </span>
           </span>
         ))}
-        {analyse.scrabble && <b> + 50</b>}
+        {analyse.scrabble && <b className="mot-points"> + 50</b>}
       </span>
       <span className="total" style={{ color: analyse.valide ? 'var(--text)' : 'var(--muted)' }}>
         {analyse.points} pts
       </span>
       <Loupe onVerifier={onVerifier} />
+    </div>
+  )
+}
+
+/**
+ * Dernier coup joué, rappelé sous la ligne d'aperçu : qui, le mot et sa position, les points. `qui` : « Tu as »,
+ * « Paul a », « L’ordinateur a ».
+ */
+export function DernierCoup({
+  qui,
+  type,
+  mot,
+  position,
+  points,
+  nbChanges = 0,
+}: {
+  qui: string
+  type: 'mot' | 'change' | 'passe'
+  mot?: string
+  /** Référence de la première lettre (« H8 »). */
+  position?: string
+  points: number
+  nbChanges?: number
+}) {
+  return (
+    <div className="dernier-coup">
+      {type === 'mot' ? (
+        <>
+          {qui} joué{' '}
+          <b>
+            <Mot mot={mot ?? ''} />
+          </b>{' '}
+          {position} · <b>{points} pts</b>
+        </>
+      ) : type === 'change' ? (
+        `${qui} changé ${nbChanges} lettre${nbChanges > 1 ? 's' : ''}`
+      ) : (
+        `${qui} passé`
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 // choix du coup de l'IA se fait dans le Web Worker du moteur) et marche hors ligne.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Apercu, Loupe, Mot, SaisieVerifier, useAnalyse } from '../composants/Apercu'
+import { Apercu, DernierCoup, Loupe, Mot, SaisieVerifier, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
@@ -370,18 +370,14 @@ function EcranIA({
           </div>
         )}
         {dernier && !partie.finie && (
-          <div className="note note-centree">
-            {(() => {
-              const d = decrire(dernier)
-              return d.coup ? (
-                <>
-                  {d.texte} <Mot mot={d.coup.mot} /> {reference(d.coup.debut, d.coup.dir)} · {dernier.points} pts
-                </>
-              ) : (
-                d.texte
-              )
-            })()}
-          </div>
+          <DernierCoup
+            qui={dernier.camp === 'moi' ? 'Tu as' : 'L’ordinateur a'}
+            type={dernier.type}
+            mot={dernier.coup?.mot}
+            position={dernier.coup && reference(dernier.coup.debut, dernier.coup.dir)}
+            points={dernier.points}
+            nbChanges={dernier.nbChanges}
+          />
         )}
         {message && <div className="note note-centree ecart-neg">{message}</div>}
         <PanneauBas
