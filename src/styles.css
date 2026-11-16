@@ -632,11 +632,14 @@ select {
   min-height: 46px;
   font-size: calc(14px * var(--texte));
 }
+/* Tous les mots formés se lisent : la ligne grandit sur plusieurs lignes plutôt que de couper la fin. */
 .apercu .mots {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.apercu .mot-points {
   white-space: nowrap;
 }
 .apercu .total {
@@ -1187,6 +1190,22 @@ a.bouton {
   text-align: center;
   padding: 8px 16px 0;
 }
+/* Dernier coup joué (DernierCoup, Apercu.tsx), dans la place libre sous la ligne d'aperçu : qui, puis le coup en grand. */
+.dernier-coup {
+  text-align: center;
+  padding: 10px 16px 0;
+  font-size: calc(15px * var(--texte));
+}
+.dernier-coup .qui {
+  color: var(--muted);
+}
+.dernier-coup .quoi {
+  font-size: calc(20px * var(--texte));
+  line-height: 1.3;
+}
+.dernier-coup .ref {
+  color: var(--muted);
+}
 /* Bouton « Vérifier un mot » : collé au bord droit de la ligne d'aperçu, sur toute sa hauteur. */
 .ecran-jeu .apercu.avec-loupe:not(.jeton) {
   padding-right: 0;
@@ -1510,7 +1529,8 @@ details.options > :not(summary) {
     border-radius: var(--rayon);
     padding: 10px 14px;
   }
-  .ecran-jeu .note-centree {
+  .ecran-jeu .note-centree,
+  .dernier-coup {
     padding: 0;
   }
   .encart-jeu,

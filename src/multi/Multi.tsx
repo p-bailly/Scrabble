@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { Apercu, Mot, useAnalyse } from '../composants/Apercu'
+import { Apercu, DernierCoup, Mot, useAnalyse } from '../composants/Apercu'
 import { Changement } from '../composants/Changement'
 import { DefinitionMot } from '../composants/Definition'
 import { Chevalet, ChoixJoker, TuileVolante, useEdition } from '../composants/edition'
@@ -732,7 +732,8 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
   const aMoi = aMoiDeJouer(p, uid)
   // Hors de son tour, on peut quand même poser ses tuiles pour essayer : mots et points s'affichent, sans pouvoir jouer.
   const brouillon = (p.etat === 'encours' || (p.etat === 'attente' && auPlateau)) && !aMoi
-  const derniers = new Set(coups.length ? (coups[coups.length - 1].poses ?? []).map((x) => x.pos) : [])
+  const dernierCoup = coups.at(-1)
+  const derniers = new Set((dernierCoup?.poses ?? []).map((x) => x.pos))
   // Qui commence alterne d'une partie à l'autre avec le même adversaire (`rejoindre`).
   const moiPremier = premierJoueur(p) === uid
   const dernierTour = texteDernierTour(moiPremier, nomAdv)
@@ -814,6 +815,16 @@ function PartieMulti({ code, uid }: { code: string; uid: string }) {
                 analyse={analyse}
                 indice="Écris ici un mot à vérifier"
                 onVerifier={(mot) => setFeuilleVerifier(mot ?? '')}
+              />
+            )}
+            {dernierCoup && p.etat !== 'finie' && (
+              <DernierCoup
+                qui={dernierCoup.uid === uid ? 'Tu as' : `${p.pseudos[dernierCoup.uid] ?? '?'} a`}
+                type={dernierCoup.type}
+                mot={dernierCoup.mot}
+                position={dernierCoup.ref}
+                points={dernierCoup.points}
+                nbChanges={dernierCoup.nbChanges}
               />
             )}
             {p.enAttente && <div className="note note-centree">Coup en attente d’envoi (hors ligne)</div>}
