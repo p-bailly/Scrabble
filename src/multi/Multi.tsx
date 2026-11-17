@@ -211,7 +211,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
   const finies = liste.filter((p) => p.etat === 'finie').sort(tri)
 
   return (
-    <div className="contenu">
+    <div className="contenu large">
       <Entete
         titre="Mes parties"
         droite={
@@ -224,7 +224,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
           )
         }
       />
-      <div className="actions">
+      <div className="actions debut">
         <button type="button" className="bouton principal large" onClick={() => void nouvelle()} disabled={occupe}>
           <IconePlus /> Nouvelle partie
         </button>
@@ -238,7 +238,7 @@ function ListeParties({ uid, pseudo, onPseudo }: { uid: string; pseudo: string; 
       {recues.length > 0 && (
         <>
           <h2>Invitations reçues</h2>
-          <div className="liste">
+          <div className="liste grille">
             {recues.map((p) => (
               <LigneInvitation key={p.code} p={p} uid={uid} pseudo={pseudo} parties={parties} />
             ))}
@@ -309,7 +309,7 @@ function Section({ titre, parties, uid, ...actions }: { titre: string; parties: 
   return (
     <>
       <h2>{titre}</h2>
-      <div className="liste">
+      <div className="liste grille">
         {parties.map((p) => (
           <LignePartie key={p.code} p={p} uid={uid} {...actions} />
         ))}

@@ -45,13 +45,13 @@ export function Solo() {
     ) : null
 
   return (
-    <div className="contenu">
-      <Entete />
+    <div className="contenu large">
+      <Entete titreOrdi="Solo" />
       <ConseilInstallation />
       {enCours.length > 0 && (
         <>
           <h2>{enCours.length > 1 ? `${enCours.length} parties en cours` : 'Partie en cours'}</h2>
-          <div className="liste">
+          <div className="liste grille">
             {enCours.map((e) => (
               <PartieEnCours key={e.partie.id} e={e} onAbandon={() => rafraichir((n) => n + 1)} />
             ))}
@@ -59,7 +59,7 @@ export function Solo() {
           <h2>Nouvelle partie</h2>
         </>
       )}
-      <div className="liste">
+      <div className="liste grille deux">
         <Choix
           sigle="D"
           titre="Duplicate"

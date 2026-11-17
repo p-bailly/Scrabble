@@ -31,86 +31,97 @@ export function Reglages() {
   useSynchro()
 
   return (
-    <div className="contenu">
+    <div className="contenu large">
       <Entete titre="Réglages" />
-
-      <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div className="champ">
-          Taille du texte
-          <div className="segments">
-            {TAILLES.map((t) => (
-              <button key={t.taille} type="button" className={r.texte === t.taille ? 'actif' : ''} aria-pressed={r.texte === t.taille} onClick={() => maj({ texte: t.taille })}>
-                {t.nom}
-              </button>
-            ))}
+      {/* Version web : les rubriques se répartissent sur deux colonnes. Sur téléphone ces blocs n'existent pas dans la mise
+          en page (styles.css). */}
+      <div className="colonnes journal">
+        <section className="bloc">
+          <h2 className="ordi-seul">Affichage et alertes</h2>
+          <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="champ">
+              Taille du texte
+              <div className="segments">
+                {TAILLES.map((t) => (
+                  <button key={t.taille} type="button" className={r.texte === t.taille ? 'actif' : ''} aria-pressed={r.texte === t.taille} onClick={() => maj({ texte: t.taille })}>
+                    {t.nom}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="champ">
+              Thème
+              <div className="segments">
+                {THEMES.map((t) => (
+                  <button key={t.theme} type="button" className={r.theme === t.theme ? 'actif' : ''} aria-pressed={r.theme === t.theme} onClick={() => maj({ theme: t.theme })}>
+                    {t.nom}
+                  </button>
+                ))}
+              </div>
+              <span className="note">« Auto » suit le réglage clair ou sombre de l’appareil.</span>
+            </div>
+            <EtrePrevenu r={r} maj={maj} />
           </div>
-        </div>
-        <div className="champ">
-          Thème
-          <div className="segments">
-            {THEMES.map((t) => (
-              <button key={t.theme} type="button" className={r.theme === t.theme ? 'actif' : ''} aria-pressed={r.theme === t.theme} onClick={() => maj({ theme: t.theme })}>
-                {t.nom}
-              </button>
-            ))}
+        </section>
+        <section className="bloc">
+          <h2>Parties à deux</h2>
+          <div className="carte">
+            {lire<string | null>('multi.pseudo', null) ? (
+              <Suspense fallback={<div className="note">Chargement…</div>}>
+                <SectionCompte />
+              </Suspense>
+            ) : (
+              <Rangee
+                titre="Compte"
+                texte="Choisis un nom d’utilisateur pour jouer à deux et inviter des amis."
+                droite={
+                  <button type="button" className="bouton" onClick={() => naviguer('parties')}>
+                    Se connecter
+                  </button>
+                }
+              />
+            )}
           </div>
-          <span className="note">« Auto » suit le réglage clair ou sombre du téléphone.</span>
-        </div>
-        <EtrePrevenu r={r} maj={maj} />
-      </div>
-
-      <h2>Parties à deux</h2>
-      <div className="carte">
-        {lire<string | null>('multi.pseudo', null) ? (
-          <Suspense fallback={<div className="note">Chargement…</div>}>
-            <SectionCompte />
-          </Suspense>
-        ) : (
-          <Rangee
-            titre="Compte"
-            texte="Choisis un nom d’utilisateur pour jouer à deux et inviter des amis."
-            droite={
-              <button type="button" className="bouton" onClick={() => naviguer('parties')}>
-                Se connecter
-              </button>
-            }
-          />
-        )}
-      </div>
-
-      <h2>Plateau et jeu</h2>
-      <div className="carte">
-        <Interrupteur
-          titre="Étiquettes des cases bonus"
-          texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
-          actif={r.etiquettes}
-          onChange={(etiquettes) => maj({ etiquettes })}
-        />
-        <Interrupteur
-          titre="Confirmer avant de passer"
-          texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’ordinateur."
-          actif={r.confirmerPasse}
-          onChange={(confirmerPasse) => maj({ confirmerPasse })}
-        />
-      </div>
-
-      <h2>Notifications</h2>
-      <div className="carte">
-        <Notifications r={r} maj={maj} />
-      </div>
-
-      <h2>Données de cet appareil</h2>
-      <div className="carte">
-        <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
-      </div>
-      <div className="carte">
-        <Synchronisation />
-        <Sauvegarde />
-      </div>
-
-      <h2>À propos</h2>
-      <div className="carte">
-        <APropos />
+        </section>
+        <section className="bloc">
+          <h2>Plateau et jeu</h2>
+          <div className="carte">
+            <Interrupteur
+              titre="Étiquettes des cases bonus"
+              texte="Affiche MT, MD, LT et LD sur le plateau. Les couleurs restent, l’étoile du centre aussi."
+              actif={r.etiquettes}
+              onChange={(etiquettes) => maj({ etiquettes })}
+            />
+            <Interrupteur
+              titre="Confirmer avant de passer"
+              texte="Demande « Passer ton tour ? » avant de passer, dans les parties à deux et contre l’ordinateur."
+              actif={r.confirmerPasse}
+              onChange={(confirmerPasse) => maj({ confirmerPasse })}
+            />
+          </div>
+        </section>
+        <section className="bloc">
+          <h2>Notifications</h2>
+          <div className="carte">
+            <Notifications r={r} maj={maj} />
+          </div>
+        </section>
+        <section className="bloc">
+          <h2>Données de cet appareil</h2>
+          <div className="carte">
+            <Donnees rafraichir={() => rafraichir((x) => x + 1)} />
+          </div>
+          <div className="carte">
+            <Synchronisation />
+            <Sauvegarde />
+          </div>
+        </section>
+        <section className="bloc">
+          <h2>À propos</h2>
+          <div className="carte">
+            <APropos />
+          </div>
+        </section>
       </div>
     </div>
   )

@@ -1458,7 +1458,7 @@ details.options > :not(summary) {
 /* Grand écran (ordinateur, tablette à l'horizontale), comme DupliJeu : le plateau à gauche, aussi grand que la hauteur
    de la fenêtre le permet, et à droite une colonne avec la barre du haut, le chevalet, l'aperçu du coup, les boutons
    et le chrono. Sans défilement de la page : si la colonne est plus haute que la fenêtre, c'est elle qui défile.
-   Les autres écrans (menus, réglages, dictionnaire…) gardent leur colonne centrée. */
+   Les autres écrans (menus, réglages, analyse…) ont leur propre mise en page de grand écran, en fin de fichier. */
 @media (min-width: 900px) {
   .appli:has(.ecran-jeu) {
     max-width: none;
@@ -1574,6 +1574,7 @@ details.options > :not(summary) {
   display: flex;
   align-items: center;
   gap: 10px;
+  scroll-margin-top: 8px;
 }
 .nav-tours .principal {
   flex: 1;
@@ -1719,4 +1720,320 @@ details.options > :not(summary) {
 .fa-chiffres dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* Champ « Un mot à vérifier » (VerifierMot) : même allure que les autres champs, lettres en capitales. */
+.saisie-mot {
+  flex: none;
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--rayon);
+  border: 1.5px solid var(--bord);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 14px;
+  font-size: max(16px, calc(18px * var(--texte)));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.saisie-mot::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  opacity: 1;
+}
+
+/* Blocs que la version web range en colonnes (voir plus bas) : sur téléphone ils n'existent pas dans la mise en page,
+   leurs enfants se suivent dans la colonne de la page comme avant. `ordi-seul` : affiché sur grand écran seulement. */
+.colonnes,
+.bloc,
+.deux-volets,
+.cote-plateau,
+.cote-detail {
+  display: contents;
+}
+.ordi-seul {
+  display: none;
+}
+/* Analyse et correction sur téléphone : bilans d'abord, puis le plateau et son détail (dans le code, le plateau vient
+   en premier : c'est le volet de gauche de la version web). */
+.cote-plateau > *,
+.cote-detail > .apres-plateau {
+  order: 1;
+}
+/* Analyse : flèches, curseur, plateau et détail du tour se suivent de près, comme un seul bloc. */
+.analyse .cote-plateau > :not(.nav-tours),
+.analyse .visionneuse {
+  margin-top: -4px;
+}
+/* Le curseur garde en plus sa marge de navigateur (2 px). */
+.analyse .cote-plateau > .curseur-tours {
+  margin-top: -2px;
+}
+
+/* Souris : les lignes et boutons réagissent au survol. */
+@media (hover: hover) {
+  button.ligne:hover,
+  a.ligne:hover,
+  .choix-icone:not(:disabled):hover,
+  .segments button:not(.actif):hover,
+  .clavier button:not(.actif):hover {
+    border-color: var(--accent);
+    background: var(--surface-2);
+  }
+  .bouton:not(:disabled):not(.principal):not(.discret):not(.plein):hover,
+  .bouton-icone:not(:disabled):hover,
+  .puce-sac:hover,
+  button.puce:hover {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .bouton.principal:not(:disabled):hover,
+  .bouton.danger.plein:not(:disabled):hover,
+  .meilleur-coup:hover {
+    filter: brightness(1.08);
+  }
+  .bouton.discret:not(:disabled):hover {
+    text-decoration: underline;
+  }
+}
+
+/* Version web sur grand écran (ordinateur, tablette à l'horizontale), pour tous les écrans hors jeu : les onglets
+   deviennent un menu à gauche, les pages s'élargissent et se rangent en colonnes, l'analyse et la correction gardent le
+   plateau sous les yeux à gauche pendant que le détail défile à droite. Les écrans de jeu (onglets masqués) gardent
+   leur propre mise en page, plus haut. */
+@media (min-width: 900px) {
+  :root {
+    --menu: 232px;
+  }
+  .appli {
+    max-width: none;
+  }
+  .appli:has(> .onglets:not([hidden])) {
+    padding-left: var(--menu);
+  }
+  .ordi-seul {
+    display: revert;
+  }
+  .tel-seul {
+    display: none;
+  }
+
+  /* Menu latéral */
+  .onglets {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--menu);
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    overflow-y: auto;
+    border-top: 0;
+    border-right: 2px solid var(--bord);
+    padding: calc(34px + env(safe-area-inset-top)) 14px 20px;
+  }
+  .onglets .marque {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px 18px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .onglets a {
+    flex-direction: row;
+    gap: 12px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: var(--rayon);
+    font-size: calc(15px * var(--texte));
+  }
+  .onglets a svg {
+    flex: none;
+  }
+  .onglets a.actif {
+    background: var(--chip);
+  }
+  .onglets a.actif::before {
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    right: auto;
+    width: 4px;
+    height: auto;
+    border-radius: 0 3px 3px 0;
+  }
+  .onglets a:not(.actif):hover {
+    background: var(--surface-2);
+    color: var(--lien);
+  }
+  .onglets .pastille {
+    position: static;
+    order: 2;
+    margin-left: auto;
+  }
+
+  /* Pages : toutes partent du même bord gauche (le titre ne bouge pas d'un onglet à l'autre). Par défaut une colonne
+     confortable à lire ; `large` : toute la largeur utile, pour les pages qui se rangent en colonnes. */
+  .contenu {
+    --colonne: 680px;
+    width: 100%;
+    max-width: 1244px;
+    margin-inline: auto;
+    gap: 14px;
+    padding: 26px 32px 40px;
+  }
+  .contenu:not(.large):not(.volets) > *,
+  .contenu.large > .carte-accent {
+    max-width: var(--colonne);
+  }
+  .entete {
+    min-height: 48px;
+    margin-bottom: 4px;
+  }
+  .entete h1,
+  .titre-page {
+    font-size: calc(28px * var(--texte));
+  }
+  /* Le logo est déjà dans le menu. */
+  .entete .logo {
+    display: none;
+  }
+  /* Analyse, correction : la flèche de retour passe devant le titre, comme sur les autres sous-pages. */
+  .entete .retour-ordi {
+    order: -1;
+  }
+
+  /* Listes rangées en grille : parties en cours, parties à deux… */
+  .liste.grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 10px 12px;
+  }
+  .liste.grille.deux {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Le premier bouton d'une page (« Nouvelle partie ») ne s'étire pas sur toute la largeur. */
+  .actions.debut .bouton.large {
+    flex: none;
+    min-width: 280px;
+  }
+
+  /* Blocs en colonnes : un bloc par colonne (Stats)… */
+  .colonnes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 20px 28px;
+    align-items: start;
+  }
+  .bloc {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+  .bloc > h2:first-child {
+    margin-top: 0;
+  }
+  /* … ou des blocs qui se répartissent d'eux-mêmes sur deux colonnes (Réglages). */
+  .colonnes.journal {
+    display: block;
+    columns: 2 340px;
+    column-gap: 28px;
+  }
+  .colonnes.journal > .bloc {
+    break-inside: avoid;
+    margin-bottom: 22px;
+  }
+
+  /* Analyse et correction : deux volets. Le plateau reste à gauche, aussi grand que la fenêtre le permet, et le détail
+     défile à droite. */
+  .deux-volets {
+    /* Hauteur prise par l'en-tête de la page et les marges : le plateau tient en entier dans la fenêtre. */
+    --reserve: 124px;
+    display: flex;
+    align-items: flex-start;
+    gap: 28px;
+  }
+  .cote-plateau {
+    position: sticky;
+    top: 20px;
+    flex: 0 0 min(calc(100dvh - var(--reserve) - var(--sous-plateau, 0px)), 54%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .cote-detail {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+  .cote-plateau > *,
+  .cote-detail > .apres-plateau {
+    order: 0;
+  }
+  /* Analyse : la navigation entre les tours (flèches, curseur) passe sous le plateau. */
+  .deux-volets.analyse {
+    --sous-plateau: 96px;
+  }
+  .deux-volets.analyse .zone-plateau {
+    order: -1;
+  }
+  .analyse .cote-plateau > :not(.nav-tours),
+  .analyse .cote-plateau > .curseur-tours,
+  .analyse .visionneuse {
+    margin-top: 0;
+  }
+  .visionneuse {
+    scroll-margin-top: 20px;
+  }
+}
+
+/* Fenêtre moyenne (tablette à l'horizontale, petit portable) : le menu se réduit à une bande d'icônes pour laisser la
+   place aux pages. */
+@media (min-width: 900px) and (max-width: 1099.98px) {
+  :root {
+    --menu: 88px;
+  }
+  .onglets {
+    padding-inline: 8px;
+  }
+  .onglets .marque {
+    justify-content: center;
+    gap: 0;
+    padding: 0 0 16px;
+    /* Le logo seul : le nom ne tient pas. */
+    font-size: 0;
+  }
+  .onglets a {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-height: 58px;
+    padding: 6px 0;
+    /* Plafonnée : en très grand texte, « Dictionnaire » ne tiendrait pas dans la bande. */
+    font-size: calc(11px * min(var(--texte), 1.1));
+    text-align: center;
+  }
+  .onglets .pastille {
+    position: absolute;
+    top: 3px;
+    right: 12px;
+    margin: 0;
+  }
+  .contenu {
+    padding-inline: 24px;
+  }
+  .deux-volets {
+    gap: 20px;
+  }
 }

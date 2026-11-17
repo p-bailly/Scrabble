@@ -10,11 +10,21 @@ export function Logo() {
   )
 }
 
-export function Entete({ titre = 'Scrabble', droite }: { titre?: string; droite?: ReactNode }) {
+/** `titreOrdi` : titre de la version web sur grand écran, où le logo et le nom de l'appli sont déjà dans le menu. */
+export function Entete({ titre = 'Scrabble', titreOrdi, droite }: { titre?: string; titreOrdi?: string; droite?: ReactNode }) {
   return (
     <header className="entete">
       <Logo />
-      <h1>{titre}</h1>
+      <h1>
+        {titreOrdi ? (
+          <>
+            <span className="tel-seul">{titre}</span>
+            <span className="ordi-seul">{titreOrdi}</span>
+          </>
+        ) : (
+          titre
+        )}
+      </h1>
       {droite}
     </header>
   )
