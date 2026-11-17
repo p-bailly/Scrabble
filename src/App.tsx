@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { surMasquageOnglets } from './composants/EcranJeu'
+import { Logo } from './composants/Entete'
 import { IconeLoupe, IconeParties, IconeReglages, IconeSolo, IconeStats } from './composants/Icones'
 import { useChemin } from './lib/routeur'
 import { lire } from './lib/stockage'
@@ -73,7 +74,12 @@ export function App() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<div className="vide-etat">Chargement…</div>}>{contenu}</Suspense>
       </main>
+      {/* Onglets en bas sur téléphone ; menu à gauche, avec le logo, dans la version web sur grand écran (styles.css). */}
       <nav className="onglets" hidden={ongletsMasques}>
+        <div className="marque ordi-seul">
+          <Logo />
+          Scrabble
+        </div>
         <Onglet href="#/parties" actif={onglet === 'parties'} icone={<IconeParties />} texte="Mes parties" pastille={aMoi} />
         <Onglet href="#/solo" actif={onglet === 'solo'} icone={<IconeSolo />} texte="Solo" />
         <Onglet href="#/dictionnaire" actif={onglet === 'dictionnaire'} icone={<IconeLoupe />} texte="Dictionnaire" />

@@ -67,7 +67,10 @@ export function AnalysePartie({ partie, retour }: { partie: PartieAnalysee; reto
   const [actuel, setActuel] = useState(0)
   /** Ce que montre le plateau : le coup joué, le meilleur coup, ou un autre coup de la liste. */
   const [montre, setMontre] = useState<Coup | 'joue' | 'meilleur'>('joue')
-  const visionneuse = useRef<HTMLDivElement>(null)
+  // Où revenir quand on choisit un tour plus bas dans la page : les flèches au-dessus du plateau sur téléphone ; le
+  // détail du tour dans la version web à deux volets, où le plateau reste sous les yeux (styles.css).
+  const navTours = useRef<HTMLDivElement>(null)
+  const detailTour = useRef<HTMLDivElement>(null)
 
   const nom = (id: string) => joueurs.find((j) => j.id === id)?.nom ?? '?'
   const aAnalyser = tours.filter((t) => t.chevalet).length
@@ -80,7 +83,7 @@ export function AnalysePartie({ partie, retour }: { partie: PartieAnalysee; reto
   const aller = (i: number, defiler = false) => {
     setActuel(i)
     setMontre('joue')
-    if (defiler) visionneuse.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (defiler) (matchMedia('(min-width: 900px)').matches ? detailTour : navTours).current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   const precedent = rang > 0 ? visibles[rang - 1] : null
   const suivant = rang >= 0 && rang < visibles.length - 1 ? visibles[rang + 1] : null
@@ -129,198 +132,205 @@ export function AnalysePartie({ partie, retour }: { partie: PartieAnalysee; reto
   const styleMontre = coupMontre && coupMontre === t.coup ? 'mien' : 'apercu'
 
   return (
-    <div className="contenu">
+    <div className="contenu volets">
       <Retour vers={retour} />
-      {faits < aAnalyser && !erreur && (
-        <div className="liste">
-          <div className="note">
-            Analyse en cours… {faits} / {aAnalyser} tours
-          </div>
-          <div className="jauge" aria-hidden>
-            <div style={{ width: `${(100 * faits) / aAnalyser}%` }} />
-          </div>
-        </div>
-      )}
-      {erreur && <div className="apercu erreur">L’analyse a échoué : {erreur}</div>}
-
-      <div className="stats">
-        {bilans.map((b) => (
-          <div className="stat" key={b.joueur}>
-            <div className="etiquette">{nom(b.joueur)}</div>
-            <div className="valeur">{b.tours ? formatPct(b.pourcentage) : '—'}</div>
-            <div className="note">
-              {b.points} pts sur {b.meilleur} possibles
-              <br />
-              {b.parfaits} meilleur{b.parfaits > 1 ? 's' : ''} coup{b.parfaits > 1 ? 's' : ''} sur {b.tours}
-              <br />
-              {b.scrabbles} Scrabble{b.scrabbles > 1 ? 's' : ''} ·{' '}
-              <span className={b.scrabblesLoupes ? 'ecart-neg' : undefined}>
-                {b.scrabblesLoupes} loupé{b.scrabblesLoupes > 1 ? 's' : ''}
-              </span>
+      {/* Deux volets dans la version web : le plateau à gauche, le reste à droite. Sur téléphone ces blocs n'existent pas
+          dans la mise en page et les bilans repassent avant le plateau (styles.css). */}
+      <div className="deux-volets analyse">
+        <div className="cote-plateau">
+          <div className="nav-tours" ref={navTours}>
+            <button type="button" className="bouton-icone" disabled={precedent === null} onClick={() => precedent !== null && aller(precedent)} aria-label="Tour précédent">
+              <IconeRetour />
+            </button>
+            <div className="principal">
+              <div>
+                <b>Tour {t.numero}</b> · {nom(t.joueur)}
+              </div>
+              <div className="note">
+                <span className="tirage-texte">{t.chevalet?.join('') ?? '—'}</span>
+              </div>
             </div>
-            {b.plusGrosEcart && (
-              <button
-                type="button"
-                className="bouton discret"
-                style={{ minHeight: 32, padding: 0 }}
-                onClick={() => aller(tours.findIndex((x) => x.numero === b.plusGrosEcart!.numero), true)}
-              >
-                Plus gros écart : n° {b.plusGrosEcart.numero} (−{b.plusGrosEcart.manque})
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {joueurs.some((j) => j.id === moi) && (
-        <div className="segments">
-          <button type="button" className={filtre === 'tous' ? 'actif' : ''} onClick={() => setFiltre('tous')}>
-            Tous les coups
-          </button>
-          <button type="button" className={filtre === 'moi' ? 'actif' : ''} onClick={() => setFiltre('moi')}>
-            Mes coups
-          </button>
-        </div>
-      )}
-
-      <div className="visionneuse" ref={visionneuse}>
-        <div className="nav-tours">
-          <button type="button" className="bouton-icone" disabled={precedent === null} onClick={() => precedent !== null && aller(precedent)} aria-label="Tour précédent">
-            <IconeRetour />
-          </button>
-          <div className="principal">
-            <div>
-              <b>Tour {t.numero}</b> · {nom(t.joueur)}
-            </div>
-            <div className="note">
-              <span className="tirage-texte">{t.chevalet?.join('') ?? '—'}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="bouton-icone suivant"
-            disabled={suivant === null}
-            onClick={() => suivant !== null && aller(suivant)}
-            aria-label="Tour suivant"
-          >
-            <IconeRetour />
-          </button>
-        </div>
-        <input
-          type="range"
-          className="curseur-tours"
-          min={0}
-          max={Math.max(0, visibles.length - 1)}
-          value={Math.max(0, rang)}
-          onChange={(e) => aller(visibles[Number(e.target.value)])}
-          aria-label="Choisir un tour"
-        />
-
-        <Plateau
-          plateau={plateaux[actuel]}
-          apercu={coupMontre ? { lettres: new Map(coupMontre.poses.map((p) => [p.pos, p.lettre])), style: styleMontre } : undefined}
-        />
-
-        <button type="button" className={'ligne' + (montre === 'joue' && t.coup ? ' choisie' : '')} disabled={!t.coup} onClick={() => setMontre('joue')}>
-          <div className="principal">
-            <div className="note">Coup joué</div>
-            <div>{decrire(t)}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div className="pts">{t.points}</div>
-            {m && <div className={'note ' + (manque ? 'ecart-neg' : 'ecart-ok')}>{manque ? `−${manque}` : 'top'}</div>}
-          </div>
-        </button>
-
-        {!t.chevalet ? (
-          <div className="note">Chevalet non gardé : pas d’analyse pour ce tour.</div>
-        ) : !m ? (
-          <div className="note">Analyse…</div>
-        ) : !meilleur ? (
-          <div className="note">Aucun coup possible avec ce chevalet.</div>
-        ) : (
-          <>
             <button
               type="button"
-              className={'meilleur-coup' + (coupMontre === meilleur && styleMontre === 'apercu' ? ' choisi' : '')}
-              onClick={() => setMontre('meilleur')}
+              className="bouton-icone suivant"
+              disabled={suivant === null}
+              onClick={() => suivant !== null && aller(suivant)}
+              aria-label="Tour suivant"
             >
-              <div className="principal">
-                <div className="etiquette">{manque ? 'Meilleur coup' : 'Meilleur coup : trouvé !'}</div>
-                <div className="mot-meilleur">
-                  <Mot mot={meilleur.mot} />
-                  <span className="ref">{reference(meilleur.debut, meilleur.dir)}</span>
-                </div>
-              </div>
-              <div className="pts-meilleur">{meilleur.points}</div>
+              <IconeRetour />
             </button>
-            {loupe && (
-              <div className="apercu erreur">
-                Scrabble loupé
-                {scrabbleHorsListe && (
-                  <>
-                    {' '}
-                    : <Mot mot={scrabbleHorsListe.mot} /> {reference(scrabbleHorsListe.debut, scrabbleHorsListe.dir)} ({scrabbleHorsListe.points} pts){' '}
-                    <button type="button" className="bouton discret" style={{ minHeight: 32, padding: '0 6px' }} onClick={() => setMontre(scrabbleHorsListe)}>
-                      Voir
-                    </button>
-                  </>
+          </div>
+          <input
+            type="range"
+            className="curseur-tours"
+            min={0}
+            max={Math.max(0, visibles.length - 1)}
+            value={Math.max(0, rang)}
+            onChange={(e) => aller(visibles[Number(e.target.value)])}
+            aria-label="Choisir un tour"
+          />
+
+          <Plateau
+            plateau={plateaux[actuel]}
+            apercu={coupMontre ? { lettres: new Map(coupMontre.poses.map((p) => [p.pos, p.lettre])), style: styleMontre } : undefined}
+          />
+        </div>
+        <div className="cote-detail">
+          {faits < aAnalyser && !erreur && (
+            <div className="liste">
+              <div className="note">
+                Analyse en cours… {faits} / {aAnalyser} tours
+              </div>
+              <div className="jauge" aria-hidden>
+                <div style={{ width: `${(100 * faits) / aAnalyser}%` }} />
+              </div>
+            </div>
+          )}
+          {erreur && <div className="apercu erreur">L’analyse a échoué : {erreur}</div>}
+
+          <div className="stats">
+            {bilans.map((b) => (
+              <div className="stat" key={b.joueur}>
+                <div className="etiquette">{nom(b.joueur)}</div>
+                <div className="valeur">{b.tours ? formatPct(b.pourcentage) : '—'}</div>
+                <div className="note">
+                  {b.points} pts sur {b.meilleur} possibles
+                  <br />
+                  {b.parfaits} meilleur{b.parfaits > 1 ? 's' : ''} coup{b.parfaits > 1 ? 's' : ''} sur {b.tours}
+                  <br />
+                  {b.scrabbles} Scrabble{b.scrabbles > 1 ? 's' : ''} ·{' '}
+                  <span className={b.scrabblesLoupes ? 'ecart-neg' : undefined}>
+                    {b.scrabblesLoupes} loupé{b.scrabblesLoupes > 1 ? 's' : ''}
+                  </span>
+                </div>
+                {b.plusGrosEcart && (
+                  <button
+                    type="button"
+                    className="bouton discret"
+                    style={{ minHeight: 32, padding: 0 }}
+                    onClick={() => aller(tours.findIndex((x) => x.numero === b.plusGrosEcart!.numero), true)}
+                  >
+                    Plus gros écart : n° {b.plusGrosEcart.numero} (−{b.plusGrosEcart.manque})
+                  </button>
                 )}
               </div>
-            )}
-            <DefinitionsDe mots={[t.coup?.mot, meilleur.mot]} />
-            {m.coups.length > 1 && (
-              <>
-                <div className="note">
-                  {m.total.toLocaleString('fr-FR')} coups possibles avec ce chevalet · les {m.coups.length} meilleurs :
-                </div>
-                <div className="liste">
-                  {m.coups.map((c, k) => (
-                    <button
-                      type="button"
-                      key={k}
-                      className={'ligne' + (coupMontre === c && styleMontre === 'apercu' ? ' choisie' : '')}
-                      onClick={() => setMontre(k === 0 ? 'meilleur' : c)}
-                    >
-                      <span className="note" style={{ width: 22 }}>
-                        {k + 1}
-                      </span>
-                      <div className="principal">
-                        <Mot mot={c.mot} />
-                        <span className="ref">{reference(c.debut, c.dir)}</span>
-                      </div>
-                      <span className="pts">{c.points}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
-      </div>
+            ))}
+          </div>
+          {joueurs.some((j) => j.id === moi) && (
+            <div className="segments">
+              <button type="button" className={filtre === 'tous' ? 'actif' : ''} onClick={() => setFiltre('tous')}>
+                Tous les coups
+              </button>
+              <button type="button" className={filtre === 'moi' ? 'actif' : ''} onClick={() => setFiltre('moi')}>
+                Mes coups
+              </button>
+            </div>
+          )}
 
-      <div className="note">Tous les tours</div>
-      <div className="liste">
-        {visibles.map((i) => {
-          const tour = tours[i]
-          const r = resultats[i]
-          const ecart = r ? manqueAGagner(tour, r) : 0
-          return (
-            <button type="button" key={tour.numero} className={'ligne' + (actuel === i ? ' choisie' : '')} onClick={() => aller(i, true)}>
-              <span className="note" style={{ width: 22 }}>
-                {tour.numero}
-              </span>
+          <div className="visionneuse apres-plateau" ref={detailTour}>
+            <button type="button" className={'ligne' + (montre === 'joue' && t.coup ? ' choisie' : '')} disabled={!t.coup} onClick={() => setMontre('joue')}>
               <div className="principal">
-                <div className="note">{nom(tour.joueur)}</div>
-                <div>{decrire(tour)}</div>
-                {r && scrabbleLoupe(tour, r) && <div className="note ecart-neg">Scrabble loupé</div>}
+                <div className="note">Coup joué</div>
+                <div>{decrire(t)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div className="pts">{tour.points}</div>
-                {r && <div className={'note ' + (ecart ? 'ecart-neg' : 'ecart-ok')}>{ecart ? `−${ecart}` : 'top'}</div>}
+                <div className="pts">{t.points}</div>
+                {m && <div className={'note ' + (manque ? 'ecart-neg' : 'ecart-ok')}>{manque ? `−${manque}` : 'top'}</div>}
               </div>
             </button>
-          )
-        })}
+
+            {!t.chevalet ? (
+              <div className="note">Chevalet non gardé : pas d’analyse pour ce tour.</div>
+            ) : !m ? (
+              <div className="note">Analyse…</div>
+            ) : !meilleur ? (
+              <div className="note">Aucun coup possible avec ce chevalet.</div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={'meilleur-coup' + (coupMontre === meilleur && styleMontre === 'apercu' ? ' choisi' : '')}
+                  onClick={() => setMontre('meilleur')}
+                >
+                  <div className="principal">
+                    <div className="etiquette">{manque ? 'Meilleur coup' : 'Meilleur coup : trouvé !'}</div>
+                    <div className="mot-meilleur">
+                      <Mot mot={meilleur.mot} />
+                      <span className="ref">{reference(meilleur.debut, meilleur.dir)}</span>
+                    </div>
+                  </div>
+                  <div className="pts-meilleur">{meilleur.points}</div>
+                </button>
+                {loupe && (
+                  <div className="apercu erreur">
+                    Scrabble loupé
+                    {scrabbleHorsListe && (
+                      <>
+                        {' '}
+                        : <Mot mot={scrabbleHorsListe.mot} /> {reference(scrabbleHorsListe.debut, scrabbleHorsListe.dir)} ({scrabbleHorsListe.points} pts){' '}
+                        <button type="button" className="bouton discret" style={{ minHeight: 32, padding: '0 6px' }} onClick={() => setMontre(scrabbleHorsListe)}>
+                          Voir
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                <DefinitionsDe mots={[t.coup?.mot, meilleur.mot]} />
+                {m.coups.length > 1 && (
+                  <>
+                    <div className="note">
+                      {m.total.toLocaleString('fr-FR')} coups possibles avec ce chevalet · les {m.coups.length} meilleurs :
+                    </div>
+                    <div className="liste">
+                      {m.coups.map((c, k) => (
+                        <button
+                          type="button"
+                          key={k}
+                          className={'ligne' + (coupMontre === c && styleMontre === 'apercu' ? ' choisie' : '')}
+                          onClick={() => setMontre(k === 0 ? 'meilleur' : c)}
+                        >
+                          <span className="note" style={{ width: 22 }}>
+                            {k + 1}
+                          </span>
+                          <div className="principal">
+                            <Mot mot={c.mot} />
+                            <span className="ref">{reference(c.debut, c.dir)}</span>
+                          </div>
+                          <span className="pts">{c.points}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="note apres-plateau">Tous les tours</div>
+          <div className="liste apres-plateau">
+            {visibles.map((i) => {
+              const tour = tours[i]
+              const r = resultats[i]
+              const ecart = r ? manqueAGagner(tour, r) : 0
+              return (
+                <button type="button" key={tour.numero} className={'ligne' + (actuel === i ? ' choisie' : '')} onClick={() => aller(i, true)}>
+                  <span className="note" style={{ width: 22 }}>
+                    {tour.numero}
+                  </span>
+                  <div className="principal">
+                    <div className="note">{nom(tour.joueur)}</div>
+                    <div>{decrire(tour)}</div>
+                    {r && scrabbleLoupe(tour, r) && <div className="note ecart-neg">Scrabble loupé</div>}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="pts">{tour.points}</div>
+                    {r && <div className={'note ' + (ecart ? 'ecart-neg' : 'ecart-ok')}>{ecart ? `−${ecart}` : 'top'}</div>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -346,7 +356,7 @@ function Retour({ vers }: { vers: string }) {
       droite={
         <button
           type="button"
-          className="bouton-icone"
+          className="bouton-icone retour-ordi"
           onClick={() => (history.length > 1 ? history.back() : naviguer(vers))}
           aria-label="Retour"
         >

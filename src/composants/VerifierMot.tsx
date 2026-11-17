@@ -35,6 +35,7 @@ export function VerifierMot({ autoFocus, initial = '' }: { autoFocus?: boolean; 
   return (
     <>
       <input
+        className="saisie-mot"
         value={saisie}
         onChange={(e) => setSaisie(e.target.value)}
         placeholder="Un mot à vérifier"

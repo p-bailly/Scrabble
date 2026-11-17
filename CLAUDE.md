@@ -36,8 +36,11 @@ citent son titre : le garder en cas de renommage.
   dans la ligne sous le chevalet tant qu'aucune lettre n'est posée (`SaisieVerifier`, verdict au bout de la ligne) ; Entrée ou la loupe ouvrent le même outil, avec la définition. Lettres posées, la ligne liste
   tous les mots formés (sur plusieurs lignes s'il le faut, jamais coupée) ; dessous, sur deux lignes, le dernier coup joué et ses points (`DernierCoup`).
 - Thème : variables CSS en tête de `src/styles.css`, sombre sous `:root[data-theme='dark']`, posé avant le premier rendu par un script
-  d'`index.html`. Grand écran (≥ 900 px) : deux colonnes via le `@media` en fin de `styles.css` ; `ColonneJeu` (`EcranJeu.tsx`) n'ajoute
-  aucun niveau sur téléphone. UI inspirée de DupliJeu (visuel seulement, aucun élément repris).
+  d'`index.html`. Grand écran (≥ 900 px), tout en CSS (`@media` de `styles.css`) : en jeu, plateau à gauche et colonne à droite (`ColonneJeu`,
+  `EcranJeu.tsx`) ; hors jeu, les onglets deviennent un menu à gauche (bande d'icônes sous 1100 px), les pages s'élargissent (`contenu large`,
+  `liste grille`, `colonnes` / `bloc`), l'analyse et la correction gardent le plateau à gauche (`deux-volets`). Ces blocs sont en
+  `display: contents` sur téléphone, où rien ne change ; `ordi-seul` / `tel-seul` : ce qui ne s'affiche que d'un côté.
+  UI inspirée de DupliJeu (visuel seulement, aucun élément repris).
 
 ## Règles du jeu (choix non évidents)
 - Plateau classique, 102 jetons français (`lettres.ts`), 50 points pour 7 lettres posées d'un coup. Échange seulement s'il reste
